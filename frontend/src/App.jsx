@@ -8,6 +8,9 @@ import ContactPage from './user/contact/ContactPage';
 import FAQPage from './user/faq/FAQPage';
 import SignupPage from './user/signup/SignupPage';
 import LoginPage from './user/login/LoginPage';
+import ForgotPasswordPage from './user/forgot-password/ForgotPasswordPage';
+import OtpVerificationPage from './user/otp-verification/OtpVerificationPage';
+import ResetPasswordPage from './user/reset-password/ResetPasswordPage';
 import WelcomePage from './user/welcome/WelcomePage';
 
 // Admin Pages
@@ -32,6 +35,9 @@ function App() {
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/verify-otp" element={<OtpVerificationPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/welcome" element={<WelcomePage />} />
 
           {/* Admin Routes */}

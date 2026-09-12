@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-label="Stylised map locating Capital University of Science and Technology, Islamabad">
+  <defs>
+    <linearGradient id="mp-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBF8F1"/><stop offset="100%" stop-color="#EFE9DA"/>
+    </linearGradient>
+    <radialGradient id="mp-glow" cx="62%" cy="48%" r="34%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="300" fill="url(#mp-bg)"/>
+
+  <!-- grid -->
+  <g stroke="#DED4BD" stroke-width="1.2" fill="none">
+    <path d="M0 60h800M0 120h800M0 180h800M0 240h800"/>
+    <path d="M100 0v300M220 0v300M340 0v300M460 0v300M580 0v300M700 0v300"/>
+  </g>
+
+  <!-- greenbelt -->
+  <g fill="#DCE5D5">
+    <path d="M40 210q60-40 130-20t120 40-90 60-160-80z"/>
+    <path d="M600 40q70-24 130 10t-40 70-90-80z"/>
+  </g>
+
+  <!-- arterial roads -->
+  <g stroke="#C9A97A" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M-20 210 180 190 360 205 520 150 700 168 820 140"/>
+    <path d="M-20 90 140 104 300 70 470 96 640 60 820 78"/>
+    <path d="M496 -20 486 120 520 150 508 320"/>
+    <path d="M240 -20 232 190"/>
+  </g>
+
+  <rect width="800" height="300" fill="url(#mp-glow)"/>
+
+  <!-- location pin -->
+  <g transform="translate(496,150)">
+    <circle r="46" fill="#B98C36" fill-opacity=".10"/>
+    <circle r="28" fill="#B98C36" fill-opacity=".16"/>
+    <path d="M0-30a20 20 0 0 1 20 20c0 14-20 34-20 34S-20 4-20-10A20 20 0 0 1 0-30z" fill="#8F6B28"/>
+    <circle cy="-10" r="7" fill="#FBF8F1"/>
+  </g>
+</svg>

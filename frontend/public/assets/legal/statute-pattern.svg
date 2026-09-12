@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="">
+  <defs>
+    <pattern id="statute" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M0 30h120M0 60h120M0 90h120" stroke="#0D1C32" stroke-opacity=".05" stroke-width="1"/>
+      <path d="M30 0v120M90 0v120" stroke="#0D1C32" stroke-opacity=".03" stroke-width="1"/>
+      <circle cx="60" cy="60" r="2.5" fill="#B98C36" fill-opacity=".14"/>
+    </pattern>
+  </defs>
+  <rect width="120" height="120" fill="url(#statute)"/>
+</svg>

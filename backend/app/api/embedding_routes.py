@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.ingestion.embedding_pipeline import run_embedding_pipeline
-from app.embeddings.embedding_service import EmbeddingService
+from app.retrieval.orchestrator import retrieve_and_answer
 from loguru import logger
 
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
@@ -36,14 +36,16 @@ async def generate_embeddings(body: Optional[GenerateRequest] = None):
 @router.post("/search")
 async def search_embeddings(body: SearchRequest):
     """
-    Perform semantic cosine similarity search across judgment nodes.
-    Returns matched nodes and recursive structural parent paths.
+    Superseded by POST /query/search — kept so existing callers keep working.
+
+    Delegates to the same orchestrator, so the two routes can never diverge.
     """
     try:
         logger.info(f"API Triggered: search_embeddings (query='{body.query}', limit={body.limit})")
-        service = EmbeddingService()
-        results = await service.retrieve_semantic_context(query=body.query, limit=body.limit)
-        return {"results": results}
+        return await retrieve_and_answer(
+            raw_query=body.query,
+            top_k_judgments=body.limit or 5,
+        )
     except Exception as e:
         logger.exception("Error in search_embeddings API endpoint")
         raise HTTPException(status_code=500, detail=str(e))

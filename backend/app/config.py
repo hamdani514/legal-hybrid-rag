@@ -8,17 +8,29 @@ class Settings(BaseSettings):
     DB_NAME: str = "legal_rag"
     OPENAI_API_KEY: str = ""
     
-    # Groq Cloud API Settings
+    # Gemini API Settings (Primary)
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash-lite"
+    
+    # Groq Cloud API Settings (Preserved/Commented in active provider)
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+
+    # Retrieval: where the ingestion pipeline writes its node->vector index.
+    # Empty means "use backend/app/connection". Accepts a directory of
+    # *_mappings.json files or a single JSON file.
+    JSON_INDEX_PATH: str = ""
+
+    # Retrieval: token budget for the context handed to the LLM.
+    MAX_CONTEXT_TOKENS: int = 8000
 
     # Parser Configuration
     USE_LLM_PARSER: bool = True
     PARSER_MODE: str = "hybrid"  # Options: "hybrid", "pure_llm", "rule_based"
 
-    # LLM Provider: "groq" or "ollama"
-    LLM_PROVIDER: str = "groq"
+    # LLM Provider: "gemini", "groq", or "ollama"
+    LLM_PROVIDER: str = "gemini"
 
     # Ollama Local Settings (Fallback)
     OLLAMA_MODEL: str = "mistral"

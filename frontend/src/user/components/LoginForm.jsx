@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import GoogleAuthButton from './auth/GoogleAuthButton';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -83,9 +84,17 @@ const LoginForm = () => {
 
         {/* Password Field */}
         <div className="flex flex-col gap-2">
-          <label className="font-body font-bold text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-            Password
-          </label>
+          <div className="flex justify-between items-center">
+            <label className="font-body font-bold text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
+              Password
+            </label>
+            <Link
+              to="/forgot-password"
+              className="font-body text-xs text-[#585F6A] hover:text-[#0D1C32] hover:underline decoration-[#E9C176] transition-colors"
+            >
+              Forgot Password?
+            </Link>
+          </div>
           <div className="relative w-full">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -115,10 +124,22 @@ const LoginForm = () => {
         >
           {loading ? 'Logging in...' : 'Login'}
         </button>
+
+        {/* OR Divider */}
+        <div className="flex items-center justify-center py-1">
+          <div className="flex-1 h-[1px] bg-[#E1E2E4]"></div>
+          <span className="px-4 font-body font-semibold text-xs leading-4 tracking-[1.2px] uppercase text-[#76849F]">
+            or
+          </span>
+          <div className="flex-1 h-[1px] bg-[#E1E2E4]"></div>
+        </div>
+
+        {/* Google Authentication */}
+        <GoogleAuthButton text="Continue with Google" />
       </form>
 
       {/* Footer Link */}
-      <div className="mt-12 pt-12 text-center">
+      <div className="mt-8 pt-6 text-center border-t border-[#F3F4F6]">
         <p className="font-body text-sm leading-5 text-[#44474D]">
           Don't have an account?{' '}
           <Link

@@ -550,57 +550,101 @@ def _chunk_text(text: str, size: int = 12000, overlap: int = 500) -> List[str]:
 #     return res.choices[0].message.content or ""
 
 
-async def call_groq(prompt: str, system: str) -> str:
+# ===========================================================================
+# Google Gemini / LLM interaction (Groq commented as requested)
+# ===========================================================================
+
+async def call_gemini(prompt: str, system: str) -> str:
     """
-    Call Groq API using OpenAI-compatible AsyncOpenAI client.
+    Call Google Gemini 2.5 Flash-Lite API using official google-genai client.
     """
-    api_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
+    api_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
     if not api_key:
-        logger.warning("GROQ_API_KEY is not configured in settings or .env file.")
+        logger.warning("GEMINI_API_KEY is not configured in settings or .env file.")
         return ""
 
+    from google import genai
+    from google.genai import types
+
+    try:
+        client = genai.Client(api_key=api_key)
+        model_name = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash-lite")
+        response = await client.aio.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=0.0,
+                response_mime_type="application/json",
+            ),
+        )
+        return response.text or ""
+    except Exception as e:
+        logger.error(f"Gemini API error in parser: {e}")
+        return ""
+
+
+# --- Previous Groq Setup (Commented out as requested) ---
+# async def call_groq(prompt: str, system: str) -> str:
+#     api_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
+#     if not api_key:
+#         logger.warning("GROQ_API_KEY is not configured in settings or .env file.")
+#         return ""
+#     client = AsyncOpenAI(
+#         base_url=settings.GROQ_BASE_URL or "https://api.groq.com/openai/v1",
+#         api_key=api_key,
+#         max_retries=2,
+#     )
+#     model_name = settings.GROQ_MODEL or "llama-3.3-70b-versatile"
+#     try:
+#         res = await client.chat.completions.create(
+#             model=model_name,
+#             temperature=0,
+#             timeout=30,
+#             response_format={"type": "json_object"},
+#             messages=[
+#                 {"role": "system", "content": system},
+#                 {"role": "user", "content": prompt},
+#             ],
+#         )
+#         return res.choices[0].message.content or ""
+#     except Exception as e:
+#         logger.error(f"Groq API error: {e}")
+#         return ""
+
+async def call_groq(prompt: str, system: str) -> str:
+    """Fallback if specifically invoked."""
+    api_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
+    if not api_key:
+        return ""
     client = AsyncOpenAI(
         base_url=settings.GROQ_BASE_URL or "https://api.groq.com/openai/v1",
         api_key=api_key,
         max_retries=2,
     )
-
     model_name = settings.GROQ_MODEL or "llama-3.3-70b-versatile"
     try:
         res = await client.chat.completions.create(
             model=model_name,
             temperature=0,
             timeout=30,
-            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
         )
         return res.choices[0].message.content or ""
-    except Exception as err:
-        logger.warning(f"Groq API call with response_format json_object failed ({err}), retrying standard call...")
-        try:
-            res = await client.chat.completions.create(
-                model=model_name,
-                temperature=0,
-                timeout=30,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return res.choices[0].message.content or ""
-        except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            return ""
+    except Exception as e:
+        logger.error(f"Groq API error: {e}")
+        return ""
 
 
 async def call_llm(prompt: str, system: str) -> str:
     """
-    Unified LLM caller routing to Groq Cloud API.
+    Unified LLM caller routing to Gemini API (Groq commented as primary).
     """
-    return await call_groq(prompt, system)
+    # return await call_groq(prompt, system)  # Groq commented out as requested
+    return await call_gemini(prompt, system)
 
 
 # Alias call_ollama to call_llm for backwards compatibility across module calls

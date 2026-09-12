@@ -54,3 +54,5 @@ pytest-asyncio
 
 openai
 ollama
+google-genai
+tiktoken

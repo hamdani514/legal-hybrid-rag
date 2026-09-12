@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 600" width="480" height="600" role="img" aria-label="Law library archive of bound judgment volumes">
+  <defs>
+    <linearGradient id="al-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDFBF6"/><stop offset="100%" stop-color="#F0EADC"/>
+    </linearGradient>
+    <radialGradient id="al-glow" cx="50%" cy="26%" r="62%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".7"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="600" fill="url(#al-bg)"/>
+  <g>
+    <g id="al-shelves">
+      <g transform="translate(0,40)">
+        <rect x="30" y="0" width="420" height="94" fill="#F6F1E4"/>
+        <g>
+          <rect x="40" y="8"  width="20" height="86" fill="#C9D3E0"/>
+          <rect x="64" y="14" width="14" height="80" fill="#DCCBA9"/>
+          <rect x="82" y="4"  width="24" height="90" fill="#B7C4D6"/>
+          <rect x="110" y="12" width="16" height="82" fill="#E0D3B6"/>
+          <rect x="130" y="6"  width="18" height="88" fill="#C5CFDD"/>
+          <rect x="152" y="16" width="22" height="78" fill="#D6C29E"/>
+          <rect x="178" y="8"  width="14" height="86" fill="#BECBDA"/>
+          <rect x="196" y="2"  width="26" height="92" fill="#DDD0B2"/>
+          <rect x="226" y="14" width="18" height="80" fill="#C2CEDD"/>
+          <rect x="248" y="6"  width="20" height="88" fill="#D9C7A4"/>
+          <rect x="272" y="10" width="16" height="84" fill="#C9D3E0"/>
+          <rect x="292" y="4"  width="24" height="90" fill="#E1D5B9"/>
+          <rect x="320" y="16" width="18" height="78" fill="#BAC7D8"/>
+          <rect x="342" y="8"  width="22" height="86" fill="#D5C29F"/>
+          <rect x="368" y="2"  width="16" height="92" fill="#C7D1DF"/>
+          <rect x="388" y="12" width="24" height="82" fill="#DED1B4"/>
+          <rect x="416" y="6"  width="20" height="88" fill="#C0CDDB"/>
+        </g>
+        <g fill="#B98C36" opacity=".55">
+          <rect x="44" y="30" width="12" height="3"/><rect x="86" y="26" width="16" height="3"/>
+          <rect x="200" y="24" width="18" height="3"/><rect x="296" y="26" width="16" height="3"/>
+          <rect x="392" y="34" width="16" height="3"/><rect x="252" y="28" width="12" height="3"/>
+        </g>
+        <rect x="30" y="94" width="420" height="8" fill="#C9A97A"/>
+      </g>
+    </g>
+    <use href="#al-shelves" y="112"/>
+    <use href="#al-shelves" y="224"/>
+    <use href="#al-shelves" y="336"/>
+    <use href="#al-shelves" y="448"/>
+  </g>
+  <rect width="480" height="600" fill="url(#al-glow)"/>
+</svg>

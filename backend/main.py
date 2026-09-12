@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.admin import router as admin_router
 from app.api.embedding_routes import router as embedding_router
+from app.api.routes.query import router as query_router
 from app.database import connect_db, close_db, db
 
 # ----------------------------
@@ -103,6 +104,7 @@ async def health():
 # ----------------------------
 app.include_router(admin_router, prefix="")
 app.include_router(embedding_router, prefix="")
+app.include_router(query_router, prefix="/query", tags=["Query"])
 
 
 @app.get("/{full_path:path}")

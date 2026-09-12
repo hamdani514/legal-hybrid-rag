@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" role="img" aria-label="Laurel wreath">
+  <g>
+    <path d="M100 186C56 172 30 138 30 96 30 62 44 34 64 18"/>
+    <path d="M64 40c-14 2-24 12-26 26 14 2 24-8 26-26z"/>
+    <path d="M50 74c-14 2-22 12-24 26 14 2 22-8 24-26z"/>
+    <path d="M42 110c-12 4-18 16-16 30 14 0 20-12 16-30z"/>
+    <path d="M48 144c-10 6-14 18-10 32 13-3 17-16 10-32z"/>
+    <path d="M66 170c-8 8-9 21-2 33 12-6 13-19 2-33z"/>
+  </g>
+  <g transform="translate(200,0) scale(-1,1)">
+    <path d="M100 186C56 172 30 138 30 96 30 62 44 34 64 18"/>
+    <path d="M64 40c-14 2-24 12-26 26 14 2 24-8 26-26z"/>
+    <path d="M50 74c-14 2-22 12-24 26 14 2 22-8 24-26z"/>
+    <path d="M42 110c-12 4-18 16-16 30 14 0 20-12 16-30z"/>
+    <path d="M48 144c-10 6-14 18-10 32 13-3 17-16 10-32z"/>
+    <path d="M66 170c-8 8-9 21-2 33 12-6 13-19 2-33z"/>
+  </g>
+</svg>

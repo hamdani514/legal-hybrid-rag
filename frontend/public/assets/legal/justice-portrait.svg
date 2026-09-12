@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 587" width="496" height="587" role="img" aria-label="Scales of justice in a sunlit marble courthouse hall">
+  <defs>
+    <linearGradient id="jp-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDFBF6"/><stop offset="55%" stop-color="#F2ECDD"/><stop offset="100%" stop-color="#E3D9C3"/>
+    </linearGradient>
+    <radialGradient id="jp-spot" cx="50%" cy="32%" r="56%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="jp-col" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#DFD5BE"/><stop offset="42%" stop-color="#FCFAF4"/><stop offset="100%" stop-color="#D9CFB6"/>
+    </linearGradient>
+    <linearGradient id="jp-floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E9E1CE"/><stop offset="100%" stop-color="#D3C8AE"/>
+    </linearGradient>
+    <linearGradient id="jp-beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="496" height="587" fill="url(#jp-sky)"/>
+
+  <!-- rear arch -->
+  <path d="M128 470V214a120 120 0 0 1 240 0v256z" fill="#DFD5BE"/>
+  <path d="M148 470V216a100 100 0 0 1 200 0v254z" fill="#F1EBDC"/>
+
+  <!-- light beams -->
+  <path d="M180 0 128 470h58L226 0z" fill="url(#jp-beam)"/>
+  <path d="M316 0l40 470h58L364 0z" fill="url(#jp-beam)" opacity=".8"/>
+
+  <!-- columns -->
+  <g>
+    <rect x="34" y="96" width="46" height="374" fill="url(#jp-col)"/>
+    <rect x="24" y="82" width="66" height="16" fill="#D5CBB2"/>
+    <rect x="22" y="466" width="70" height="14" fill="#D5CBB2"/>
+    <rect x="416" y="96" width="46" height="374" fill="url(#jp-col)"/>
+    <rect x="406" y="82" width="66" height="16" fill="#D5CBB2"/>
+    <rect x="404" y="466" width="70" height="14" fill="#D5CBB2"/>
+  </g>
+
+  <!-- entablature -->
+  <rect x="0" y="56" width="496" height="28" fill="#DCD2B9"/>
+  <rect x="0" y="82" width="496" height="3" fill="#B98C36" opacity=".5"/>
+
+  <rect width="496" height="587" fill="url(#jp-spot)"/>
+
+  <!-- scales of justice -->
+  <g stroke="#8F6B28" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M248 176v168"/>
+    <circle cx="248" cy="170" r="8" fill="#8F6B28" stroke="none"/>
+    <path d="M162 200h172"/>
+    <path d="M162 200l-26 60h52z" fill="#F6EEDC"/>
+    <path d="M334 200l26 60h-52z" fill="#F6EEDC"/>
+    <path d="M136 260a26 26 0 0 0 52 0"/>
+    <path d="M308 260a26 26 0 0 0 52 0"/>
+    <path d="M162 200v12M334 200v12"/>
+    <path d="M214 344h68"/>
+    <path d="M198 366h100"/>
+    <path d="M214 344l-16 22M282 344l16 22"/>
+  </g>
+
+  <!-- floor -->
+  <rect x="0" y="470" width="496" height="117" fill="url(#jp-floor)"/>
+  <g stroke="#C2B497" stroke-width="1">
+    <path d="M0 494h496M0 522h496M0 552h496"/>
+    <path d="M248 470 60 587M248 470l188 117M248 470v117M170 470 20 587M326 470l150 117"/>
+  </g>
+  <rect x="196" y="470" width="104" height="90" fill="#B98C36" opacity=".05"/>
+</svg>

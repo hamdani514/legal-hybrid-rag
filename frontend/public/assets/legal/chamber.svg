@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-label="Supreme court chamber interior">
+  <defs>
+    <linearGradient id="ch-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FEFCF7"/><stop offset="55%" stop-color="#F6F1E5"/><stop offset="100%" stop-color="#EBE3D2"/>
+    </linearGradient>
+    <radialGradient id="ch-spot" cx="50%" cy="24%" r="55%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".75"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ch-wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C9A97A"/><stop offset="100%" stop-color="#A8834F"/>
+    </linearGradient>
+    <linearGradient id="ch-pil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E2D9C4"/><stop offset="40%" stop-color="#FBF8F1"/><stop offset="100%" stop-color="#DDD3BB"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#ch-bg)"/>
+
+  <!-- coffered ceiling -->
+  <g stroke="#CFC3A6" stroke-opacity=".55" stroke-width="1.5" fill="none">
+    <path d="M0 0 600 190 1200 0M0 60 600 214 1200 60M0 120 600 238 1200 120"/>
+    <path d="M200 0 560 196M400 0 580 192M800 0 620 192M1000 0 640 196"/>
+  </g>
+
+  <!-- rear arches -->
+  <g fill="#E6DDC9">
+    <path d="M180 520V330a110 110 0 0 1 220 0v190z"/>
+    <path d="M490 520V300a110 110 0 0 1 220 0v220z"/>
+    <path d="M800 520V330a110 110 0 0 1 220 0v190z"/>
+  </g>
+  <g fill="#F3EEE1">
+    <path d="M200 520V332a90 90 0 0 1 180 0v188z"/>
+    <path d="M510 520V302a90 90 0 0 1 180 0v218z"/>
+    <path d="M820 520V332a90 90 0 0 1 180 0v188z"/>
+  </g>
+
+  <!-- pilasters -->
+  <g fill="url(#ch-pil)">
+    <rect x="86" y="220" width="56" height="300"/><rect x="418" y="220" width="56" height="300"/>
+    <rect x="726" y="220" width="56" height="300"/><rect x="1058" y="220" width="56" height="300"/>
+  </g>
+  <g fill="#DED4BD">
+    <rect x="76" y="206" width="76" height="18"/><rect x="408" y="206" width="76" height="18"/>
+    <rect x="716" y="206" width="76" height="18"/><rect x="1048" y="206" width="76" height="18"/>
+  </g>
+
+  <!-- bench -->
+  <path d="M240 640h720v160H240z" fill="url(#ch-wood)"/>
+  <path d="M180 600h840v44H180z" fill="#D8B888"/>
+  <path d="M180 596h840v5h-840z" fill="#B98C36" opacity=".6"/>
+  <g fill="#9A754332" opacity=".5">
+    <rect x="300" y="662" width="120" height="118"/><rect x="540" y="662" width="120" height="118"/>
+    <rect x="780" y="662" width="120" height="118"/>
+  </g>
+
+  <!-- floor -->
+  <rect x="0" y="520" width="1200" height="120" fill="#EDE6D6"/>
+  <g stroke="#D6CBB0" stroke-width="1">
+    <path d="M0 552h1200M0 586h1200M0 620h1200"/>
+    <path d="M600 520 380 640M600 520l220 120M600 520v120M420 520 180 640M780 520l240 120"/>
+  </g>
+
+  <rect width="1200" height="800" fill="url(#ch-spot)"/>
+</svg>

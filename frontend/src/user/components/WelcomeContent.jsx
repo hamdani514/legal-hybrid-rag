@@ -5,6 +5,37 @@ import TopBar from './TopBar';
 import ChatInput from './ChatInput';
 import EmptyState from './EmptyState';
 
+// The responder is asked for these five headings. Models wrap them
+// inconsistently ("[LEGAL ISSUE]", "**[LEGAL ISSUE]**", "**LEGAL ISSUE**"),
+// so match the label and ignore the decoration around it.
+const HEADING_RE = /^\s*\**\s*\[?\s*(RELEVANT FACTS|LEGAL ISSUE|COURT REASONING|FINAL DECISION|KEY PRINCIPLE)\s*\]?\s*\**\s*:?\s*$/i;
+
+const stripEmphasis = (line) => line.replace(/\*\*/g, '').trimEnd();
+
+// Split a generated answer into { heading, body } blocks. An answer that
+// arrives without recognisable headings is returned as one unlabelled block.
+const parseAnswer = (answer) => {
+  const sections = [];
+  let current = null;
+
+  for (const rawLine of (answer || '').split('\n')) {
+    const match = rawLine.match(HEADING_RE);
+    if (match) {
+      current = { heading: match[1].toUpperCase(), lines: [] };
+      sections.push(current);
+    } else if (current) {
+      current.lines.push(stripEmphasis(rawLine));
+    } else if (rawLine.trim()) {
+      current = { heading: null, lines: [stripEmphasis(rawLine)] };
+      sections.push(current);
+    }
+  }
+
+  return sections
+    .map((s) => ({ heading: s.heading, body: s.lines.join('\n').trim() }))
+    .filter((s) => s.heading || s.body);
+};
+
 const WelcomeContent = () => {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
@@ -53,43 +84,68 @@ const WelcomeContent = () => {
     setIsSearching(true);
 
     try {
-      const res = await fetch('/embeddings/search', {
+      const res = await fetch('/query/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: queryText, limit: 5 }),
+        body: JSON.stringify({
+          query: queryText,
+          top_k_judgments: 3,
+          top_k_sections: 3,
+          mode: 'answer',
+        }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        let replyText = '';
-
-        if (data.results && data.results.length > 0) {
-          replyText = `Based on a hybrid RAG search of the judgment records, here are the most relevant findings matching your query:\n\n`;
-          data.results.forEach((node, idx) => {
-            const docName = node.pdf_id || "Judgment Record";
-            const content = node.text || node.content || "";
-            const pageInfo = node.page_number ? ` (Page ${node.page_number})` : "";
-            
-            replyText += `### ${idx + 1}. ${docName}${pageInfo}\n`;
-            // Clean up content snippet
-            const snippet = content.length > 300 ? content.substring(0, 300) + "..." : content;
-            replyText += `*${snippet.trim()}*\n\n`;
-          });
-        } else {
-          replyText = `I ran a search across the judgment archives, but could not find any records matching your query. Try adjusting your search terms or using broader legal keywords.`;
-        }
-
-        setChatHistory((prev) => [...prev, { sender: 'ai', text: replyText }]);
-      } else {
-        // Fallback simulated response
-        const fallbackText = `I processed your request, but the retrieval service returned an error status. Here is an overview based on general legal concepts:\n\n*For "${queryText}", you should consult specific state code rules and appellate rulings regarding these contract and liability elements. Confirm all citations before draft integration.*`;
-        setChatHistory((prev) => [...prev, { sender: 'ai', text: fallbackText }]);
+      if (!res.ok) {
+        const detail = await res.text();
+        console.error('Search API returned status', res.status, detail);
+        setChatHistory((prev) => [
+          ...prev,
+          { sender: 'ai', text: `The search service returned an error (${res.status}). Please try again.` },
+        ]);
+        return;
       }
+
+      const data = await res.json();
+      const answer = data.top_judgment_answer || '';
+      const citations = data.judgments || [];
+
+      if (citations.length === 0) {
+        setChatHistory((prev) => [
+          ...prev,
+          { sender: 'ai', text: 'No judgments in the archive matched your query. Try broader legal terms.' },
+        ]);
+        return;
+      }
+
+      // The pipeline returns this sentinel when the LLM call itself failed;
+      // the retrieved judgments are still worth showing.
+      if (!answer || answer.startsWith('Error:')) {
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: 'I found matching judgments but could not draft an answer from them. The retrieved authorities are listed below.',
+            citations,
+            latencyMs: data.latency_ms,
+          },
+        ]);
+        return;
+      }
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          sections: parseAnswer(answer),
+          citations,
+          latencyMs: data.latency_ms,
+        },
+      ]);
     } catch (error) {
-      console.error('Search error:', error);
-      const errorText = `Unable to connect to the backend search service.\n\n*Fallback assessment for "${queryText}": Please ensure your backend server and vector store are running. Standard procedure in this domain requires verifying primary authorities directly.*`;
+      console.error('Query pipeline error:', error);
+      const errorText = `Unable to reach the backend search service. Make sure the FastAPI server is running.`;
       setChatHistory((prev) => [...prev, { sender: 'ai', text: errorText }]);
     } finally {
       setIsSearching(false);
@@ -156,8 +212,49 @@ const WelcomeContent = () => {
                   </span>
                   <div className="flex flex-col gap-2">
                     <span className="font-headline text-base font-semibold text-primary-container">Atelier AI</span>
-                    <div className="font-body text-sm text-on-surface leading-relaxed whitespace-pre-line">
-                      {message.text}
+                    <div className="font-body text-sm text-on-surface leading-relaxed">
+                      {message.text && (
+                        <p className="whitespace-pre-line">{message.text}</p>
+                      )}
+
+                      {message.sections?.map((section, sIdx) => (
+                        <div key={sIdx} className={sIdx > 0 ? 'mt-5' : ''}>
+                          {section.heading && (
+                            <h3 className="font-headline text-xs font-semibold uppercase tracking-wider text-tertiary-fixed-dim mb-1.5">
+                              {section.heading}
+                            </h3>
+                          )}
+                          <p className="whitespace-pre-line">{section.body}</p>
+                        </div>
+                      ))}
+
+                      {message.citations?.length > 0 && (
+                        <div className="mt-6 pt-4 border-t border-outline-variant/20">
+                          <h3 className="font-headline text-xs font-semibold uppercase tracking-wider text-tertiary-fixed-dim mb-3">
+                            Authorities Retrieved
+                          </h3>
+                          <ol className="flex flex-col gap-2.5">
+                            {message.citations.map((cite) => (
+                              <li key={cite.judgment_id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                <span className="font-medium text-primary-container">{cite.filename}</span>
+                                <span className="text-xs text-on-surface-variant">
+                                  relevance {cite.similarity_score.toFixed(3)}
+                                </span>
+                                {cite.sections_retrieved?.length > 0 && (
+                                  <span className="text-xs text-on-surface-variant">
+                                    &middot; {cite.sections_retrieved.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                          {message.latencyMs != null && (
+                            <p className="mt-3 text-xs text-on-surface-variant/70">
+                              Retrieved in {(message.latencyMs / 1000).toFixed(1)}s
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

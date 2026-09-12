@@ -26,6 +26,7 @@ chroma_db/
 backend/chroma_db/
 backend/uploads/*
 backend/app/connection/*
+backend/app/query/*
 
 
-
+
