@@ -12,6 +12,7 @@ from app.ingestion.detector import detect_pdf_type
 from app.ingestion.extractor import extract
 from app.ingestion.parser import parse_sections
 from app.vectorstore.chroma_store import chroma_store
+from app.services.email_service import send_contact_notification, send_contact_acknowledgement
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -665,8 +666,16 @@ async def user_login(body: UserLoginRequest):
     if not user or user.get("password") != body.password:
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
         
-    if user.get("status") != "Active":
-        raise HTTPException(status_code=403, detail="Your account is not active.")
+    if user.get("status") != "Active" or user.get("isActive") is False:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Your account has been deactivated. Do you want to reactivate your account?",
+                "is_deactivated": True,
+                "email": user.get("email"),
+            },
+        )
         
     return {
         "id": user.get("id"),
@@ -843,6 +852,29 @@ async def create_support_query(query: SupportQueryCreate):
     await db.database.support_queries.insert_one(new_query)
     new_query["_id"] = str(new_query["_id"])
     new_query["created_at"] = new_query["created_at"].isoformat()
+
+    # Dispatch email to admin (verdictaisupport@gmail.com) and user acknowledgement
+    try:
+        await send_contact_notification(
+            name=query.full_name.strip(),
+            email=query.email.strip(),
+            subject=query.subject.strip(),
+            message=query.message.strip(),
+            query_id=query_id
+        )
+    except Exception as e:
+        logger.warning(f"Failed to dispatch contact notification to admin: {e}")
+
+    try:
+        await send_contact_acknowledgement(
+            name=query.full_name.strip(),
+            email=query.email.strip(),
+            subject=query.subject.strip(),
+            query_id=query_id
+        )
+    except Exception as e:
+        logger.warning(f"Failed to dispatch contact acknowledgement to client: {e}")
+
     return new_query
 
 

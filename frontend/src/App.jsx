@@ -10,6 +10,7 @@ import LoginPage from './user/login/LoginPage';
 import ForgotPasswordPage from './user/forgot-password/ForgotPasswordPage';
 import OtpVerificationPage from './user/otp-verification/OtpVerificationPage';
 import ResetPasswordPage from './user/reset-password/ResetPasswordPage';
+import ReactivateAccountPage from './user/reactivate/ReactivateAccountPage';
 import WelcomePage from './user/welcome/WelcomePage';
 import LegalPage from './user/legal/LegalPage';
 import NotFound from './user/components/bound/NotFound';
@@ -39,6 +40,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<OtpVerificationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/reactivate/:token" element={<ReactivateAccountPage />} />
           <Route path="/welcome" element={<WelcomePage />} />
 
           {/* Policy pages — LegalPage keys off the pathname slug */}

@@ -79,7 +79,8 @@ const ContactForm = () => {
       if (!res.ok) {
         throw new Error(data?.detail || 'Failed to submit inquiry.');
       }
-      setSuccess('Your inquiry has been submitted successfully. Our team will review it shortly.');
+      const refId = data?.query_id ? ` [Ref: ${data.query_id}]` : '';
+      setSuccess(`Thank you! Your inquiry${refId} has been received. A confirmation has been sent to ${email.trim()}, and our support team will reply within 24 to 48 hours.`);
       setFullName('');
       setEmail('');
       setSubject('');

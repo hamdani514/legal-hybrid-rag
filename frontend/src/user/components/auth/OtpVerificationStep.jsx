@@ -14,7 +14,7 @@ const OtpVerificationStep = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(45);
+  const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
   const inputRefs = useRef([]);
@@ -95,17 +95,33 @@ const OtpVerificationStep = ({
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
     setOtp(new Array(OTP_LENGTH).fill(''));
-    setCountdown(60);
-    setCanResend(false);
     setErrorMsg('');
-    setInfoMsg(`A fresh verification code was sent to ${email || 'your email'}.`);
-    inputRefs.current[0]?.focus();
+    setInfoMsg('');
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.detail || data.message || 'Failed to resend code.');
+        return;
+      }
+      setCountdown(60);
+      setCanResend(false);
+      setInfoMsg(`A fresh verification code has been dispatched to ${email || 'your email'}.`);
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      console.error('Resend OTP error:', err);
+      setErrorMsg('Failed to communicate with authentication server.');
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     const enteredCode = otp.join('');
@@ -117,12 +133,29 @@ const OtpVerificationStep = ({
 
     setLoading(true);
 
-    // Simulated UI validation
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: enteredCode }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.detail || data.message || 'Invalid or expired verification code.');
+        setLoading(false);
+        return;
+      }
+
+      sessionStorage.setItem('resetEmail', email);
+      sessionStorage.setItem('resetOtp', enteredCode);
       setLoading(false);
-      // For testing convenience: any 6-digit code or "000000" works in UI mode
       onVerified(enteredCode);
-    }, 850);
+    } catch (err) {
+      console.error('Verify OTP error:', err);
+      setErrorMsg('Failed to communicate with authentication server.');
+      setLoading(false);
+    }
   };
 
   const formatTime = (seconds) => {

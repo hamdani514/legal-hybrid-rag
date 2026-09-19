@@ -13,7 +13,7 @@ const ForgotPasswordStep = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -31,11 +31,27 @@ const ForgotPasswordStep = ({
 
     setLoading(true);
 
-    // Simulated dispatch of OTP in UI
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.detail || data.message || 'Failed to dispatch verification code.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
       onOtpSent(trimmed);
-    }, 900);
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      setErrorMsg('Failed to communicate with authentication server.');
+      setLoading(false);
+    }
   };
 
   return (

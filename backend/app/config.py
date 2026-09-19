@@ -36,6 +36,21 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "mistral"
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
 
+    # SMTP & Email Settings
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    FRONTEND_URL: str = "http://localhost:5173"
+    REACTIVATION_TOKEN_EXPIRY_DAYS: int = 30
+
+    # Auth & Security
+    JWT_SECRET: str = "long_random_string_here"
+    GOOGLE_CLIENT_ID: str = ""
+    RECAPTCHA_SECRET_KEY: str = ""
+    RECAPTCHA_SCORE_THRESHOLD: float = 0.5
+    CONTACT_RECEIVER_EMAIL: str = "verdictaisupport@gmail.com"
+
     model_config = SettingsConfigDict(
         env_file=[
             str(Path(__file__).resolve().parents[1] / ".env"),  # backend/.env

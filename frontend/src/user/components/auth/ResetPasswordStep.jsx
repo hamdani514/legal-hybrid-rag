@@ -7,6 +7,7 @@ import { useState } from 'react';
 const ResetPasswordStep = ({
   onPasswordReset,
   email,
+  otp,
 }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,7 +44,7 @@ const ResetPasswordStep = ({
 
   const strength = getStrengthLabel();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -64,13 +65,43 @@ const ResetPasswordStep = ({
       return;
     }
 
+    const currentOtp = otp || sessionStorage.getItem('resetOtp');
+    const currentEmail = email || sessionStorage.getItem('resetEmail');
+
+    if (!currentOtp || !currentEmail) {
+      setErrorMsg('Missing verification session. Please restart recovery.');
+      return;
+    }
+
     setLoading(true);
 
-    // Simulated UI update
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentEmail,
+          otp: currentOtp,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.detail || data.message || 'Failed to reset password.');
+        setLoading(false);
+        return;
+      }
+
+      sessionStorage.removeItem('resetEmail');
+      sessionStorage.removeItem('resetOtp');
       setLoading(false);
-      onPasswordReset({ email, newPassword });
-    }, 900);
+      onPasswordReset({ email: currentEmail, newPassword });
+    } catch (err) {
+      console.error('Reset password error:', err);
+      setErrorMsg('Failed to communicate with authentication server.');
+      setLoading(false);
+    }
   };
 
   return (
