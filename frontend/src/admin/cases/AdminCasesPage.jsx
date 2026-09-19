@@ -34,6 +34,10 @@ const AdminCasesPage = () => {
   const [recentError, setRecentError] = useState('');
   const [allJobs, setAllJobs] = useState([]);
   const [allJobsLoading, setAllJobsLoading] = useState(false);
+  // fetchAllJobs reads and writes this, and the "All uploads" panel renders
+  // it, but the state itself was never declared — so the fetch threw before
+  // it could run.
+  const [allJobsError, setAllJobsError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const JOBS_PER_PAGE = 6;
@@ -405,7 +409,7 @@ const AdminCasesPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <AdminSidebar activeRoute="cases" currentAdmin={currentAdmin} />
 
       <main className="ml-72 flex-1 flex flex-col min-h-screen">
@@ -426,13 +430,13 @@ const AdminCasesPage = () => {
 
         <div className="p-12 flex flex-col gap-8 flex-1">
           {/* File Dropzone Header Banner */}
-          <div className="bg-[#0D1C32] rounded-2xl p-8 text-white relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="bg-[#111827] rounded-2xl p-8 text-white relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="relative z-10 max-w-xl">
-              <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-[#E9C176] uppercase tracking-wider mb-3">
+              <span className="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-[#0085FF] uppercase tracking-wider mb-3">
                 Automated Pipeline
               </span>
-              <h2 className="font-headline font-bold text-2xl mb-2">Drag & Drop Judgment Documents</h2>
-              <p className="font-body text-sm text-[#76849F]">
+              <h2 className="font-display font-bold text-2xl mb-2">Drag & Drop Judgment Documents</h2>
+              <p className="font-prose text-sm text-[#6B7280]">
                 PDF documents undergo multi-stage text extraction, chunking, vector embedding, and database ingestion.
               </p>
             </div>
@@ -440,7 +444,7 @@ const AdminCasesPage = () => {
               {activeJobId && (
                 <button
                   onClick={handleCancelIngestion}
-                  className="bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-400/30 px-5 py-3.5 rounded-xl font-body font-bold text-sm transition-all flex items-center gap-2"
+                  className="bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-400/30 px-5 py-3.5 rounded-xl font-prose font-bold text-sm transition-all flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">close</span>
                   Cancel Ingestion
@@ -449,7 +453,7 @@ const AdminCasesPage = () => {
               <button
                 onClick={handlePickFile}
                 disabled={uploading}
-                className="bg-[#E9C176] text-[#261900] px-6 py-3.5 rounded-xl font-body font-bold text-sm hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg disabled:opacity-50"
+                className="grad-btn flex items-center gap-2 rounded-xl px-6 py-3.5 font-ui text-sm font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
               >
                 <span className="material-symbols-outlined text-lg">upload_file</span>
                 {uploading ? 'Processing Ingestion...' : 'Select PDF File'}
@@ -458,7 +462,7 @@ const AdminCasesPage = () => {
           </div>
 
           {uploadError && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-xl text-xs font-body border border-red-100 flex items-center gap-2">
+            <div className="bg-red-50 text-red-700 p-4 rounded-xl text-xs font-prose border border-red-100 flex items-center gap-2">
               <span className="material-symbols-outlined text-red-600">error</span>
               {uploadError}
             </div>
@@ -529,30 +533,33 @@ const AdminCasesPage = () => {
       {/* View All Modal */}
       {showAllModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative border border-gray-100 flex flex-col gap-6">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative border border-ash-100 flex flex-col gap-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-headline font-bold text-2xl text-[#0D1C32]">Complete Case History</h3>
-                <p className="font-body text-xs text-gray-500 mt-1">All uploaded PDF judgments and their ingestion states.</p>
+                <h3 className="font-display font-bold text-2xl text-[#111827]">Complete Case History</h3>
+                <p className="font-prose text-xs text-ash-500 mt-1">All uploaded PDF judgments and their ingestion states.</p>
               </div>
               <button
                 onClick={() => setShowAllModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-ash-400 hover:text-ash-600 transition-colors"
               >
                 <span className="material-symbols-outlined text-2xl">close</span>
               </button>
             </div>
 
             {allJobsError && (
-              <div className="bg-red-50 text-red-700 p-4 rounded-xl text-xs font-body">
-                ⚠️ {allJobsError}
+              <div role="alert" className="flex items-start gap-2.5 bg-red-50 text-red-700 p-4 rounded-xl text-xs font-prose">
+                <span className="material-symbols-outlined shrink-0 text-base leading-5" aria-hidden="true">
+                  error
+                </span>
+                <span>{allJobsError}</span>
               </div>
             )}
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse font-body text-sm">
+              <table className="w-full text-left border-collapse font-prose text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <tr className="border-b border-ash-100 text-xs font-bold text-ash-400 uppercase tracking-wider">
                     <th className="py-3 px-4">Filename</th>
                     <th className="py-3 px-4">Job ID</th>
                     <th className="py-3 px-4">Status</th>
@@ -560,26 +567,26 @@ const AdminCasesPage = () => {
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-ash-50">
                   {allJobsLoading ? (
                     <tr>
-                      <td colSpan="5" className="py-8 text-center text-gray-400">Loading history...</td>
+                      <td colSpan="5" className="py-8 text-center text-ash-400">Loading history...</td>
                     </tr>
                   ) : allJobs.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-8 text-center text-gray-400">No uploads found.</td>
+                      <td colSpan="5" className="py-8 text-center text-ash-400">No uploads found.</td>
                     </tr>
                   ) : (
                     allJobs.map((job) => (
-                      <tr key={job.job_id} className="hover:bg-gray-50">
-                        <td className="py-3.5 px-4 font-medium text-[#0D1C32]">{job.filename || 'Unnamed'}</td>
-                        <td className="py-3.5 px-4 font-mono text-xs text-gray-500">{job.job_id}</td>
+                      <tr key={job.job_id} className="hover:bg-ash-50">
+                        <td className="py-3.5 px-4 font-medium text-[#111827]">{job.filename || 'Unnamed'}</td>
+                        <td className="py-3.5 px-4 font-mono text-xs text-ash-500">{job.job_id}</td>
                         <td className="py-3.5 px-4">
-                          <span className="capitalize text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">
+                          <span className="capitalize text-xs font-semibold px-2.5 py-1 rounded-full bg-ash-100 text-ash-700">
                             {job.status}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-xs text-gray-400">{formatRelativeTime(job.created_at)}</td>
+                        <td className="py-3.5 px-4 text-xs text-ash-400">{formatRelativeTime(job.created_at)}</td>
                         <td className="py-3.5 px-4 text-right">
                           <button
                             onClick={() => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -39,28 +39,28 @@ const ForgotPasswordStep = ({
   };
 
   return (
-    <div className="flex flex-col justify-center w-full">
+    <div className="pop-in flex w-full flex-col">
       {/* Step Header */}
       <div className="mb-8 flex flex-col gap-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E9C176]/20 text-[#0D1C32] text-[10px] font-bold">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand-500/20 text-ash-900 text-[10px] font-bold">
             1
           </span>
-          <span className="font-body text-xs font-semibold uppercase tracking-[1.4px] text-[#A17F3B]">
+          <span className="font-prose text-xs font-semibold uppercase tracking-[1.4px] text-brand-700">
             Step 1 of 3 · Recovery
           </span>
         </div>
-        <h1 className="font-headline font-normal text-[28px] sm:text-[32px] leading-9 text-[#191C1E]">
+        <h1 className="font-display font-bold tracking-[-0.025em] text-[28px] sm:text-[32px] leading-9 text-ash-900">
           Forgot Password
         </h1>
-        <p className="font-body text-sm leading-5 text-[#44474D]">
+        <p className="font-prose text-sm leading-5 text-ash-600">
           Enter your registered email address to receive a secure 6-digit verification code.
         </p>
       </div>
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="bg-red-50 text-red-700 p-3.5 mb-5 rounded text-xs font-body border border-red-100 flex items-center gap-2">
+        <div className="bg-red-50 text-red-700 p-3.5 mb-5 rounded text-xs font-prose border border-red-100 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">error</span>
           <span>{errorMsg}</span>
         </div>
@@ -69,7 +69,7 @@ const ForgotPasswordStep = ({
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <label className="font-body text-xs font-bold leading-4 tracking-[1.2px] uppercase text-[#44474D]">
+          <label className="font-prose text-xs font-bold leading-4 tracking-[1.2px] uppercase text-ash-600">
             Email Address
           </label>
           <input
@@ -82,16 +82,16 @@ const ForgotPasswordStep = ({
               setEmail(e.target.value);
               if (errorMsg) setErrorMsg('');
             }}
-            className="w-full bg-[#F3F4F6] px-4 py-[13px] font-body text-base leading-[19px] text-[#191C1E] placeholder:text-[#C5C6CD] outline-none border border-transparent transition-all focus:bg-white focus:border-[#E9C176] focus:ring-2 focus:ring-[#E9C176]/20"
+            className="w-full rounded-xl border border-ash-200 bg-white px-4 py-3.5 font-prose text-[15px] leading-6 text-ash-900 placeholder:text-ash-400 outline-none transition-all duration-250 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/12"
           />
         </div>
 
         {/* Security assurance note */}
-        <div className="bg-[#F8F9FB] border border-[#E1E2E4] p-3.5 rounded flex items-start gap-3">
-          <span className="material-symbols-outlined text-[#0D1C32] text-lg shrink-0 mt-0.5">
+        <div className="bg-white border border-ash-200 p-3.5 rounded flex items-start gap-3">
+          <span className="material-symbols-outlined text-ash-900 text-lg shrink-0 mt-0.5">
             verified_user
           </span>
-          <p className="font-body text-xs text-[#585F6A] leading-relaxed">
+          <p className="font-prose text-xs text-ash-500 leading-relaxed">
             A temporary verification code will be dispatched to this mailbox. Codes remain valid for 10 minutes.
           </p>
         </div>
@@ -100,7 +100,7 @@ const ForgotPasswordStep = ({
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#0D1C32] text-white py-3.5 font-body font-bold text-sm leading-5 tracking-[1.4px] uppercase text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-black active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className="grad-btn w-full rounded-full py-4 font-ui text-[15px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0 disabled:shadow-none flex items-center justify-center gap-2.5"
         >
           {loading ? (
             <>
@@ -114,21 +114,21 @@ const ForgotPasswordStep = ({
       </form>
 
       {/* Footer Navigation */}
-      <div className="mt-8 pt-6 border-t border-[#EDEFE0]/80 text-center">
-        <p className="font-body text-sm leading-5 text-[#44474D]">
+      <div className="mt-8 pt-6 border-t border-ash-50/80 text-center">
+        <p className="font-prose text-sm leading-5 text-ash-600">
           Remember your credentials?{' '}
           {onBackToLogin ? (
             <button
               type="button"
               onClick={onBackToLogin}
-              className="font-bold text-[#191C1E] underline decoration-[#E9C176] decoration-2 underline-offset-4 hover:text-[#A17F3B] transition-colors"
+              className="font-bold text-ash-900 underline decoration-brand-500 decoration-2 underline-offset-4 hover:text-brand-700 transition-colors"
             >
               Return to Login
             </button>
           ) : (
             <Link
               to="/login"
-              className="font-bold text-[#191C1E] underline decoration-[#E9C176] decoration-2 underline-offset-4 hover:text-[#A17F3B] transition-colors"
+              className="font-bold text-ash-900 underline decoration-brand-500 decoration-2 underline-offset-4 hover:text-brand-700 transition-colors"
             >
               Return to Login
             </Link>

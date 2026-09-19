@@ -148,7 +148,7 @@ const AdminSettingsPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <AdminSidebar activeRoute="settings" currentAdmin={currentAdmin} />
 
       <main className="ml-72 flex-1 flex flex-col min-h-screen">

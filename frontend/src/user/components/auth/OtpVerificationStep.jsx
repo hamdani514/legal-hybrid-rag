@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 /**
  * Step 2: OTP Verification Component
@@ -132,28 +132,28 @@ const OtpVerificationStep = ({
   };
 
   return (
-    <div className="flex flex-col justify-center w-full">
+    <div className="pop-in flex w-full flex-col">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E9C176]/20 text-[#0D1C32] text-[10px] font-bold">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand-500/20 text-ash-900 text-[10px] font-bold">
             2
           </span>
-          <span className="font-body text-xs font-semibold uppercase tracking-[1.4px] text-[#A17F3B]">
+          <span className="font-prose text-xs font-semibold uppercase tracking-[1.4px] text-brand-700">
             Step 2 of 3 · Identity Verification
           </span>
         </div>
-        <h1 className="font-headline font-normal text-[28px] sm:text-[32px] leading-9 text-[#191C1E]">
+        <h1 className="font-display font-bold tracking-[-0.025em] text-[28px] sm:text-[32px] leading-9 text-ash-900">
           Enter Authorization Code
         </h1>
-        <div className="flex flex-wrap items-center gap-1 font-body text-sm leading-5 text-[#44474D]">
+        <div className="flex flex-wrap items-center gap-1 font-prose text-sm leading-5 text-ash-600">
           <span>Code sent to</span>
-          <strong className="text-[#0D1C32] font-semibold">{email || 'your email address'}</strong>
+          <strong className="text-ash-900 font-semibold">{email || 'your email address'}</strong>
           {onChangeEmail && (
             <button
               type="button"
               onClick={onChangeEmail}
-              className="text-[#A17F3B] hover:text-[#0D1C32] text-xs font-medium ml-1 underline transition-colors"
+              className="text-brand-700 hover:text-ash-900 text-xs font-medium ml-1 underline transition-colors"
             >
               (Edit)
             </button>
@@ -163,13 +163,13 @@ const OtpVerificationStep = ({
 
       {/* Info / Alert messages */}
       {infoMsg && (
-        <div className="bg-emerald-50 text-emerald-800 p-3 mb-4 rounded text-xs font-body border border-emerald-100 flex items-center gap-2">
+        <div className="bg-emerald-50 text-emerald-800 p-3 mb-4 rounded text-xs font-prose border border-emerald-100 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">check_circle</span>
           <span>{infoMsg}</span>
         </div>
       )}
       {errorMsg && (
-        <div className="bg-red-50 text-red-700 p-3 mb-4 rounded text-xs font-body border border-red-100 flex items-center gap-2">
+        <div className="bg-red-50 text-red-700 p-3 mb-4 rounded text-xs font-prose border border-red-100 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">error</span>
           <span>{errorMsg}</span>
         </div>
@@ -188,27 +188,27 @@ const OtpVerificationStep = ({
               value={digit}
               onChange={(e) => handleChange(e, idx)}
               onKeyDown={(e) => handleKeyDown(e, idx)}
-              className="w-11 h-13 sm:w-12 sm:h-14 bg-[#F3F4F6] text-center font-headline font-bold text-xl sm:text-2xl text-[#0D1C32] outline-none border border-transparent rounded transition-all focus:bg-white focus:border-[#E9C176] focus:ring-2 focus:ring-[#E9C176]/30 shadow-inner"
+              className="w-11 h-13 sm:w-12 sm:h-14 bg-ash-100 text-center font-display font-bold text-xl sm:text-2xl text-ash-900 outline-none border border-transparent rounded transition-all focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 shadow-inner"
               style={{
-                boxShadow: digit ? '0 0 0 1px rgba(233,193,118,0.5)' : 'none',
+                boxShadow: digit ? '0 0 0 1px rgba(0,133,255,0.35)' : 'none',
               }}
             />
           ))}
         </div>
 
         {/* Resend Timer section */}
-        <div className="flex items-center justify-between font-body text-xs text-[#585F6A] pt-1">
+        <div className="flex items-center justify-between font-prose text-xs text-ash-500 pt-1">
           <span>Didn't receive the OTP?</span>
           {canResend ? (
             <button
               type="button"
               onClick={handleResend}
-              className="font-bold text-[#0D1C32] hover:text-[#A17F3B] underline decoration-[#E9C176] transition-colors"
+              className="font-bold text-ash-900 hover:text-brand-700 underline decoration-brand-500 transition-colors"
             >
               Resend OTP Code
             </button>
           ) : (
-            <span className="text-[#76849F] flex items-center gap-1">
+            <span className="text-ash-500 flex items-center gap-1">
               <span className="material-symbols-outlined text-xs">timer</span>
               Resend in {formatTime(countdown)}
             </span>
@@ -219,7 +219,7 @@ const OtpVerificationStep = ({
         <button
           type="submit"
           disabled={loading || otp.join('').length < OTP_LENGTH}
-          className="w-full bg-[#0D1C32] text-white py-3.5 font-body font-bold text-sm leading-5 tracking-[1.4px] uppercase text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-black active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          className="grad-btn w-full rounded-full py-4 font-ui text-[15px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0 disabled:shadow-none flex items-center justify-center gap-2.5"
         >
           {loading ? (
             <>
@@ -234,11 +234,11 @@ const OtpVerificationStep = ({
 
       {/* Back button */}
       {onChangeEmail && (
-        <div className="mt-8 pt-6 border-t border-[#EDEFE0]/80 text-center">
+        <div className="mt-8 pt-6 border-t border-ash-50/80 text-center">
           <button
             type="button"
             onClick={onChangeEmail}
-            className="font-body text-xs font-semibold uppercase tracking-[1.2px] text-[#585F6A] hover:text-[#0D1C32] transition-colors flex items-center justify-center gap-1 mx-auto"
+            className="font-prose text-xs font-semibold uppercase tracking-[1.2px] text-ash-500 hover:text-ash-900 transition-colors flex items-center justify-center gap-1 mx-auto"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
             Back to Email Step

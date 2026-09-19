@@ -1,11 +1,12 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import Reveal from './Reveal';
 
+// A ruled entry line, as on a court form — no boxed inputs.
 const FIELD_CLASS =
-  'w-full bg-transparent border-0 border-b border-[#C5C6CD] focus:border-[#E9C176] focus:ring-0 px-0 py-[14px] text-base leading-[19px] text-[#191C1E] placeholder:text-[rgba(197,198,205,0.5)] font-body outline-none transition-[border-color,box-shadow] duration-200 focus:shadow-[0_6px_12px_-10px_rgba(233,193,118,0.9)]';
-const FIELD_ERROR_CLASS = 'border-[#BA1A1A] focus:border-[#BA1A1A]';
+  'w-full bg-transparent border-0 border-b border-ash-300 focus:border-brand-500 focus:ring-0 px-0 py-3.5 font-prose text-[15.5px] leading-6 text-ash-900 placeholder:text-ash-400 outline-none transition-colors duration-300';
+const FIELD_ERROR_CLASS = 'border-red-500 focus:border-red-500';
 const LABEL_CLASS =
-  'font-body text-[10px] leading-[15px] tracking-[1px] uppercase text-[#44474D] transition-colors';
+  'font-ui text-[10px] font-semibold leading-4 tracking-[0.08em] uppercase text-ash-500 transition-colors';
 
 const ContactForm = () => {
   const [fullName, setFullName] = useState('');
@@ -92,7 +93,7 @@ const ContactForm = () => {
 
   const renderError = (field) =>
     fieldErrors[field] ? (
-      <p id={`${field}-error`} className="font-body text-xs leading-4 text-[#BA1A1A] mt-1">
+      <p id={`${field}-error`} className="mt-2 font-ui text-xs leading-4 text-red-600">
         {fieldErrors[field]}
       </p>
     ) : null;
@@ -100,11 +101,7 @@ const ContactForm = () => {
   return (
     <Reveal
       variant="up"
-      className="relative bg-white rounded-lg overflow-hidden z-10 transition-shadow duration-300 hover:shadow-[0px_36px_72px_-16px_rgba(13,28,50,0.10)]"
-      style={{
-        border: '1px solid rgba(197, 198, 205, 0.4)',
-        boxShadow: '0px 32px 64px -12px rgba(0, 0, 0, 0.04)',
-      }}
+      className="relative z-10 overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card transition-shadow duration-500 hover:shadow-card-lg"
     >
       {/* Form Content */}
       <div className="px-6 sm:px-10 lg:px-16 pt-10 sm:pt-14 lg:pt-16 pb-12 sm:pb-16 lg:pb-20">
@@ -201,9 +198,8 @@ const ContactForm = () => {
               }}
               aria-invalid={fieldErrors.message ? 'true' : undefined}
               aria-describedby={fieldErrors.message ? 'message-error' : undefined}
-              className={`${FIELD_CLASS} py-3 leading-6 resize-none ${
-                fieldErrors.message ? FIELD_ERROR_CLASS : ''
-              }`}
+              className={`${FIELD_CLASS} py-3 leading-6 resize-none ${fieldErrors.message ? FIELD_ERROR_CLASS : ''
+                }`}
             ></textarea>
             {renderError('message')}
           </div>
@@ -211,7 +207,7 @@ const ContactForm = () => {
           {/* Submission status — announced to assistive tech */}
           <div aria-live="polite" className="empty:hidden">
             {error && (
-              <div className="bg-[#FFDAD6] text-[#93000A] px-4 py-3 rounded-lg font-body text-sm flex items-start gap-2">
+              <div className="flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 font-prose text-sm text-red-700">
                 <span className="material-symbols-outlined text-base mt-0.5" aria-hidden="true">
                   error
                 </span>
@@ -219,7 +215,7 @@ const ContactForm = () => {
               </div>
             )}
             {success && (
-              <div className="bg-[#D1FAE5] text-[#065F46] px-4 py-3 rounded-lg font-body text-sm flex items-start gap-2">
+              <div className="flex items-start gap-2.5 rounded-2xl border border-mint-400/40 bg-mint-400/10 px-4 py-3.5 font-prose text-sm text-mint-700">
                 <span className="material-symbols-outlined text-base mt-0.5" aria-hidden="true">
                   check_circle
                 </span>
@@ -230,19 +226,19 @@ const ContactForm = () => {
 
           {/* Submit Action */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pt-4 sm:pt-6">
-            <p className="font-body text-xs leading-4 text-[rgba(68,71,77,0.6)] max-w-[320px]">
+            <p className="max-w-[320px] font-prose text-xs leading-4 text-ash-500">
               By submitting, you acknowledge our professional privacy protocols and data handling standards.
             </p>
             <button
               type="submit"
               disabled={submitting}
-              className="group relative flex items-center justify-center gap-3 bg-[#0D1C32] text-white px-8 sm:px-10 py-4 sm:py-5 font-body font-bold text-base leading-6 tracking-[-0.4px] overflow-hidden transition-all duration-200 hover:shadow-[0_18px_36px_-16px_rgba(13,28,50,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-60 disabled:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
+              className="grad-btn group relative flex items-center justify-center gap-2.5 overflow-hidden rounded-full px-8 py-4 font-ui text-[14.5px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0 disabled:shadow-none"
             >
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <span className="relative z-10">{submitting ? 'Submitting...' : 'Submit Inquiry'}</span>
               {submitting ? (
                 <svg
-                  className="animate-spin h-4 w-4 text-[#E9C176] relative z-10"
+                  className="animate-spin h-4 w-4 text-white relative z-10"
                   fill="none"
                   viewBox="0 0 24 24"
                   aria-hidden="true"
@@ -256,7 +252,7 @@ const ContactForm = () => {
                 </svg>
               ) : (
                 <span
-                  className="material-symbols-outlined text-[#E9C176] relative z-10 text-base transition-transform duration-200 group-hover:translate-x-1"
+                  className="material-symbols-outlined text-white relative z-10 text-base transition-transform duration-300 group-hover:translate-x-1"
                   aria-hidden="true"
                 >
                   arrow_forward

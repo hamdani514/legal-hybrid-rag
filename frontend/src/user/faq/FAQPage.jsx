@@ -1,24 +1,40 @@
-import React from 'react';
-import UserHeader from '../components/UserHeader';
-import UserFooter from '../components/UserFooter';
-import FAQHero from '../components/FAQHero';
-import FAQAccordion from '../components/FAQAccordion';
-import FAQCTASection from '../components/FAQCTASection';
+import SiteNav from '../components/bound/SiteNav';
+import SiteFoot from '../components/bound/SiteFoot';
+import PageMasthead from '../components/bound/PageMasthead';
+import FaqGroups from '../components/bound/FaqGroups';
+import ClosingCTA from '../components/bound/ClosingCTA';
 
 const FAQPage = () => {
   return (
-    <div className="flex flex-col bg-[#F8F9FB] min-h-screen w-full">
-      <UserHeader activePage="faq" />
-      <main id="main-content" className="flex-1 pt-12 sm:pt-16 lg:pt-24 pb-16 sm:pb-24 relative">
-        <div className="max-w-[1280px] mx-auto px-5 sm:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start mb-16 sm:mb-24">
-          <FAQHero />
-          <div className="lg:col-span-7">
-            <FAQAccordion />
-          </div>
-        </div>
-        <FAQCTASection />
+    <div className="flex min-h-screen w-full flex-col bg-white">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <SiteNav />
+      <main id="main-content" className="w-full flex-1">
+        <PageMasthead
+          kicker="FAQ"
+          icon="quiz"
+          title="The questions worth"
+          accent="asking first"
+          lede="What the archive holds, how retrieval actually works, where its limits are, and what happens to your research. The limits are stated as plainly as the capabilities."
+          meta={[
+            { label: 'Sections', value: 'Four' },
+            { label: 'Questions', value: 'Ten' },
+            { label: 'Reviewed', value: 'Sept 2026' },
+          ]}
+        />
+        <FaqGroups />
+        <ClosingCTA
+          eyebrow="Still unanswered"
+          title="Ask the question the"
+          accent="FAQ missed."
+          lede="If it concerns a particular judgment, send the appeal number and the passage with it."
+          primary={{ to: '/contact', label: 'Write to us' }}
+          secondary={{ to: '/about', label: 'How it works' }}
+        />
       </main>
-      <UserFooter />
+      <SiteFoot />
     </div>
   );
 };

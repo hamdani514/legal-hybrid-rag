@@ -14,7 +14,7 @@ const AdminPagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         disabled={currentPage === 1}
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
-        className="flex items-center gap-1 px-4 py-2 font-body font-bold text-xs leading-4 text-[#75777E] hover:text-[#0D1C32] disabled:opacity-50 disabled:pointer-events-none transition-colors"
+        className="flex items-center gap-1 px-4 py-2 font-prose font-bold text-xs leading-4 text-[#6B7280] hover:text-[#111827] disabled:opacity-50 disabled:pointer-events-none transition-colors"
       >
         <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
           chevron_left
@@ -27,10 +27,10 @@ const AdminPagination = ({ currentPage, totalPages, onPageChange }) => {
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`w-8 h-8 flex items-center justify-center font-body font-bold text-xs rounded-[2px] transition-all ${
+            className={`w-8 h-8 flex items-center justify-center font-prose font-bold text-xs rounded-[2px] transition-all ${
               currentPage === p
-                ? 'bg-[#0D1C32] text-white'
-                : 'bg-transparent text-[#75777E] hover:bg-gray-100 hover:text-[#0D1C32]'
+                ? 'bg-[#111827] text-white'
+                : 'bg-transparent text-[#6B7280] hover:bg-ash-100 hover:text-[#111827]'
             }`}
           >
             {p}
@@ -41,7 +41,7 @@ const AdminPagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         disabled={currentPage === totalPages || totalPages === 0}
         onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
-        className="flex items-center gap-1 px-4 py-2 font-body font-bold text-xs leading-4 text-[#75777E] hover:text-[#0D1C32] disabled:opacity-50 disabled:pointer-events-none transition-colors"
+        className="flex items-center gap-1 px-4 py-2 font-prose font-bold text-xs leading-4 text-[#6B7280] hover:text-[#111827] disabled:opacity-50 disabled:pointer-events-none transition-colors"
       >
         Next
         <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>

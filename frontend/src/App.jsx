@@ -1,5 +1,4 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // User Pages
 import HomePage from './user/home/HomePage';
@@ -12,6 +11,8 @@ import ForgotPasswordPage from './user/forgot-password/ForgotPasswordPage';
 import OtpVerificationPage from './user/otp-verification/OtpVerificationPage';
 import ResetPasswordPage from './user/reset-password/ResetPasswordPage';
 import WelcomePage from './user/welcome/WelcomePage';
+import LegalPage from './user/legal/LegalPage';
+import NotFound from './user/components/bound/NotFound';
 
 // Admin Pages
 import AdminLoginPage from './admin/login/AdminLoginPage';
@@ -40,13 +41,22 @@ function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/welcome" element={<WelcomePage />} />
 
+          {/* Policy pages — LegalPage keys off the pathname slug */}
+          <Route path="/privacy" element={<LegalPage />} />
+          <Route path="/terms" element={<LegalPage />} />
+          <Route path="/disclaimer" element={<LegalPage />} />
+
           {/* Admin Routes */}
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/cases" element={<AdminCasesPage />} />
           <Route path="/admin/support" element={<AdminSupportPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
           <Route path="/admin/management" element={<AdminManagementPage />} />
+
+          {/* Anything unmatched */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </Router>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 /**
  * Step 3: Reset / Change Password Component
@@ -74,28 +74,28 @@ const ResetPasswordStep = ({
   };
 
   return (
-    <div className="flex flex-col justify-center w-full">
+    <div className="pop-in flex w-full flex-col">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E9C176]/20 text-[#0D1C32] text-[10px] font-bold">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand-500/20 text-ash-900 text-[10px] font-bold">
             3
           </span>
-          <span className="font-body text-xs font-semibold uppercase tracking-[1.4px] text-[#A17F3B]">
+          <span className="font-prose text-xs font-semibold uppercase tracking-[1.4px] text-brand-700">
             Step 3 of 3 · Update Credentials
           </span>
         </div>
-        <h1 className="font-headline font-normal text-[28px] sm:text-[32px] leading-9 text-[#191C1E]">
+        <h1 className="font-display font-bold tracking-[-0.025em] text-[28px] sm:text-[32px] leading-9 text-ash-900">
           Set New Password
         </h1>
-        <p className="font-body text-sm leading-5 text-[#44474D]">
+        <p className="font-prose text-sm leading-5 text-ash-600">
           Choose a secure, bank-grade passphrase for your Verdict AI workspace.
         </p>
       </div>
 
       {/* Error Alert */}
       {errorMsg && (
-        <div className="bg-red-50 text-red-700 p-3 mb-4 rounded text-xs font-body border border-red-100 flex items-center gap-2">
+        <div className="bg-red-50 text-red-700 p-3 mb-4 rounded text-xs font-prose border border-red-100 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">error</span>
           <span>{errorMsg}</span>
         </div>
@@ -105,7 +105,7 @@ const ResetPasswordStep = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* New Password */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body text-xs font-bold leading-4 tracking-[1.2px] uppercase text-[#44474D]">
+          <label className="font-prose text-xs font-bold leading-4 tracking-[1.2px] uppercase text-ash-600">
             New Password
           </label>
           <div className="relative w-full">
@@ -116,12 +116,12 @@ const ResetPasswordStep = ({
               placeholder="••••••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full bg-[#F3F4F6] pl-4 pr-12 py-[13px] font-body text-base leading-[19px] text-[#191C1E] placeholder:text-[#C5C6CD] outline-none border border-transparent transition-all focus:bg-white focus:border-[#E9C176] focus:ring-2 focus:ring-[#E9C176]/20"
+              className="w-full rounded-xl border border-ash-200 bg-white pl-4 pr-12 py-3.5 font-prose text-[15px] leading-6 text-ash-900 placeholder:text-ash-400 outline-none transition-all duration-250 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/12"
             />
             <button
               type="button"
               onClick={() => setShowNewPassword(!showNewPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#76849F] hover:text-[#0D1C32] transition-colors flex items-center"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-ash-500 hover:text-ash-900 transition-colors flex items-center"
               aria-label={showNewPassword ? 'Hide password' : 'Show password'}
             >
               <span className="material-symbols-outlined text-[19px]">
@@ -133,15 +133,15 @@ const ResetPasswordStep = ({
           {/* Strength Bar */}
           {newPassword && (
             <div className="mt-1 flex flex-col gap-1">
-              <div className="h-1.5 w-full bg-[#E1E2E4] rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-ash-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-300 ${strength.color}`}
                   style={{ width: strength.width }}
                 />
               </div>
-              <div className="flex justify-between items-center text-[11px] font-body">
-                <span className="text-[#585F6A]">Password strength:</span>
-                <span className="font-semibold text-[#0D1C32]">{strength.label}</span>
+              <div className="flex justify-between items-center text-[11px] font-prose">
+                <span className="text-ash-500">Password strength:</span>
+                <span className="font-semibold text-ash-900">{strength.label}</span>
               </div>
             </div>
           )}
@@ -149,7 +149,7 @@ const ResetPasswordStep = ({
 
         {/* Confirm Password */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-body text-xs font-bold leading-4 tracking-[1.2px] uppercase text-[#44474D]">
+          <label className="font-prose text-xs font-bold leading-4 tracking-[1.2px] uppercase text-ash-600">
             Confirm New Password
           </label>
           <div className="relative w-full">
@@ -159,12 +159,12 @@ const ResetPasswordStep = ({
               placeholder="••••••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-[#F3F4F6] pl-4 pr-12 py-[13px] font-body text-base leading-[19px] text-[#191C1E] placeholder:text-[#C5C6CD] outline-none border border-transparent transition-all focus:bg-white focus:border-[#E9C176] focus:ring-2 focus:ring-[#E9C176]/20"
+              className="w-full rounded-xl border border-ash-200 bg-white pl-4 pr-12 py-3.5 font-prose text-[15px] leading-6 text-ash-900 placeholder:text-ash-400 outline-none transition-all duration-250 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/12"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#76849F] hover:text-[#0D1C32] transition-colors flex items-center"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-ash-500 hover:text-ash-900 transition-colors flex items-center"
               aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
             >
               <span className="material-symbols-outlined text-[19px]">
@@ -175,30 +175,30 @@ const ResetPasswordStep = ({
         </div>
 
         {/* Criteria Checklist */}
-        <div className="bg-[#F8F9FB] border border-[#E1E2E4] p-3.5 rounded flex flex-col gap-2 mt-1">
-          <span className="font-body text-[11px] font-bold uppercase tracking-[1px] text-[#44474D]">
+        <div className="bg-white border border-ash-200 p-3.5 rounded flex flex-col gap-2 mt-1">
+          <span className="font-prose text-[11px] font-bold uppercase tracking-[1px] text-ash-600">
             Security Requirements
           </span>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-body">
-            <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-medium' : 'text-[#76849F]'}`}>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-prose">
+            <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-medium' : 'text-ash-500'}`}>
               <span className="material-symbols-outlined text-[15px]">
                 {hasMinLength ? 'check_circle' : 'radio_button_unchecked'}
               </span>
               8+ characters
             </li>
-            <li className={`flex items-center gap-1.5 ${hasMixedCase ? 'text-emerald-700 font-medium' : 'text-[#76849F]'}`}>
+            <li className={`flex items-center gap-1.5 ${hasMixedCase ? 'text-emerald-700 font-medium' : 'text-ash-500'}`}>
               <span className="material-symbols-outlined text-[15px]">
                 {hasMixedCase ? 'check_circle' : 'radio_button_unchecked'}
               </span>
               Upper & lower case
             </li>
-            <li className={`flex items-center gap-1.5 ${hasNumberOrSymbol ? 'text-emerald-700 font-medium' : 'text-[#76849F]'}`}>
+            <li className={`flex items-center gap-1.5 ${hasNumberOrSymbol ? 'text-emerald-700 font-medium' : 'text-ash-500'}`}>
               <span className="material-symbols-outlined text-[15px]">
                 {hasNumberOrSymbol ? 'check_circle' : 'radio_button_unchecked'}
               </span>
               Number or symbol
             </li>
-            <li className={`flex items-center gap-1.5 ${isMatch ? 'text-emerald-700 font-medium' : 'text-[#76849F]'}`}>
+            <li className={`flex items-center gap-1.5 ${isMatch ? 'text-emerald-700 font-medium' : 'text-ash-500'}`}>
               <span className="material-symbols-outlined text-[15px]">
                 {isMatch ? 'check_circle' : 'radio_button_unchecked'}
               </span>
@@ -211,7 +211,7 @@ const ResetPasswordStep = ({
         <button
           type="submit"
           disabled={loading || !hasMinLength || !isMatch}
-          className="w-full bg-[#0D1C32] text-white py-3.5 font-body font-bold text-sm leading-5 tracking-[1.4px] uppercase text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-black active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+          className="grad-btn w-full rounded-full py-4 font-ui text-[15px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0 disabled:shadow-none flex items-center justify-center gap-2.5"
         >
           {loading ? (
             <>

@@ -66,13 +66,13 @@ const AdminSupportPage = () => {
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Urgent':
-        return 'bg-[#FFDAD6] text-[#93000A] shadow-[inset_0_0_0_1px_rgba(186,26,26,0.2)]';
+        return 'bg-[#FEE2E2] text-[#B91C1C] shadow-[inset_0_0_0_1px_rgba(186,26,26,0.2)]';
       case 'Pending':
-        return 'bg-[#FFDEA5] text-[#261900] shadow-[inset_0_0_0_1px_rgba(233,193,118,0.5)]';
+        return 'bg-brand-100 text-brand-800 shadow-[inset_0_0_0_1px_rgba(0,133,255,0.28)]';
       case 'Solved':
-        return 'bg-[#D1FAE5] text-[#065F46] shadow-[inset_0_0_0_1px_rgba(5,150,105,0.2)]';
+        return 'bg-[#DCFCE7] text-[#15803D] shadow-[inset_0_0_0_1px_rgba(5,150,105,0.2)]';
       default:
-        return 'bg-[#E1E2E4] text-[#191C1E] shadow-[inset_0_0_0_1px_rgba(117,119,126,0.2)]';
+        return 'bg-[#E5E7EB] text-[#111827] shadow-[inset_0_0_0_1px_rgba(117,119,126,0.2)]';
     }
   };
 
@@ -187,7 +187,7 @@ const AdminSupportPage = () => {
   const paginatedQueries = sortedAndFilteredQueries.slice(startIndex, startIndex + QUERIES_PER_PAGE);
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <AdminSidebar activeRoute="support" currentAdmin={currentAdmin} />
 
       <main className="ml-72 flex-1 flex flex-col min-h-screen">
@@ -200,8 +200,11 @@ const AdminSupportPage = () => {
 
         <div className="px-12 py-6 flex flex-col gap-8 flex-1">
           {error && (
-            <div className="bg-[#FFDAD6] text-[#93000A] p-4 rounded-lg text-xs font-body border border-[#FFDAD6]">
-              ⚠️ {error}
+            <div role="alert" className="flex items-start gap-2.5 bg-[#FEE2E2] text-[#B91C1C] p-4 rounded-lg text-xs font-prose border border-[#FEE2E2]">
+              <span className="material-symbols-outlined shrink-0 text-base leading-5" aria-hidden="true">
+                error
+              </span>
+              <span>{error}</span>
             </div>
           )}
 

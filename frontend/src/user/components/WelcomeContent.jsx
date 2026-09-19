@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
@@ -170,18 +170,18 @@ const WelcomeContent = () => {
 
       return (
         <div className="flex-grow flex flex-col items-center justify-center p-12 text-center animate-[fadeIn_0.4s_ease-out]">
-          <span className="material-symbols-outlined text-tertiary-fixed-dim text-6xl mb-4 select-none">
+          <span className="material-symbols-outlined text-brand-500 text-6xl mb-4 select-none">
             {activeTab === 'settings' ? 'settings' : activeTab === 'support' ? 'help_outline' : 'folder_open'}
           </span>
-          <h2 className="font-headline text-3xl text-primary-container mb-2">
+          <h2 className="font-display text-3xl text-ash-900 mb-2">
             {tabTitles[activeTab] || 'Workspace Section'}
           </h2>
-          <p className="text-on-surface-variant max-w-md text-sm font-body leading-relaxed">
+          <p className="text-ash-600 max-w-md text-sm font-prose leading-relaxed">
             This module is being structured for high-stakes integration. Dynamic search results, file ingestion pipelines, and audit trails remain active in the <strong>Current Case</strong> tab.
           </p>
           <button
             onClick={() => setActiveTab('case')}
-            className="mt-6 bg-[#0D1C32] text-white px-6 py-2.5 rounded-lg font-body text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity"
+            className="mt-6 grad-btn rounded-full px-7 py-3 font-ui text-[13px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg"
           >
             Return to Case Chat
           </button>
@@ -202,17 +202,17 @@ const WelcomeContent = () => {
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-[fadeIn_0.3s_ease-out]`}
             >
               {message.sender === 'user' ? (
-                <div className="max-w-[75%] bg-surface-container-high text-primary-container px-6 py-4 rounded-xl border border-outline-variant/10 shadow-sm">
-                  <p className="font-body text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                <div className="max-w-[75%] rounded-2xl rounded-tr-md border border-brand-100 bg-brand-50 px-6 py-4 text-ash-900">
+                  <p className="font-prose text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
                 </div>
               ) : (
                 <div className="max-w-[85%] flex gap-4">
-                  <span className="material-symbols-outlined text-tertiary-fixed-dim text-2xl mt-1 select-none flex-shrink-0">
+                  <span className="material-symbols-outlined text-brand-500 text-2xl mt-1 select-none flex-shrink-0">
                     gavel
                   </span>
                   <div className="flex flex-col gap-2">
-                    <span className="font-headline text-base font-semibold text-primary-container">Atelier AI</span>
-                    <div className="font-body text-sm text-on-surface leading-relaxed">
+                    <span className="font-display text-base font-semibold text-ash-900">Atelier AI</span>
+                    <div className="font-prose text-sm text-ash-900 leading-relaxed">
                       {message.text && (
                         <p className="whitespace-pre-line">{message.text}</p>
                       )}
@@ -220,7 +220,7 @@ const WelcomeContent = () => {
                       {message.sections?.map((section, sIdx) => (
                         <div key={sIdx} className={sIdx > 0 ? 'mt-5' : ''}>
                           {section.heading && (
-                            <h3 className="font-headline text-xs font-semibold uppercase tracking-wider text-tertiary-fixed-dim mb-1.5">
+                            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-1.5">
                               {section.heading}
                             </h3>
                           )}
@@ -229,19 +229,19 @@ const WelcomeContent = () => {
                       ))}
 
                       {message.citations?.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-outline-variant/20">
-                          <h3 className="font-headline text-xs font-semibold uppercase tracking-wider text-tertiary-fixed-dim mb-3">
+                        <div className="mt-6 pt-4 border-t border-ash-200">
+                          <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-3">
                             Authorities Retrieved
                           </h3>
                           <ol className="flex flex-col gap-2.5">
                             {message.citations.map((cite) => (
                               <li key={cite.judgment_id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                <span className="font-medium text-primary-container">{cite.filename}</span>
-                                <span className="text-xs text-on-surface-variant">
+                                <span className="font-medium text-ash-900">{cite.filename}</span>
+                                <span className="text-xs text-ash-600">
                                   relevance {cite.similarity_score.toFixed(3)}
                                 </span>
                                 {cite.sections_retrieved?.length > 0 && (
-                                  <span className="text-xs text-on-surface-variant">
+                                  <span className="text-xs text-ash-600">
                                     &middot; {cite.sections_retrieved.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}
                                   </span>
                                 )}
@@ -249,7 +249,7 @@ const WelcomeContent = () => {
                             ))}
                           </ol>
                           {message.latencyMs != null && (
-                            <p className="mt-3 text-xs text-on-surface-variant/70">
+                            <p className="mt-3 text-xs text-ash-500">
                               Retrieved in {(message.latencyMs / 1000).toFixed(1)}s
                             </p>
                           )}
@@ -265,12 +265,12 @@ const WelcomeContent = () => {
           {isSearching && (
             <div className="flex justify-start animate-pulse">
               <div className="max-w-[85%] flex gap-4">
-                <span className="material-symbols-outlined text-tertiary-fixed-dim text-2xl mt-1 select-none flex-shrink-0 animate-spin">
+                <span className="material-symbols-outlined text-brand-500 text-2xl mt-1 select-none flex-shrink-0 animate-spin">
                   progress_activity
                 </span>
                 <div className="flex flex-col gap-2">
-                  <span className="font-headline text-base font-semibold text-primary-container">Atelier AI</span>
-                  <p className="font-body text-sm text-on-surface-variant italic">
+                  <span className="font-display text-base font-semibold text-ash-900">Atelier AI</span>
+                  <p className="font-prose text-sm text-ash-600 italic">
                     Retrieving matched semantic nodes and precedents...
                   </p>
                 </div>
@@ -284,7 +284,7 @@ const WelcomeContent = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-surface text-on-surface">
+    <div className="flex min-h-screen w-full bg-white text-ash-900">
       {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
@@ -308,8 +308,8 @@ const WelcomeContent = () => {
       </main>
 
       {/* Ambient Decorative Blurs */}
-      <div className="fixed top-20 right-20 w-96 h-96 bg-tertiary-fixed/5 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-      <div className="fixed -bottom-20 -left-20 w-[500px] h-[500px] bg-primary-container/5 rounded-full blur-[160px] pointer-events-none -z-10"></div>
+      <div className="fixed top-20 right-20 w-96 h-96 bg-brand-50 rounded-full blur-[120px] pointer-events-none -z-10"></div>
+      <div className="fixed -bottom-20 -left-20 w-[500px] h-[500px] bg-ash-50 rounded-full blur-[160px] pointer-events-none -z-10"></div>
     </div>
   );
 };

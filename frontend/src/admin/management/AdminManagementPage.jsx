@@ -265,7 +265,7 @@ const AdminManagementPage = () => {
   const paginatedAdmins = sortedAndFilteredAdmins.slice(startIndex, startIndex + ADMINS_PER_PAGE);
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <AdminSidebar activeRoute="management" currentAdmin={currentAdmin} />
 
       <main className="ml-72 flex-1 flex flex-col min-h-screen">

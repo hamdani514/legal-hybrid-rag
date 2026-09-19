@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -237,7 +237,7 @@ const AdminDashboardPage = () => {
       .slice(0, 2);
   };
 
-  const sortedAndFilteredUsers = React.useMemo(() => {
+  const sortedAndFilteredUsers = useMemo(() => {
     const query = filterQuery.toLowerCase().trim();
     const filtered = users.filter((u) => {
       return (
@@ -270,7 +270,7 @@ const AdminDashboardPage = () => {
   const paginatedUsers = sortedAndFilteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB]">
+    <div className="flex min-h-screen bg-[#F8FAFC]">
       <AdminSidebar activeRoute="dashboard" currentAdmin={currentAdmin} />
 
       <main className="ml-72 flex-1 flex flex-col min-h-screen">

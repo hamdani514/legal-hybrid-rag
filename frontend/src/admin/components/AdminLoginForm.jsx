@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+/**
+ * Administrator sign-in. The form only — AuthShell supplies the split layout
+ * and the visual panel, so this no longer carries its own branding column.
+ *
+ * The authentication contract is unchanged: POST /api/admin/login, the
+ * response stored as `currentAdmin`, then on to the dashboard.
+ */
 const AdminLoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [adminid, setAdminid] = useState('');
@@ -39,154 +46,175 @@ const AdminLoginForm = () => {
     }
   };
 
+  const fieldClass =
+    'w-full rounded-xl border border-ash-200 bg-white py-3.5 pl-11 font-prose text-[15px] leading-6 text-ash-900 placeholder:text-ash-400 outline-none transition-all duration-250 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/12';
+
   return (
-    <div
-      className="w-full max-w-[1024px] grid grid-cols-1 md:grid-cols-2 rounded-[2px] overflow-hidden"
-      style={{
-        background: '#F8F9FB',
-        boxShadow: '0px 32px 64px -12px rgba(13, 28, 50, 0.15)',
-      }}
-    >
-      {/* Visual Anchor / Branding Column */}
-      <div className="hidden md:flex flex-col justify-between p-12 bg-[#0D1C32] relative overflow-hidden">
+    <div className="pop-in flex w-full flex-col">
+      {/* Header — states plainly that this is the console, not the app. */}
+      <span className="inline-flex w-fit items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3.5 py-1.5 font-ui text-[11.5px] font-semibold text-brand-700">
+        <span aria-hidden="true" className="material-symbols-outlined text-[15px]">
+          shield_person
+        </span>
+        Administration
+      </span>
+
+      <h1 className="mt-6 font-display text-[1.875rem] font-bold leading-[1.15] tracking-[-0.025em] text-ash-900">
+        Console sign-in
+      </h1>
+      <p className="mt-2.5 font-prose text-[14.5px] leading-6 text-ash-600">
+        Enter your administrator credentials to manage the archive.
+      </p>
+
+      {errorMsg && (
         <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuBMgmYoJemAJ-To4d2p2GUGC0FVVFU0ivIjrjh3hoeLW9MRaw76G9szTIuCybT6AXU4r6j5-H380Jwo9F7ycFMeavzu-UKmXLBnuAY2DeqKhSjo37yPc9aljnySGJQIOMW9ddfHGd_2C_oQUeHklqV5Wfrzii3fGFipHSmZlMhBeW2FqwwBCe05XAtIN6W4fzDX_lGC-eZEAmkiCl7DWXI88-ihbnT_4BSjQ1suyOAmIfnSPEVFxtNobn7aExaGNXktD5cFVv3HJPw')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        ></div>
-
-        {/* Top Content */}
-        <div className="relative z-10 flex flex-col gap-4">
+          role="alert"
+          className="mt-7 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 font-prose text-[13px] text-red-700"
+        >
           <span
-            className="inline-block self-start px-3 py-1 font-body text-[10px] leading-[15px] tracking-[2px] uppercase text-[#E9C176]"
-            style={{
-              background: 'rgba(233, 193, 118, 0.1)',
-              border: '1px solid rgba(233, 193, 118, 0.2)',
-            }}
+            aria-hidden="true"
+            className="material-symbols-outlined shrink-0 text-base leading-5"
           >
-            Secure Access Portal
+            error
           </span>
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
-          <h1 className="font-headline font-normal text-4xl leading-[45px] text-white mt-2">
-            Sovereign<br />Editorial Interface
-          </h1>
-
-          <p className="font-body text-sm leading-[23px] text-[#76849F] max-w-[320px]">
-            Access the administrative core of the Verdict Ai High-stakes oversight for modern legal professionals.
-          </p>
+      <form className="mt-8 flex flex-col gap-5" onSubmit={handleSubmit}>
+        {/* Admin ID ------------------------------------------------------ */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="admin-id"
+            className="font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-ash-500"
+          >
+            Admin ID
+          </label>
+          <div className="relative w-full">
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-ash-400"
+            >
+              badge
+            </span>
+            <input
+              id="admin-id"
+              type="text"
+              value={adminid}
+              onChange={(e) => setAdminid(e.target.value)}
+              required
+              autoComplete="username"
+              placeholder="admin@example.com"
+              className={fieldClass}
+            />
+          </div>
         </div>
 
-        {/* Bottom - Encrypted Session */}
-        <div className="relative z-10 mt-auto flex items-center gap-3">
-          <span className="material-symbols-outlined text-[#E9C176]" style={{ fontSize: '12px' }}>lock</span>
-          <span className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#E9C176] opacity-80">
-            Encrypted Session
-          </span>
-        </div>
-      </div>
-
-      {/* Form Column */}
-      <div className="p-16 flex flex-col justify-center bg-white">
-        <div className="mb-10 pb-10 flex flex-col gap-2">
-          <h2 className="font-headline font-normal text-2xl leading-8 text-[#0D1C32]">
-            Admin Login
-          </h2>
-          <p className="font-body text-xs leading-4 tracking-[0.3px] text-[#44474D]">
-            Enter your credentials to manage the workspace.
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div className="bg-[#FFDAD6] text-[#93000A] p-4 mb-6 rounded-[2px] text-xs font-body border border-[#FFDAD6] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#BA1A1A]" style={{ fontSize: '16px' }}>error</span>
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-          {/* Admin ID Field */}
-          <div className="flex flex-col items-end gap-2">
-            <label className="self-start font-body font-bold text-[10px] leading-[15px] tracking-[1px] uppercase text-[#44474D] ml-1">
-              Admin ID
-            </label>
-            <div className="relative w-full">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[#75777E]" style={{ fontSize: '14px' }}>badge</span>
-              <input
-                type="text"
-                value={adminid}
-                onChange={(e) => setAdminid(e.target.value)}
-                required
-                placeholder="e.g. AdminDaniyal@cust.com"
-                className="w-full bg-[#F3F4F6] pl-11 pr-4 py-[15px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#C5C6CD] outline-none border-none border-l-2 border-transparent focus:border-l-2 focus:border-l-[#E9C176] focus:ring-0 transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Password Field */}
-          <div className="flex flex-col items-end gap-2">
-            <label className="self-start font-body font-bold text-[10px] leading-[15px] tracking-[1px] uppercase text-[#44474D] ml-1">
-              Password
-            </label>
-            <div className="relative w-full">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[#75777E]" style={{ fontSize: '14px' }}>key</span>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••••••"
-                className="w-full bg-[#F3F4F6] pl-11 pr-12 py-[15px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#C5C6CD] outline-none border-none border-l-2 border-transparent focus:border-l-2 focus:border-l-[#E9C176] focus:ring-0 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#C5C6CD] hover:text-[#44474D] transition-colors"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                  {showPassword ? 'visibility_off' : 'visibility'}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Remember Workstation */}
-          <div className="flex items-center justify-between pt-2 pb-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 bg-white border border-[#C5C6CD] rounded-none text-[#0D1C32] focus:ring-0 focus:ring-offset-0"
-              />
-              <span className="font-body text-xs leading-4 text-[#44474D]">
-                Remember this workstation
+        {/* Password ------------------------------------------------------ */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="admin-password"
+            className="font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-ash-500"
+          >
+            Password
+          </label>
+          <div className="relative w-full">
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-ash-400"
+            >
+              key
+            </span>
+            <input
+              id="admin-password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••••••"
+              className={`${fieldClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center text-ash-400 transition-colors duration-250 hover:text-ash-700"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-[19px]">
+                {showPassword ? 'visibility_off' : 'visibility'}
               </span>
-            </label>
-          </div>
-
-          {/* Login Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#0D1C32] text-white py-4 font-body font-semibold text-sm leading-5 tracking-[1.4px] uppercase text-center flex items-center justify-center gap-2 hover:bg-black active:scale-[0.98] disabled:opacity-50 transition-all duration-150 group"
-          >
-            <span>{loading ? 'Authenticating...' : 'Login'}</span>
-            <span className="material-symbols-outlined text-white transition-transform group-hover:translate-x-1" style={{ fontSize: '14px' }}>arrow_forward</span>
-          </button>
-        </form>
-
-        {/* Security Notice */}
-        <div className="mt-12 pt-12 border-t border-[#E7E8EA]">
-          <div className="text-center">
-            <p className="font-body text-[10px] leading-5 tracking-[1px] uppercase text-[#75777E]">
-              Unauthorized access is strictly prohibited and monitored.<br />
-              Contact System Oversight for new credentials.
-            </p>
+            </button>
           </div>
         </div>
+
+        {/* Remember this workstation ------------------------------------- */}
+        <label htmlFor="admin-remember" className="flex cursor-pointer items-center gap-2.5">
+          <input
+            id="admin-remember"
+            type="checkbox"
+            className="h-4 w-4 rounded border-ash-300 text-brand-600 focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-0"
+          />
+          <span className="font-prose text-[13.5px] text-ash-600">Remember this workstation</span>
+        </label>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="grad-btn group mt-2 flex w-full items-center justify-center gap-2.5 rounded-full py-4 font-ui text-[15px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
+        >
+          {loading ? (
+            <>
+              <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Authenticating…
+            </>
+          ) : (
+            <>
+              Sign in to console
+              <span
+                aria-hidden="true"
+                className="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:translate-x-1"
+              >
+                arrow_forward
+              </span>
+            </>
+          )}
+        </button>
+      </form>
+
+      {/* Notice — an admin door should say so. */}
+      <div className="mt-9 flex items-start gap-2.5 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4">
+        <span
+          aria-hidden="true"
+          className="material-symbols-outlined shrink-0 text-[18px] text-amber-500"
+        >
+          warning
+        </span>
+        <p className="font-prose text-[12.5px] leading-[1.6] text-ash-700">
+          Access is restricted and monitored. Contact system oversight for new credentials.
+        </p>
       </div>
+
+      <p className="mt-7 text-center font-prose text-[13px] text-ash-500">
+        Researcher rather than administrator?{' '}
+        <Link to="/login" className="font-semibold text-brand-700 hover:text-brand-800">
+          Sign in here
+        </Link>
+      </p>
     </div>
   );
 };

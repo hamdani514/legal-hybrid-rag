@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const ChatInput = ({ onSend, loading, placeholder = "Ask your legal query..." }) => {
   const [query, setQuery] = useState('');
@@ -11,15 +11,15 @@ const ChatInput = ({ onSend, loading, placeholder = "Ask your legal query..." })
   };
 
   return (
-    <div className="fixed bottom-0 right-0 left-72 p-8 z-40 bg-gradient-to-t from-surface via-surface/95 to-transparent">
+    <div className="fixed bottom-0 right-0 left-72 p-8 z-40 bg-gradient-to-t from-white via-white/95 to-transparent">
       <div className="max-w-4xl mx-auto relative">
         <form
           onSubmit={handleSubmit}
-          className="glass-panel rounded-full border border-outline-variant/15 p-2 pr-4 flex items-center gap-4 focus-within:ring-2 focus-within:ring-tertiary-fixed-dim transition-all shadow-sm"
+          className="glass-panel rounded-full border border-ash-200 flex items-center gap-3 p-2 pr-3 focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-500/12 transition-all duration-250 shadow-card"
         >
           <input
             type="text"
-            className="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-outline/60 font-body py-4 pl-6 outline-none border-0"
+            className="w-full bg-transparent border-none focus:ring-0 text-ash-900 placeholder:text-ash-400 font-prose py-4 pl-6 outline-none border-0"
             placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -29,7 +29,7 @@ const ChatInput = ({ onSend, loading, placeholder = "Ask your legal query..." })
           <button
             type="submit"
             disabled={loading || !query.trim()}
-            className="bg-primary-container disabled:opacity-50 text-on-primary w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg focus:outline-none flex-shrink-0"
+            className="grad-btn flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white shadow-glow transition-all duration-300 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
           >
             {loading ? (
               <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -43,7 +43,7 @@ const ChatInput = ({ onSend, loading, placeholder = "Ask your legal query..." })
             )}
           </button>
         </form>
-        <p className="text-[10px] text-center text-outline mt-3 uppercase tracking-wider">
+        <p className="text-[10px] text-center text-ash-500 mt-3 uppercase tracking-wider">
           The Digital Atelier AI may provide general legal research; verify all findings with original statutes.
         </p>
       </div>
