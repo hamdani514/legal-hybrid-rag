@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import MediaFrame from './MediaFrame';
 
 /**
  * The opening spread. Centre-weighted claim over a light blue bloom, with a
@@ -111,6 +112,25 @@ const HomeHero = () => {
           <div className="relative mx-auto max-w-[62rem]">
             {/* Glow behind the panel. */}
             <span className="grad-brand pointer-events-none absolute inset-x-10 -bottom-6 h-24 rounded-full opacity-25 blur-3xl" />
+
+            {/* Two photographs pinned either side of the facsimile, tilted
+                off-axis so the panel reads as the top of a stack rather than
+                a floating rectangle. Hidden below xl, where the viewport is
+                narrower than the panel plus its margins. */}
+            <MediaFrame
+              name="volume"
+              eager
+              wash="soft"
+              ratio="1 / 1"
+              className="float-y-slow ring-photo absolute -left-36 top-12 hidden w-[11.5rem] -rotate-6 rounded-3xl shadow-card-lg xl:block 2xl:-left-52 2xl:w-[14rem]"
+            />
+            <MediaFrame
+              name="stacks"
+              eager
+              wash="soft"
+              ratio="3 / 4"
+              className="float-y ring-photo absolute -right-36 top-24 hidden w-[11rem] rotate-[5deg] rounded-3xl shadow-card-lg xl:block 2xl:-right-52 2xl:w-[13rem]"
+            />
 
             <div className="relative overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card-lg">
               {/* Search bar */}

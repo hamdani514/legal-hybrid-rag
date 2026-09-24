@@ -117,6 +117,60 @@ async def run_extraction(pdf_id: str, pdf_path: str, detected_type: str) -> None
         await run_embedding_pipeline(pdf_id=pdf_id, force_regenerate=True)
         logger.info(f"[{pdf_id}] Embedding generation pipeline completed successfully.")
 
+        if await is_cancelled():
+            logger.info(f"[{pdf_id}] Ingestion cancelled before Google Drive upload.")
+            return
+
+        # Upload original PDF to Google Drive for target account
+        from app.services.google_drive_service import google_drive_service
+        logger.info(f"[{pdf_id}] RAG ingestion completed. Uploading original PDF to Google Drive for {google_drive_service.target_email}...")
+
+        job_doc = await db.jobs.find_one({"job_id": pdf_id})
+        original_name = job_doc.get("filename") if job_doc else Path(pdf_path).name
+
+        drive_res = await google_drive_service.upload_file(
+            file_path=pdf_path,
+            original_filename=original_name,
+            mime_type="application/pdf",
+        )
+
+        drive_file_id = drive_res.get("file_id")
+        drive_status = drive_res.get("status")
+        now = datetime.now(timezone.utc)
+
+        await db.documents.update_one(
+            {"pdf_id": pdf_id},
+            {
+                "$set": {
+                    "status": "complete",
+                    "drive": {
+                        "file_id": drive_file_id,
+                        "file_name": drive_res.get("file_name", original_name),
+                        "mime_type": drive_res.get("mime_type", "application/pdf"),
+                        "web_view_link": drive_res.get("web_view_link"),
+                        "web_content_link": drive_res.get("web_content_link"),
+                        "uploaded_at": now,
+                        "account": google_drive_service.target_email,
+                        "status": drive_status,
+                    },
+                    "completed_at": now,
+                }
+            },
+        )
+
+        await db.jobs.update_one(
+            {"job_id": pdf_id},
+            {
+                "$set": {
+                    "status": "complete",
+                    "drive_file_id": drive_file_id,
+                    "drive_status": drive_status,
+                    "completed_at": now,
+                }
+            },
+        )
+        logger.info(f"[{pdf_id}] Ingestion & Google Drive sync completed successfully. File ID: {drive_file_id}")
+
     except asyncio.CancelledError:
         logger.warning(f"[{pdf_id}] Ingestion task was explicitly cancelled by user.")
         for suffix in [".pdf", ".txt", "_sections.json", "_summary.md"]:
@@ -311,16 +365,81 @@ async def get_tree(pdf_id: str):
     return tree
 
 
+@router.get("/judgments/{judgment_id}/download")
+async def download_judgment(judgment_id: str):
+    """
+    Downloads the original PDF judgment from Google Drive (or local fallback).
+    Streams binary content directly with appropriate Content-Disposition header.
+    """
+    if db.documents is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+
+    # Find document in MongoDB
+    doc = await db.documents.find_one({"$or": [{"pdf_id": judgment_id}, {"job_id": judgment_id}]})
+    if not doc and db.jobs is not None:
+        doc = await db.jobs.find_one({"$or": [{"job_id": judgment_id}, {"pdf_id": judgment_id}]})
+
+    if not doc:
+        # Fallback check if file exists on disk
+        local_path = UPLOADS_DIR / f"{judgment_id}.pdf"
+        if local_path.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(
+                path=str(local_path),
+                filename=f"{judgment_id}.pdf",
+                media_type="application/pdf",
+            )
+        raise HTTPException(status_code=404, detail="Judgment not found.")
+
+    drive_meta = doc.get("drive") if isinstance(doc.get("drive"), dict) else {}
+    drive_file_id = drive_meta.get("file_id") or doc.get("drive_file_id") or f"local_{judgment_id}"
+    filename = drive_meta.get("file_name") or doc.get("filename") or f"{judgment_id}.pdf"
+
+    if not filename.lower().endswith(".pdf"):
+        filename = f"{filename}.pdf"
+
+    try:
+        from app.services.google_drive_service import google_drive_service
+        stream, remote_name, mime_type = await google_drive_service.download_file_stream(
+            file_id=drive_file_id,
+            fallback_filename=filename,
+        )
+
+        from fastapi.responses import StreamingResponse
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        }
+        return StreamingResponse(
+            stream,
+            media_type=mime_type or "application/pdf",
+            headers=headers,
+        )
+    except Exception as e:
+        logger.error(f"Error downloading judgment {judgment_id}: {e}")
+        local_path = UPLOADS_DIR / f"{judgment_id}.pdf"
+        if local_path.exists():
+            from fastapi.responses import FileResponse
+            return FileResponse(
+                path=str(local_path),
+                filename=filename,
+                media_type="application/pdf",
+            )
+        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {str(e)}")
+
+
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str):
     if db.jobs is None or db.documents is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
     # Try finding job by job_id or pdf_id
-    job = await db.jobs.find_one({"$or": [{"job_id": job_id}, {"pdf_id": job_id}]}, {"_id": 0, "pdf_id": 1, "job_id": 1})
+    job = await db.jobs.find_one({"$or": [{"job_id": job_id}, {"pdf_id": job_id}]})
     doc = None
     if not job:
-        doc = await db.documents.find_one({"$or": [{"pdf_id": job_id}, {"job_id": job_id}]}, {"_id": 0, "pdf_id": 1, "job_id": 1})
+        doc = await db.documents.find_one({"$or": [{"pdf_id": job_id}, {"job_id": job_id}]})
+    else:
+        doc = await db.documents.find_one({"$or": [{"pdf_id": job.get("pdf_id")}, {"job_id": job.get("job_id")}]})
 
     if not job and not doc:
         pdf_id = job_id
@@ -328,6 +447,12 @@ async def delete_job(job_id: str):
     else:
         pdf_id = (job or doc).get("pdf_id") or job_id
         actual_job_id = (job or doc).get("job_id") or job_id
+
+    drive_file_id = None
+    if doc and isinstance(doc.get("drive"), dict):
+        drive_file_id = doc.get("drive", {}).get("file_id")
+    elif job:
+        drive_file_id = job.get("drive_file_id")
 
     # 0. Cancel active background task immediately if running
     for key in [job_id, pdf_id, actual_job_id]:
@@ -398,6 +523,15 @@ async def delete_job(job_id: str):
                     logger.error(f"Error removing upload file {upload_file}: {ex}")
     except Exception as e:
         logger.error(f"Error cleaning upload files for {pdf_id}: {e}")
+
+    # 5. Google Drive File Cleanup
+    if drive_file_id:
+        try:
+            from app.services.google_drive_service import google_drive_service
+            await google_drive_service.delete_file(drive_file_id)
+            logger.info(f"Google Drive file deleted: {drive_file_id}")
+        except Exception as ex:
+            logger.warning(f"Notice during Google Drive delete for {drive_file_id}: {ex}")
 
     return {
         "message": "Judgment, node tree, Chroma vectors, connection mappings, and all associated files deleted successfully.",

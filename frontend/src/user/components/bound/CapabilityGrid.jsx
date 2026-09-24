@@ -51,7 +51,7 @@ const CapabilityGrid = () => {
             <div>
               <span
                 aria-hidden="true"
-                className="grad-brand flex h-13 w-13 items-center justify-center rounded-2xl p-3.5 text-white shadow-glow"
+                className="grad-brand flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-glow"
               >
                 <span className="material-symbols-outlined text-[24px]">travel_explore</span>
               </span>

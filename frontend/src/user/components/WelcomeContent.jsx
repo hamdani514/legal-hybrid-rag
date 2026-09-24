@@ -230,24 +230,52 @@ const WelcomeContent = () => {
 
                       {message.citations?.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-ash-200">
-                          <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-3">
-                            Authorities Retrieved
+                          <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-3 flex items-center justify-between">
+                            <span>Authorities Retrieved ({message.citations.length})</span>
+                            <span className="text-[11px] font-normal text-ash-400">Google Drive Storage</span>
                           </h3>
-                          <ol className="flex flex-col gap-2.5">
+                          <div className="flex flex-col gap-2.5">
                             {message.citations.map((cite) => (
-                              <li key={cite.judgment_id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                <span className="font-medium text-ash-900">{cite.filename}</span>
-                                <span className="text-xs text-ash-600">
-                                  relevance {cite.similarity_score.toFixed(3)}
-                                </span>
-                                {cite.sections_retrieved?.length > 0 && (
-                                  <span className="text-xs text-ash-600">
-                                    &middot; {cite.sections_retrieved.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}
-                                  </span>
-                                )}
-                              </li>
+                              <div
+                                key={cite.judgment_id}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-ash-200 bg-ash-50/70 hover:bg-ash-50 hover:border-brand-300 transition-all shadow-xs"
+                              >
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-medium text-sm text-ash-900 truncate max-w-xs md:max-w-md" title={cite.filename}>
+                                        {cite.filename}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-100 text-brand-800">
+                                        Relevance {(cite.similarity_score * 100).toFixed(0)}%
+                                      </span>
+                                    </div>
+                                    {cite.sections_retrieved?.length > 0 && (
+                                      <p className="text-xs text-ash-500 mt-0.5 truncate">
+                                        Sections: {cite.sections_retrieved.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                                  <a
+                                    href={cite.download_url || `/api/admin/judgments/${cite.judgment_id}/download`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download={cite.filename || "judgment.pdf"}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#261900] text-white hover:bg-brand-600 transition-all shadow-xs hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+                                    title={`Download ${cite.filename} from Google Drive`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">download</span>
+                                    <span>Download PDF</span>
+                                  </a>
+                                </div>
+                              </div>
                             ))}
-                          </ol>
+                          </div>
                           {message.latencyMs != null && (
                             <p className="mt-3 text-xs text-ash-500">
                               Retrieved in {(message.latencyMs / 1000).toFixed(1)}s

@@ -588,15 +588,28 @@ const AdminCasesPage = () => {
                         </td>
                         <td className="py-3.5 px-4 text-xs text-ash-400">{formatRelativeTime(job.created_at)}</td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => {
-                              setShowAllModal(false);
-                              setDeleteTarget(job);
-                            }}
-                            className="text-red-600 hover:text-red-800 text-xs font-bold"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`/api/admin/judgments/${job.pdf_id || job.job_id}/download`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={job.filename || "judgment.pdf"}
+                              className="text-brand-600 hover:text-brand-800 text-xs font-bold inline-flex items-center gap-1"
+                              title="Download PDF"
+                            >
+                              <span className="material-symbols-outlined text-sm">download</span>
+                              Download
+                            </a>
+                            <button
+                              onClick={() => {
+                                setShowAllModal(false);
+                                setDeleteTarget(job);
+                              }}
+                              className="text-red-600 hover:text-red-800 text-xs font-bold"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

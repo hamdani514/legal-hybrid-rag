@@ -1,5 +1,6 @@
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
+import MediaFrame from './MediaFrame';
 
 /** Facts about the build, shown beside the prose. */
 const FACTS = [
@@ -75,11 +76,29 @@ const OriginSection = () => {
             </Reveal>
           </div>
 
-          {/* Facts card */}
+          {/* Facts card, opened by the shelf it describes */}
           <Reveal
             delay={140}
-            className="self-start rounded-4xl border border-ash-200 bg-white p-7 shadow-card lg:sticky lg:top-28"
+            className="group self-start overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card lg:sticky lg:top-28"
           >
+            <MediaFrame
+              name="stacks"
+              ratio="4 / 3"
+              wash="ink"
+              zoom
+              className="sheen w-full"
+            >
+              <figcaption className="absolute inset-x-0 bottom-0 z-[2] p-6">
+                <span className="font-ui text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-200">
+                  The problem, physically
+                </span>
+                <span className="mt-1.5 block max-w-[22ch] font-display text-[16px] font-bold leading-[1.25] text-white">
+                  Eleven reports open to find the two that matter
+                </span>
+              </figcaption>
+            </MediaFrame>
+
+            <div className="p-7">
             <h3 className="font-display text-[15px] font-bold tracking-[-0.01em] text-ash-900">
               At a glance
             </h3>
@@ -107,6 +126,7 @@ const OriginSection = () => {
               Built as a final-year project. The retrieval pipeline, the section classifier and this
               interface were written from scratch.
             </p>
+            </div>
           </Reveal>
         </div>
       </div>

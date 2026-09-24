@@ -20,6 +20,8 @@ class JudgmentResult(BaseModel):
     token_count: int
     # Only the best-matching judgment is answered; the rest carry None.
     llm_answer: str | None = None
+    download_url: str | None = None
+    has_drive_file: bool = False
 
 
 class SearchResponse(BaseModel):

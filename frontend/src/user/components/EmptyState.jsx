@@ -1,3 +1,4 @@
+import MediaFrame from './bound/MediaFrame';
 
 const EmptyState = ({ onSelectCard }) => {
   const cards = [
@@ -5,18 +6,21 @@ const EmptyState = ({ onSelectCard }) => {
       title: 'Analyze Statute',
       description: 'Extract core implications and legislative intent from complex regulatory frameworks.',
       icon: 'scale',
+      media: 'scales',
       prompt: 'Analyze the statute implications for corporate tax governance in the current framework.',
     },
     {
       title: 'Precedent Review',
       description: 'Identify landmark rulings and dissenting opinions relevant to your current brief.',
       icon: 'account_balance',
+      media: 'volume',
       prompt: 'Summarize key precedents and dissenting opinions on civil liability and digital rights.',
     },
     {
       title: 'Drafting Support',
       description: 'Refine arguments and ensure citation accuracy across multiple jurisdictions.',
       icon: 'edit_note',
+      media: 'desk',
       prompt: 'Help me draft an argument summary addressing cross-jurisdictional contract breaches.',
     },
   ];
@@ -45,16 +49,30 @@ const EmptyState = ({ onSelectCard }) => {
           <div
             key={idx}
             onClick={() => onSelectCard(card.prompt)}
-            className="group bg-ash-50 p-8 rounded-none border border-ash-200/70 hover:border-brand-300/50 hover:bg-ash-100 hover:shadow-sm transition-all duration-300 cursor-pointer flex flex-col justify-between"
+            className="lift-card group flex cursor-pointer flex-col justify-between overflow-hidden rounded-3xl border border-ash-200/70 bg-white shadow-soft transition-all duration-300 hover:border-brand-300/60 hover:shadow-card"
           >
-            <div>
-              <span className="material-symbols-outlined text-brand-500 mb-4 block text-3xl">
-                {card.icon}
+            {/* A thin photographic header. Short enough that the card is
+                still read as a control rather than a picture. */}
+            <MediaFrame
+              name={card.media}
+              ratio="16 / 7"
+              wash="ink"
+              zoom
+              className="sheen w-full"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute bottom-4 left-5 z-[2] flex h-10 w-10 items-center justify-center rounded-2xl border border-white/25 bg-white/15 text-white backdrop-blur-md"
+              >
+                <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
               </span>
+            </MediaFrame>
+
+            <div className="p-7">
               <h3 className="font-display text-xl text-ash-900 mb-2">{card.title}</h3>
               <p className="text-sm text-ash-600 leading-relaxed">{card.description}</p>
             </div>
-            <div className="mt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center text-xs font-semibold text-brand-500 uppercase tracking-widest">
+            <div className="px-7 pb-7 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center text-xs font-semibold text-brand-500 uppercase tracking-widest">
               Start Session{' '}
               <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
             </div>

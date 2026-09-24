@@ -51,5 +51,13 @@ backend/scratch/
 chroma_db/
 backend/chroma_db/
 
+# Google Credentials & Secrets
+token.json
+backend/token.json
+client_secret*.json
+backend/client_secret*.json
+service_account*.json
+backend/service_account*.json
+
 
 

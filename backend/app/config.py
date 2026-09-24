@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     RECAPTCHA_SCORE_THRESHOLD: float = 0.5
     CONTACT_RECEIVER_EMAIL: str = "verdictaisupport@gmail.com"
 
+    # Google Drive Integration
+    GOOGLE_DRIVE_TARGET_EMAIL: str = "verdictaisupport@gmail.com"
+    GOOGLE_DRIVE_FOLDER_ID: str = ""
+    GOOGLE_SERVICE_ACCOUNT_FILE: str = "service_account.json"
+    GOOGLE_DRIVE_TOKEN_FILE: str = "token.json"
+    GOOGLE_DRIVE_CLIENT_SECRET_FILE: str = "client_secret.json"
+    GOOGLE_DRIVE_ENABLED: bool = True
+
     model_config = SettingsConfigDict(
         env_file=[
             str(Path(__file__).resolve().parents[1] / ".env"),  # backend/.env

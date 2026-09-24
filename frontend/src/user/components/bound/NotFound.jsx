@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import SiteNav from './SiteNav';
 import SiteFoot from './SiteFoot';
+import MediaFrame from './MediaFrame';
 
 /**
  * The catch-all. Without it an unknown path rendered an entirely blank page,
@@ -84,6 +85,32 @@ const NotFound = () => {
               </li>
             ))}
           </ul>
+
+          {/* The shelf the headline is talking about. Decorative — the page
+              already says everything it needs to in words. */}
+          <div
+            className="pop-in group mt-12 w-full"
+            style={{ '--i': 4 }}
+            aria-hidden="true"
+          >
+            <MediaFrame
+              name="stacks"
+              ratio="21 / 9"
+              wash="ink"
+              zoom
+              grain
+              className="ring-photo sheen rounded-4xl shadow-card-lg"
+            >
+              <figcaption className="absolute inset-x-0 bottom-0 z-[2] p-6 text-left sm:p-7">
+                <span className="font-ui text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-200">
+                  Still on the shelf
+                </span>
+                <span className="mt-1.5 block font-display text-[16px] font-bold leading-[1.25] text-white sm:text-[18px]">
+                  Every reported judgment in the index is still one question away
+                </span>
+              </figcaption>
+            </MediaFrame>
+          </div>
         </div>
       </main>
 

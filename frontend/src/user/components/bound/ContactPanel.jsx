@@ -1,5 +1,6 @@
 import Reveal from '../Reveal';
 import ContactForm from '../ContactForm';
+import MediaFrame from './MediaFrame';
 
 /**
  * The contact spread: the enquiry form beside the direct routes, each with the
@@ -66,6 +67,27 @@ const ContactPanel = () => {
 
         {/* ── Direct routes ──────────────────────────────────────────── */}
         <aside className="self-start lg:sticky lg:top-28">
+          {/* A plate at the head of the column, so the sidebar opens with
+              something other than a stack of three identical cards. */}
+          <Reveal variant="fade" className="group relative mb-8">
+            <MediaFrame
+              name="volume"
+              ratio="4 / 3"
+              wash="ink"
+              zoom
+              className="ring-photo sheen rounded-4xl shadow-card"
+            >
+              <figcaption className="absolute inset-x-0 bottom-0 z-[2] p-5">
+                <span className="font-ui text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-200">
+                  Islamabad
+                </span>
+                <span className="mt-1.5 block font-display text-[15px] font-bold leading-[1.25] text-white">
+                  Every enquiry reaches a person
+                </span>
+              </figcaption>
+            </MediaFrame>
+          </Reveal>
+
           <Reveal as="h2" variant="fade" className="font-display text-[15px] font-bold text-ash-900">
             Or write directly
           </Reveal>

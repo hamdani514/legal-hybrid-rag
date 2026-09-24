@@ -25,6 +25,8 @@ const AboutPage = () => {
             { label: 'Divisions', value: 'Six per judgment' },
             { label: 'Retrieval', value: 'Two-stage semantic' },
           ]}
+          media="court"
+          mediaCaption="Supreme Court of Pakistan · Islamabad"
         />
         <OriginSection />
         <PrincipleList />

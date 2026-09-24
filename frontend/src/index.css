@@ -335,3 +335,211 @@ body {
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Photographic treatments.
+
+   The archive's photographs are warm — brass, oak, red buckram — and the
+   brand is cool blue into violet. Left untreated they fight. Everything
+   below exists to resolve that: a wash that tints them toward the brand, a
+   settle that hides the decode, and crops that hold the right part of the
+   frame. Transform/opacity only; resting states at the foot of the file.
+   ========================================================================== */
+
+/* The reserved box. The ground is the brand's palest blue rather than grey,
+   so the gap before a photograph decodes reads as part of the page. */
+.media-frame {
+  background-color: #e0f0ff;
+  background-image: linear-gradient(135deg, #e0f0ff 0%, #f5faff 52%, #eae4d8 100%);
+  isolation: isolate;
+}
+
+/* The settle. A photograph arrives slightly over-scaled and dimmed, then
+   comes to rest — so a slow connection reads as a deliberate entrance
+   rather than a flash of raw JPEG. */
+.media-img--out {
+  opacity: 0;
+  transform: scale(1.06);
+}
+
+.media-img--in {
+  opacity: 1;
+  transform: none;
+}
+
+.media-img--out,
+.media-img--in {
+  transition:
+    opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Slow push-in when the card around the photograph is hovered. The scale sits
+   on top of the settle's transition, so it inherits the same easing. */
+.media-zoom {
+  will-change: transform;
+}
+
+@media (hover: hover) {
+  .group:hover .media-zoom.media-img--in {
+    transform: scale(1.07);
+  }
+}
+
+/* Standing Ken Burns drift, for the full-bleed bands that hold still long
+   enough for a static photograph to go dead. Deliberately small — 3% over
+   twenty-two seconds is felt rather than seen. */
+@keyframes mediaDrift {
+  0%   { transform: scale(1.03) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.07) translate3d(-1.2%, -1.4%, 0); }
+  100% { transform: scale(1.03) translate3d(0, 0, 0); }
+}
+
+.media-drift.media-img--in {
+  animation: mediaDrift 22s ease-in-out infinite;
+}
+
+/* Ruled hairlines over a photograph — the ghost of a printed page. Used on
+   the full-bleed bands to key the imagery back to the law report. */
+.media-rule {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.055) 0px,
+    rgba(255, 255, 255, 0.055) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* The masthead plate. Nearly square on a phone, where a 21:9 letterbox is
+   only about 160px tall and reads as a stripe; widening as the column does. */
+.media-plate {
+  aspect-ratio: 16 / 11;
+}
+
+@media (min-width: 640px) {
+  .media-plate { aspect-ratio: 2 / 1; }
+}
+
+@media (min-width: 1024px) {
+  .media-plate { aspect-ratio: 21 / 9; }
+}
+
+/* Gradient hairline around a photographic frame, matching .ring-grad but
+   tuned brighter so it survives being laid over a dark image. */
+.ring-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.55), rgba(0, 133, 255, 0.35) 55%, rgba(36, 0, 255, 0.25));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* A light sweep that crosses a card once on hover. Pure transform, and the
+   overflow clip is the card's own, so nothing escapes the radius. */
+.sheen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.26) 50%,
+    transparent 62%
+  );
+  transform: translate3d(-120%, 0, 0);
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) {
+  .group:hover .sheen::before,
+  .sheen:hover::before {
+    transform: translate3d(120%, 0, 0);
+  }
+}
+
+/* Masked wipe — a frame that uncovers itself from the foot upward as it
+   enters view. Pairs with <Reveal variant="fade"> so the two do not fight
+   over the same transform. */
+.clip-up {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.is-visible .clip-up,
+.clip-up.is-visible {
+  clip-path: inset(0 0 0 0);
+}
+
+/* Slight 3D settle on a photographic card, in place of the flat lift used on
+   text cards — a photograph has depth to trade on, so it gets perspective. */
+.tilt {
+  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 520ms ease;
+  transform-style: preserve-3d;
+}
+
+@media (hover: hover) {
+  .tilt:hover {
+    transform: perspective(1100px) rotateX(2.2deg) rotateY(-2.6deg) translate3d(0, -6px, 0);
+  }
+}
+
+/* Vertical marquee, for the standing column of authorities beside a photo. */
+@keyframes marqueeY {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+
+.marquee-track-y {
+  animation: marqueeY 30s linear infinite;
+}
+
+.marquee-mask-y {
+  mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+@media (hover: hover) {
+  .marquee-mask-y:hover .marquee-track-y { animation-play-state: paused; }
+}
+
+/* Resting states. A photograph must still arrive, so the settle collapses to
+   "already visible" rather than being left mid-transition. */
+@media (prefers-reduced-motion: reduce) {
+  .media-img--out,
+  .media-img--in {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .media-drift.media-img--in,
+  .marquee-track-y {
+    animation: none !important;
+  }
+
+  .group:hover .media-zoom.media-img--in,
+  .tilt:hover {
+    transform: none !important;
+  }
+
+  .clip-up {
+    clip-path: none !important;
+    transition: none !important;
+  }
+
+  .sheen::before {
+    display: none;
+  }
+}

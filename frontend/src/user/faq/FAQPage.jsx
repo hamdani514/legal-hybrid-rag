@@ -23,6 +23,8 @@ const FAQPage = () => {
             { label: 'Questions', value: 'Ten' },
             { label: 'Reviewed', value: 'Sept 2026' },
           ]}
+          media="bench"
+          mediaCaption="Reported judgments of a single bench"
         />
         <FaqGroups />
         <ClosingCTA

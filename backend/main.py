@@ -109,6 +109,12 @@ app.include_router(embedding_router, prefix="")
 app.include_router(query_router, prefix="/query", tags=["Query"])
 
 
+@app.get("/api/judgments/{judgment_id}/download")
+async def download_judgment_alias(judgment_id: str):
+    from app.api.admin import download_judgment
+    return await download_judgment(judgment_id)
+
+
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
     try:

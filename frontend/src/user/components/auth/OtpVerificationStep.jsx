@@ -221,7 +221,7 @@ const OtpVerificationStep = ({
               value={digit}
               onChange={(e) => handleChange(e, idx)}
               onKeyDown={(e) => handleKeyDown(e, idx)}
-              className="w-11 h-13 sm:w-12 sm:h-14 bg-ash-100 text-center font-display font-bold text-xl sm:text-2xl text-ash-900 outline-none border border-transparent rounded transition-all focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 shadow-inner"
+              className="w-11 h-[3.25rem] sm:w-12 sm:h-14 bg-ash-100 text-center font-display font-bold text-xl sm:text-2xl text-ash-900 outline-none border border-transparent rounded transition-all focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 shadow-inner"
               style={{
                 boxShadow: digit ? '0 0 0 1px rgba(0,133,255,0.35)' : 'none',
               }}

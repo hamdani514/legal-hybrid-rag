@@ -45,8 +45,8 @@ MODE_ANSWER = "answer"
 MODE_RETRIEVE_ONLY = "retrieve_only"
 
 
-async def _filenames_for(judgment_ids: list[str]) -> dict[str, str]:
-    """Map judgment ids to their original PDF filenames.
+async def _documents_meta_for(judgment_ids: list[str]) -> dict[str, dict]:
+    """Map judgment ids to their original PDF filenames and drive information.
 
     Node documents do not carry the filename; it lives on the `documents`
     collection, keyed by pdf_id.
@@ -55,9 +55,17 @@ async def _filenames_for(judgment_ids: list[str]) -> dict[str, str]:
         return {}
 
     cursor = db.database.documents.find(
-        {"pdf_id": {"$in": judgment_ids}}, {"pdf_id": 1, "filename": 1}
+        {"pdf_id": {"$in": judgment_ids}}, {"pdf_id": 1, "filename": 1, "drive": 1}
     )
-    return {d["pdf_id"]: d.get("filename", "") async for d in cursor}
+    meta = {}
+    async for d in cursor:
+        drive_info = d.get("drive") if isinstance(d.get("drive"), dict) else {}
+        meta[d["pdf_id"]] = {
+            "filename": d.get("filename", ""),
+            "has_drive_file": bool(drive_info.get("file_id")),
+            "drive_file_id": drive_info.get("file_id"),
+        }
+    return meta
 
 
 async def retrieve_and_answer(
@@ -127,12 +135,12 @@ async def retrieve_and_answer(
         for e in expanded
     }
     scores_by_judgment = {r["judgment_id"]: r["score"] for r in parent_results}
-    filenames = await _filenames_for(judgment_ids)
+    docs_meta = await _documents_meta_for(judgment_ids)
 
     judgments = [
         {
             "judgment_id": c["judgment_id"],
-            "filename": filenames.get(c["judgment_id"], ""),
+            "filename": docs_meta.get(c["judgment_id"], {}).get("filename", ""),
             "heading": c.get("heading", ""),
             "similarity_score": scores_by_judgment.get(c["judgment_id"], 0.0),
             "sections_retrieved": sections_by_judgment.get(c["judgment_id"], []),
@@ -140,6 +148,8 @@ async def retrieve_and_answer(
             "token_count": c["token_count"],
             # Only the best match is answered, so the rest carry None.
             "llm_answer": top_judgment_answer if idx == 0 else None,
+            "download_url": f"/api/admin/judgments/{c['judgment_id']}/download",
+            "has_drive_file": docs_meta.get(c["judgment_id"], {}).get("has_drive_file", False),
         }
         for idx, c in enumerate(assembled)
     ]

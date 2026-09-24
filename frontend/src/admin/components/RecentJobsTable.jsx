@@ -127,13 +127,25 @@ const RecentJobsTable = ({
                   </td>
                   <td className="py-4 px-6 text-ash-400 text-xs">{formatRelativeTime(job.created_at)}</td>
                   <td className="py-4 px-8 text-right">
-                    <button
-                      onClick={() => setDeleteTarget(job)}
-                      className="p-2 text-ash-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
-                      title="Delete Record"
-                    >
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <a
+                        href={`/api/admin/judgments/${job.pdf_id || job.job_id}/download`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={job.filename || "judgment.pdf"}
+                        className="p-2 text-ash-400 hover:text-brand-600 transition-colors rounded-lg hover:bg-brand-50"
+                        title="Download PDF from Drive"
+                      >
+                        <span className="material-symbols-outlined text-lg">download</span>
+                      </a>
+                      <button
+                        onClick={() => setDeleteTarget(job)}
+                        className="p-2 text-ash-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                        title="Delete Record"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

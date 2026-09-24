@@ -1,3 +1,5 @@
+import MediaFrame from './MediaFrame';
+
 /**
  * The left-hand panel of every authentication screen.
  *
@@ -72,6 +74,7 @@ const ScalesMark = ({ className = '' }) => (
 
 const COPY = {
   user: {
+    media: 'stacks',
     badge: 'Supreme Court of Pakistan',
     badgeIcon: 'balance',
     lead: 'Legal research that finds the',
@@ -81,6 +84,7 @@ const COPY = {
     points: POINTS,
   },
   admin: {
+    media: 'desk',
     badge: 'Administration',
     badgeIcon: 'shield_person',
     lead: 'The console behind the',
@@ -98,6 +102,25 @@ const AuthVisual = ({ variant = 'user' }) => {
       aria-label="About Digital Atelier"
       className="grad-brand relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between"
     >
+      {/* The photographic ground. It sits under a near-opaque pass of the
+          brand gradient: enough of the shelves and the brass survives to give
+          the panel depth, not enough to compete with the copy over it. The
+          alt text is empty by design — the panel's meaning is in its words,
+          and a screen reader gains nothing from a described backdrop. */}
+      <MediaFrame
+        name={copy.media}
+        wash="none"
+        drift
+        ratio="auto"
+        className="absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      />
+      <span
+        aria-hidden="true"
+        className="grad-brand pointer-events-none absolute inset-0 opacity-[0.86]"
+      />
+      <span aria-hidden="true" className="media-rule pointer-events-none absolute inset-0" />
+
       {/* Ambient blooms and the watermark scales. */}
       <span
         aria-hidden="true"
