@@ -24,28 +24,22 @@ const AuthShell = ({ steps = [], current = 0, variant = 'user', children }) => {
 
       {/* Right: the screen's own form. */}
       <main className="ground-light relative flex min-h-screen flex-col">
-        {/* Top row — brand on small screens, exit route on all. */}
+        {/* Top row — brand wordmark navigating back home */}
         <div className="flex items-center justify-between gap-4 px-5 pt-6 sm:px-8">
-          <Link to="/" className="flex items-center gap-2.5 lg:invisible">
+          <Link
+            to="/"
+            className="group flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]"
+            aria-label="Verdict AI Home"
+          >
             <span
               aria-hidden="true"
-              className="grad-brand flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-glow"
+              className="grad-brand flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-glow transition-transform duration-200 group-hover:scale-105"
             >
               <span className="material-symbols-outlined text-[19px]">balance</span>
             </span>
-            <span className="font-display text-[17px] font-bold tracking-[-0.02em] text-ash-900">
-              Digital<span className="grad-text">Atelier</span>
+            <span className="font-display text-[17.5px] font-bold tracking-[-0.02em] text-ash-900">
+              Verdict<span className="grad-text">AI</span>
             </span>
-          </Link>
-
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ash-200 bg-white px-4 py-2 font-ui text-[13px] font-semibold text-ash-600 transition-all duration-300 hover:border-brand-300 hover:text-brand-700"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
-              arrow_back
-            </span>
-            Home
           </Link>
         </div>
 

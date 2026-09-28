@@ -1,6 +1,7 @@
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
-import PageMasthead from '../components/bound/PageMasthead';
+import HomeHero from '../components/bound/HomeHero';
+import DivisionsTicker from '../components/bound/DivisionsTicker';
 import FaqGroups from '../components/bound/FaqGroups';
 import ClosingCTA from '../components/bound/ClosingCTA';
 
@@ -12,20 +13,20 @@ const FAQPage = () => {
       </a>
       <SiteNav />
       <main id="main-content" className="w-full flex-1">
-        <PageMasthead
-          kicker="FAQ"
-          icon="quiz"
-          title="The questions worth"
-          accent="asking first"
-          lede="What the archive holds, how retrieval actually works, where its limits are, and what happens to your research. The limits are stated as plainly as the capabilities."
-          meta={[
-            { label: 'Sections', value: 'Four' },
-            { label: 'Questions', value: 'Ten' },
-            { label: 'Reviewed', value: 'Sept 2026' },
+        <HomeHero
+          badge="Knowledge Base · Archive & Method Answers"
+          title="Clear answers to how our"
+          accent="archive & engine work"
+          description="Curious about corpus coverage, privacy guarantees, citations, or retrieval accuracy? Here is everything you need to know about the platform before stepping into the research suite."
+          primaryCta={{ to: '/signup', label: 'Create free account', icon: 'arrow_forward' }}
+          secondaryCta={{ to: '/contact', label: 'Ask a specific question', icon: 'mail' }}
+          highlights={[
+            { icon: 'menu_book', label: '10 core topics covered' },
+            { icon: 'lock', label: 'Encrypted research queries' },
+            { icon: 'rule', label: 'Plain limits stated' },
           ]}
-          media="bench"
-          mediaCaption="Reported judgments of a single bench"
         />
+        <DivisionsTicker />
         <FaqGroups />
         <ClosingCTA
           eyebrow="Still unanswered"

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 // User Pages
 import HomePage from './user/home/HomePage';
 import AboutPage from './user/about/AboutPage';
+import PricingPage from './user/pricing/PricingPage';
 import ContactPage from './user/contact/ContactPage';
 import FAQPage from './user/faq/FAQPage';
 import SignupPage from './user/signup/SignupPage';
@@ -33,6 +34,7 @@ function App() {
           {/* User Routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/signup" element={<SignupPage />} />

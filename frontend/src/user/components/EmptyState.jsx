@@ -39,7 +39,7 @@ const EmptyState = ({ onSelectCard }) => {
           How can I assist your <span className="serif-italic">research</span> today?
         </h2>
         <p className="text-ash-600 text-lg max-w-2xl mx-auto font-prose leading-relaxed">
-          Access the collective intelligence of the Atelier. From statute interpretation to landmark precedent analysis, our workspace is designed for high-stakes accuracy.
+          Access the collective intelligence of Verdict AI. From statute interpretation to landmark precedent analysis, our workspace is designed for high-stakes accuracy.
         </p>
       </div>
 

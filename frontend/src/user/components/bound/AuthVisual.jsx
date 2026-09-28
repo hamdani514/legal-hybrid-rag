@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import MediaFrame from './MediaFrame';
 
 /**
@@ -99,53 +100,70 @@ const AuthVisual = ({ variant = 'user' }) => {
   const copy = COPY[variant] ?? COPY.user;
   return (
     <aside
-      aria-label="About Digital Atelier"
-      className="grad-brand relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between"
+      aria-label="About Verdict AI"
+      className="relative hidden overflow-hidden bg-slate-950 lg:flex lg:flex-col lg:justify-between"
     >
-      {/* The photographic ground. It sits under a near-opaque pass of the
-          brand gradient: enough of the shelves and the brass survives to give
-          the panel depth, not enough to compete with the copy over it. The
-          alt text is empty by design — the panel's meaning is in its words,
-          and a screen reader gains nothing from a described backdrop. */}
+      {/* The authentic photograph with natural warmth — no blue wash */}
       <MediaFrame
         name={copy.media}
         wash="none"
         drift
         ratio="auto"
-        className="absolute inset-0 h-full w-full"
+        className="absolute inset-0 h-full w-full object-cover"
         aria-hidden="true"
       />
-      <span
-        aria-hidden="true"
-        className="grad-brand pointer-events-none absolute inset-0 opacity-[0.86]"
-      />
-      <span aria-hidden="true" className="media-rule pointer-events-none absolute inset-0" />
 
-      {/* Ambient blooms and the watermark scales. */}
+      {/* Neutral dark vignette overlay to preserve natural library wood and paper tones */}
       <span
         aria-hidden="true"
-        className="float-y-slow pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/92 via-black/65 to-black/35"
       />
       <span
         aria-hidden="true"
-        className="float-y pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-cyan-300/15 blur-3xl"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent"
+      />
+      <span aria-hidden="true" className="media-rule pointer-events-none absolute inset-0 opacity-35" />
+
+      {/* Subtle neutral bloom and watermark scales */}
+      <span
+        aria-hidden="true"
+        className="float-y-slow pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/5 blur-3xl"
       />
       <ScalesMark className="pointer-events-none absolute -right-16 bottom-16 h-[26rem] w-[26rem] text-white/[0.07]" />
 
       {/* ── Claim ──────────────────────────────────────────────────── */}
-      <div className="relative z-10 px-12 pt-14 xl:px-14">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-4 py-1.5 font-ui text-[12px] font-semibold text-white backdrop-blur-sm">
-          <span aria-hidden="true" className="material-symbols-outlined text-[15px]">
-            {copy.badgeIcon}
+      <div className="relative z-10 px-12 pt-12 xl:px-14">
+        {/* Clickable Brand Wordmark to return Home */}
+        <Link
+          to="/"
+          className="group mb-8 inline-flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]"
+          aria-label="Verdict AI Home"
+        >
+          <span
+            aria-hidden="true"
+            className="grad-brand flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-glow transition-transform duration-200 group-hover:scale-105"
+          >
+            <span className="material-symbols-outlined text-[21px]">balance</span>
           </span>
-          {copy.badge}
-        </span>
+          <span className="font-display text-[20px] font-bold tracking-[-0.02em] text-white">
+            Verdict<span className="text-cyan-300">AI</span>
+          </span>
+        </Link>
+
+        <div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 py-1.5 font-ui text-[12px] font-semibold text-white backdrop-blur-md shadow-sm">
+            <span aria-hidden="true" className="material-symbols-outlined text-[15px]">
+              {copy.badgeIcon}
+            </span>
+            {copy.badge}
+          </span>
+        </div>
 
         <h2 className="mt-8 max-w-[20ch] font-display text-[clamp(2rem,2.6vw,2.75rem)] font-bold leading-[1.08] tracking-[-0.03em] text-white">
-          {copy.lead} <span className="text-brand-100">{copy.accent}</span>
+          {copy.lead} <span className="text-amber-200/90">{copy.accent}</span>
         </h2>
 
-        <p className="mt-5 max-w-[34ch] font-prose text-[15px] leading-[1.72] text-white/80">
+        <p className="mt-5 max-w-[34ch] font-prose text-[15px] leading-[1.72] text-white/85">
           {copy.body}
         </p>
       </div>
@@ -156,7 +174,7 @@ const AuthVisual = ({ variant = 'user' }) => {
           <li key={title} className="flex items-start gap-4">
             <span
               aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/12 text-white backdrop-blur-sm"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-black/40 text-white backdrop-blur-md shadow-sm"
             >
               <span className="material-symbols-outlined text-[19px]">{icon}</span>
             </span>
@@ -170,23 +188,23 @@ const AuthVisual = ({ variant = 'user' }) => {
 
       {/* ── A real retrieved result ────────────────────────────────── */}
       <div className="relative z-10 px-12 pb-14 xl:px-14" aria-hidden="true">
-        <div className="rounded-3xl border border-white/20 bg-white/12 p-5 backdrop-blur-md">
+        <div className="rounded-3xl border border-white/15 bg-black/50 p-5 backdrop-blur-md shadow-2xl">
           <div className="flex items-center justify-between gap-3">
             <span className="font-display text-[12.5px] font-semibold text-white">
               Civil Appeal No. 23-P of 2017
             </span>
-            <span className="rounded-full bg-white px-2.5 py-0.5 font-ui text-[11px] font-bold text-brand-800">
+            <span className="rounded-full bg-white px-2.5 py-0.5 font-ui text-[11px] font-bold text-slate-900 shadow-sm">
               0.69
             </span>
           </div>
 
-          <p className="mt-3 font-prose text-[12.5px] leading-[1.65] text-white/80">
+          <p className="mt-3 font-prose text-[12.5px] leading-[1.65] text-white/85">
             The dispute concerned wrong entries in the revenue record, which{' '}
-            <span className="text-white">in no way can be termed as a matter relating to dower</span>
+            <span className="text-amber-200 font-semibold">in no way can be termed as a matter relating to dower</span>
             .
           </p>
 
-          <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-ui text-[10.5px] font-bold text-white">
+          <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/15 px-2.5 py-1 font-ui text-[10.5px] font-bold text-emerald-300">
             <span aria-hidden="true" className="material-symbols-outlined text-[13px]">
               check_circle
             </span>

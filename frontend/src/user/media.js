@@ -19,15 +19,15 @@
 const BASE = '/assets';
 
 export const MEDIA = {
-  /** The Supreme Court of Pakistan building, with the approach sign. */
+  /** The Supreme Court of Pakistan building, exterior. */
   court: {
-    src: `${BASE}/supremecourt.jpg`,
-    w: 735,
-    h: 552,
-    ratio: 735 / 552,
-    focus: '50% 42%',
+    src: `${BASE}/outside.jpg`,
+    w: 2752,
+    h: 1536,
+    ratio: 2752 / 1536,
+    focus: '50% 45%',
     tone: 'light',
-    alt: 'The Supreme Court of Pakistan building in Islamabad, seen from its approach road.',
+    alt: 'The Supreme Court of Pakistan building in Islamabad, seen from the outside.',
   },
 
   /** Gavel resting on a bench in front of the flag of Pakistan. */

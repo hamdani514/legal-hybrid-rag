@@ -6,6 +6,7 @@ const COLUMNS = [
     links: [
       { to: '/welcome', label: 'Workspace' },
       { to: '/about', label: 'How it works' },
+      { to: '/pricing', label: 'Pricing' },
       { to: '/faq', label: 'FAQ' },
     ],
   },
@@ -45,7 +46,7 @@ const SiteFoot = () => {
                 <span className="material-symbols-outlined text-[21px]">balance</span>
               </span>
               <span className="font-display text-[19px] font-bold tracking-[-0.02em] text-ash-900">
-                Digital<span className="grad-text">Atelier</span>
+                Verdict<span className="grad-text">AI</span>
               </span>
             </div>
 
@@ -84,7 +85,7 @@ const SiteFoot = () => {
 
         <div className="mt-14 flex flex-col gap-3 border-t border-ash-200 pt-7 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-prose text-[13px] text-ash-500">
-            © {year} Digital Atelier · Islamabad
+            © {year} Verdict AI · Islamabad
           </p>
           <p className="font-prose text-[13px] text-ash-500">Built as a final-year project</p>
         </div>

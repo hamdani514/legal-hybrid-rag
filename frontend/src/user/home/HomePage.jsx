@@ -1,6 +1,8 @@
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
 import HomeHero from '../components/bound/HomeHero';
+import DivisionsTicker from '../components/bound/DivisionsTicker';
+import SearchQueryDetail from '../components/bound/SearchQueryDetail';
 import AuthorityStrip from '../components/bound/AuthorityStrip';
 import JurisdictionBand from '../components/bound/JurisdictionBand';
 import MethodSection from '../components/bound/MethodSection';
@@ -31,6 +33,8 @@ const HomePage = () => {
       <SiteNav />
       <main id="main-content" className="w-full flex-1">
         <HomeHero />
+        <DivisionsTicker />
+        <SearchQueryDetail />
         <AuthorityStrip />
         <JurisdictionBand />
         <MethodSection />

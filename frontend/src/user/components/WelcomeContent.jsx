@@ -164,7 +164,7 @@ const WelcomeContent = () => {
         history: 'Case History Logs',
         drafts: 'Drafting Workspace',
         saved: 'Saved Research Briefs',
-        settings: 'Atelier Workgroup Settings',
+        settings: 'Verdict AI Workgroup Settings',
         support: 'Technical Support & Helpdesk',
       };
 
@@ -211,7 +211,7 @@ const WelcomeContent = () => {
                     gavel
                   </span>
                   <div className="flex flex-col gap-2">
-                    <span className="font-display text-base font-semibold text-ash-900">Atelier AI</span>
+                    <span className="font-display text-base font-semibold text-ash-900">Verdict AI</span>
                     <div className="font-prose text-sm text-ash-900 leading-relaxed">
                       {message.text && (
                         <p className="whitespace-pre-line">{message.text}</p>
@@ -297,7 +297,7 @@ const WelcomeContent = () => {
                   progress_activity
                 </span>
                 <div className="flex flex-col gap-2">
-                  <span className="font-display text-base font-semibold text-ash-900">Atelier AI</span>
+                  <span className="font-display text-base font-semibold text-ash-900">Verdict AI</span>
                   <p className="font-prose text-sm text-ash-600 italic">
                     Retrieving matched semantic nodes and precedents...
                   </p>

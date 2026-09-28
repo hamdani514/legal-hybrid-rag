@@ -1,6 +1,7 @@
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
-import PageMasthead from '../components/bound/PageMasthead';
+import HomeHero from '../components/bound/HomeHero';
+import DivisionsTicker from '../components/bound/DivisionsTicker';
 import OriginSection from '../components/bound/OriginSection';
 import PrincipleList from '../components/bound/PrincipleList';
 import MetricsBand from '../components/bound/MetricsBand';
@@ -14,20 +15,20 @@ const AboutPage = () => {
       </a>
       <SiteNav />
       <main id="main-content" className="w-full flex-1">
-        <PageMasthead
-          kicker="How it works"
-          icon="route"
+        <HomeHero
+          badge="Architectural Blueprint · How Retrieval Works"
           title="Research that starts where the"
-          accent="reasoning is"
-          lede="Every reported judgment is divided into its working parts before a single query runs, so a match returns the passage that decides the point — not the document that mentions it."
-          meta={[
-            { label: 'Jurisdiction', value: 'Supreme Court of Pakistan' },
-            { label: 'Divisions', value: 'Six per judgment' },
-            { label: 'Retrieval', value: 'Two-stage semantic' },
+          accent="judicial reasoning is"
+          description="Most search engines look for keywords. We divide every reported Supreme Court judgment into its six core parts so your query reaches the exact passage that decides the law — not just the text that mentions it."
+          primaryCta={{ to: '/signup', label: 'Start researching free', icon: 'arrow_forward' }}
+          secondaryCta={{ to: '/faq', label: 'Read common questions', icon: 'help' }}
+          highlights={[
+            { icon: 'account_tree', label: 'Six divisions marked' },
+            { icon: 'travel_explore', label: 'Two-stage semantic retrieval' },
+            { icon: 'verified', label: 'Direct authority citations' },
           ]}
-          media="court"
-          mediaCaption="Supreme Court of Pakistan · Islamabad"
         />
+        <DivisionsTicker />
         <OriginSection />
         <PrincipleList />
         <MetricsBand />

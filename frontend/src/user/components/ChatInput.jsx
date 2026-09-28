@@ -44,7 +44,7 @@ const ChatInput = ({ onSend, loading, placeholder = "Ask your legal query..." })
           </button>
         </form>
         <p className="text-[10px] text-center text-ash-500 mt-3 uppercase tracking-wider">
-          The Digital Atelier AI may provide general legal research; verify all findings with original statutes.
+          Verdict AI may provide general legal research; verify all findings with original statutes.
         </p>
       </div>
     </div>

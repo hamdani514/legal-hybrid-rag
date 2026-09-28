@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 
 const LINKS = [
-  { to: '/', label: 'Home', end: true },
   { to: '/about', label: 'How it works' },
+  { to: '/pricing', label: 'Pricing' },
   { to: '/faq', label: 'FAQ' },
   { to: '/contact', label: 'Contact' },
 ];
@@ -11,11 +11,16 @@ const LINKS = [
 /**
  * White sticky header. It floats over the light masthead and gains a border
  * and blur once the page scrolls, so it never competes with the headline on
- * first paint.
+ * first paint. When resting over the homepage dark hero banner, it presents
+ * crisp light text.
  */
 const SiteNav = () => {
   const [settled, setSettled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  const HERO_PAGES = ['/', '/about', '/pricing', '/faq', '/contact'];
+  const hasHero = HERO_PAGES.includes(location.pathname);
+  const onDark = hasHero && !settled;
 
   useEffect(() => {
     const onScroll = () => setSettled(window.scrollY > 20);
@@ -29,7 +34,11 @@ const SiteNav = () => {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-400 ${
-        settled ? 'border-b border-ash-200 bg-white/90 backdrop-blur-lg' : 'border-b border-transparent'
+        settled
+          ? 'border-b border-ash-200 bg-white/90 backdrop-blur-lg'
+          : onDark
+          ? 'border-b border-white/10 bg-ash-950/20 backdrop-blur-sm'
+          : 'border-b border-transparent'
       }`}
     >
       <div className="mx-auto flex h-[76px] max-w-[1200px] items-center justify-between gap-6 px-5 sm:px-8">
@@ -41,8 +50,10 @@ const SiteNav = () => {
           >
             <span className="material-symbols-outlined text-[21px]">balance</span>
           </span>
-          <span className="font-display text-[19px] font-bold tracking-[-0.02em] text-ash-900">
-            Digital<span className="grad-text">Atelier</span>
+          <span className={`font-display text-[19px] font-bold tracking-[-0.02em] transition-colors duration-300 ${
+            onDark ? 'text-white' : 'text-ash-900'
+          }`}>
+            Verdict<span className={onDark ? 'text-cyan-300' : 'grad-text'}>AI</span>
           </span>
         </Link>
 
@@ -56,7 +67,11 @@ const SiteNav = () => {
               className={({ isActive }) =>
                 `rounded-full px-4 py-2 font-ui text-[14.5px] font-medium transition-colors duration-250 ${
                   isActive
-                    ? 'bg-brand-50 text-brand-700'
+                    ? onDark
+                      ? 'bg-white/20 text-white font-semibold shadow-sm'
+                      : 'bg-brand-50 text-brand-700'
+                    : onDark
+                    ? 'text-white/80 hover:bg-white/10 hover:text-white'
                     : 'text-ash-600 hover:bg-ash-50 hover:text-ash-900'
                 }`
               }
@@ -69,7 +84,9 @@ const SiteNav = () => {
         <div className="hidden items-center gap-2.5 lg:flex">
           <Link
             to="/login"
-            className="rounded-full px-4 py-2 font-ui text-[14.5px] font-medium text-ash-600 transition-colors duration-250 hover:text-ash-900"
+            className={`rounded-full px-4 py-2 font-ui text-[14.5px] font-medium transition-colors duration-250 ${
+              onDark ? 'text-white/90 hover:text-white' : 'text-ash-600 hover:text-ash-900'
+            }`}
           >
             Sign in
           </Link>
@@ -94,7 +111,11 @@ const SiteNav = () => {
           aria-expanded={menuOpen}
           aria-controls="site-nav-sheet"
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-ash-200 bg-white text-ash-800 transition-colors duration-250 hover:border-brand-300 hover:text-brand-700 lg:hidden"
+          className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors duration-250 lg:hidden ${
+            onDark
+              ? 'border-white/20 bg-white/10 text-white hover:bg-white/20'
+              : 'border-ash-200 bg-white text-ash-800 hover:border-brand-300 hover:text-brand-700'
+          }`}
         >
           <span className="material-symbols-outlined text-[22px]" aria-hidden="true">
             {menuOpen ? 'close' : 'menu'}

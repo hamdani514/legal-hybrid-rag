@@ -543,3 +543,214 @@ body {
     display: none;
   }
 }
+
+/* ==========================================================================
+   Pricing Cards Deck Fan & Individual Hover Animation
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .pricing-deck {
+    perspective: 1400px;
+    transform-style: preserve-3d;
+  }
+
+  .pricing-card {
+    transition:
+      transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 280ms ease,
+      filter 280ms ease;
+    will-change: transform, box-shadow;
+  }
+
+  /* Left card (Free / Student):
+     At rest: tucked behind middle card with a counter-clockwise tilt
+     On hover: straightens to 0deg, slides out to the left, and pops to the front */
+  .pricing-card-left {
+    transform-origin: bottom center;
+    transform: translate3d(48px, 10px, 0) rotate(-6.5deg) scale(0.975);
+    z-index: 10;
+  }
+  .pricing-card-left:hover {
+    transform: translate3d(-34px, -20px, 0) rotate(0deg) scale(1.04);
+    z-index: 35;
+    box-shadow: 0 28px 60px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(0, 80, 204, 0.25);
+  }
+
+  /* Center card (Most Popular / Advocate):
+     At rest: prominent in front of both side cards
+     On hover: zooms / scales up in place */
+  .pricing-card-center {
+    transform-origin: center center;
+    transform: translate3d(0, -8px, 0) rotate(0deg) scale(1.02);
+    z-index: 20;
+  }
+  .pricing-card-center:hover {
+    transform: translate3d(0, -26px, 0) rotate(0deg) scale(1.06);
+    z-index: 35;
+    box-shadow: 0 36px 72px -14px rgba(0, 80, 204, 0.48);
+  }
+
+  /* Right card (Chambers / On request):
+     At rest: tucked behind middle card with a clockwise tilt
+     On hover: straightens to 0deg, slides out to the right, and pops to the front */
+  .pricing-card-right {
+    transform-origin: bottom center;
+    transform: translate3d(-48px, 10px, 0) rotate(6.5deg) scale(0.975);
+    z-index: 10;
+  }
+  .pricing-card-right:hover {
+    transform: translate3d(34px, -20px, 0) rotate(0deg) scale(1.04);
+    z-index: 35;
+    box-shadow: 0 28px 60px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(0, 80, 204, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pricing-card,
+  .pricing-card-left,
+  .pricing-card-center,
+  .pricing-card-right {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Organic Floating Card Bubbles ──────────────────────────────────────── */
+@keyframes bubbleDrift1 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  24% {
+    transform: translate3d(55px, -45px, 0) scale(1.09);
+  }
+  48% {
+    transform: translate3d(105px, 20px, 0) scale(0.95);
+  }
+  72% {
+    transform: translate3d(-35px, 50px, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+@keyframes bubbleDrift2 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  20% {
+    transform: translate3d(-60px, 45px, 0) scale(0.93);
+  }
+  50% {
+    transform: translate3d(45px, 75px, 0) scale(1.1);
+  }
+  75% {
+    transform: translate3d(55px, -40px, 0) scale(0.96);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+@keyframes bubbleDrift3 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  28% {
+    transform: translate3d(65px, 55px, 0) scale(1.11);
+  }
+  55% {
+    transform: translate3d(-50px, -45px, 0) scale(0.91);
+  }
+  82% {
+    transform: translate3d(-65px, 30px, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+@keyframes bubbleDrift4 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  22% {
+    transform: translate3d(-45px, -60px, 0) scale(1.07);
+  }
+  48% {
+    transform: translate3d(55px, -35px, 0) scale(0.94);
+  }
+  76% {
+    transform: translate3d(35px, 65px, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+@keyframes bubbleDrift5 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  30% {
+    transform: translate3d(50px, -65px, 0) scale(1.13);
+  }
+  62% {
+    transform: translate3d(-60px, 35px, 0) scale(0.89);
+  }
+  86% {
+    transform: translate3d(25px, 55px, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+@keyframes bubbleDrift6 {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  25% {
+    transform: translate3d(-70px, -30px, 0) scale(1.08);
+  }
+  50% {
+    transform: translate3d(30px, -55px, 0) scale(0.92);
+  }
+  75% {
+    transform: translate3d(60px, 40px, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+.bubble-drift-1 {
+  animation: bubbleDrift1 17s ease-in-out infinite;
+}
+.bubble-drift-2 {
+  animation: bubbleDrift2 21s ease-in-out infinite;
+}
+.bubble-drift-3 {
+  animation: bubbleDrift3 25s ease-in-out infinite;
+}
+.bubble-drift-4 {
+  animation: bubbleDrift4 19s ease-in-out infinite;
+}
+.bubble-drift-5 {
+  animation: bubbleDrift5 23s ease-in-out infinite;
+}
+.bubble-drift-6 {
+  animation: bubbleDrift6 27s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-drift-1,
+  .bubble-drift-2,
+  .bubble-drift-3,
+  .bubble-drift-4,
+  .bubble-drift-5,
+  .bubble-drift-6 {
+    animation: none !important;
+  }
+}
+

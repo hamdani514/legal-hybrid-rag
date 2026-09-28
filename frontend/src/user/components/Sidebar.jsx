@@ -16,7 +16,7 @@ const Sidebar = ({ activeTab, setActiveTab, onNewQuery, userEmail }) => {
   return (
     <aside className="h-full w-72 fixed left-0 top-0 bg-ash-100 flex flex-col p-6 gap-y-4 z-40 border-r border-ash-200/70">
       <div className="mb-8 px-2">
-        <h1 className="font-display text-lg font-semibold text-ash-900">Atelier Research</h1>
+        <h1 className="font-display text-lg font-semibold text-ash-900">Verdict AI Research</h1>
         <p className="text-xs font-ui uppercase tracking-widest text-ash-600 mt-1">
           {userEmail ? userEmail.split('@')[0] : 'Senior Counsel'}
         </p>

@@ -2,208 +2,138 @@ import { Link } from 'react-router-dom';
 import MediaFrame from './MediaFrame';
 
 /**
- * The opening spread. Centre-weighted claim over a light blue bloom, with a
- * floating facsimile of a real retrieved judgment below it — the reader sees
- * the actual output before being asked for anything.
+ * Universal Hero Banner used across Home, About, Pricing, FAQ, and Contact pages.
+ * Displays the Supreme Court photographic backdrop with page-specific messaging,
+ * authority badge, primary/secondary action triggers, and highlight pills.
  */
-const HIGHLIGHTS = [
+const DEFAULT_HIGHLIGHTS = [
   { icon: 'bolt', label: 'Answers in seconds' },
   { icon: 'format_quote', label: 'Every answer cited' },
   { icon: 'school', label: 'Free for students' },
 ];
 
-const RESULTS = [
-  { ref: 'Civil Appeal No. 23-P of 2017', score: '0.69', outcome: 'Dismissed', top: true },
-  { ref: 'Civil Appeal No. 43-Q of 2018', score: '0.59', outcome: 'Dismissed' },
-  { ref: 'Civil Appeal No. 42-K of 2016', score: '0.58', outcome: 'Dismissed' },
-];
-
-const HomeHero = () => {
+const HomeHero = ({
+  badge = 'Supreme Court of Pakistan · 9 reported judgments indexed',
+  title = 'Legal research that finds the',
+  accent = 'reasoning, not the keyword',
+  description = 'Ask your question in plain words. Every judgment is split into its facts, arguments, issues, ratio and order before it is indexed — so you get the passage that decides your point, with the case named beside it.',
+  primaryCta = { to: '/signup', label: 'Start researching free', icon: 'arrow_forward' },
+  secondaryCta = { to: '/about', label: 'See how it works', icon: 'play_circle' },
+  highlights = DEFAULT_HIGHLIGHTS,
+}) => {
   return (
-    <section className="ground-light relative w-full overflow-hidden">
-      {/* Decorative blooms. */}
-      <span
-        aria-hidden="true"
-        className="float-y-slow pointer-events-none absolute -right-28 top-16 h-80 w-80 rounded-full bg-brand-200/35 blur-3xl"
-      />
-      <span
-        aria-hidden="true"
-        className="float-y pointer-events-none absolute -left-28 top-64 h-72 w-72 rounded-full bg-violet-600/10 blur-3xl"
-      />
+    <section className="relative w-full overflow-hidden">
+      <MediaFrame
+        name="court"
+        wash="brand"
+        grain
+        drift
+        ratio={false}
+        className="relative w-full overflow-hidden"
+      >
+        {/* Decorative blooms. */}
+        <span
+          aria-hidden="true"
+          className="float-y-slow pointer-events-none absolute -right-28 top-16 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl"
+        />
+        <span
+          aria-hidden="true"
+          className="float-y pointer-events-none absolute -left-28 top-64 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl"
+        />
 
-      <div className="relative mx-auto w-full max-w-[1200px] px-5 pb-20 pt-32 sm:px-8 sm:pt-36 lg:pb-24 lg:pt-40">
-        {/* ── Claim ──────────────────────────────────────────────────── */}
-        <div className="flex flex-col items-center text-center">
-          <span
-            className="pop-in relative inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-brand-700"
-            style={{ '--i': 0 }}
-          >
-            <span
-              aria-hidden="true"
-              className="halo absolute -left-0.5 h-2 w-2 rounded-full bg-brand-500"
-            />
-            <span className="ml-3">Supreme Court of Pakistan · 9 reported judgments indexed</span>
-          </span>
-
-          <h1
-            className="pop-in mt-8 max-w-[52rem] font-display text-[clamp(2.5rem,6.8vw,4.5rem)] font-bold leading-[1.04] tracking-[-0.038em] text-balance text-ash-900"
-            style={{ '--i': 1 }}
-          >
-            Legal research that finds the{' '}
-            <span className="grad-text">reasoning, not the keyword</span>
-          </h1>
-
-          <p
-            className="pop-in mt-7 max-w-[42rem] font-prose text-[1.0625rem] leading-[1.8] text-ash-600 sm:text-lg"
-            style={{ '--i': 2 }}
-          >
-            Ask your question in plain words. Every judgment is split into its facts, arguments,
-            issues, ratio and order before it is indexed — so you get the passage that decides your
-            point, with the case named beside it.
-          </p>
-
-          <div
-            className="pop-in mt-10 flex w-full flex-col items-stretch gap-3.5 sm:w-auto sm:flex-row sm:items-center"
-            style={{ '--i': 3 }}
-          >
-            <Link
-              to="/signup"
-              className="grad-btn group inline-flex items-center justify-center gap-2.5 rounded-full px-8 py-4 font-ui text-[15.5px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0"
-            >
-              Start researching free
+        <div className="relative z-[1] mx-auto w-full max-w-[1200px] px-5 pb-28 pt-32 sm:px-8 sm:pt-36 lg:pb-36 lg:pt-44">
+          {/* ── Claim ──────────────────────────────────────────────────── */}
+          <div className="flex flex-col items-center text-center">
+            {badge && (
               <span
-                aria-hidden="true"
-                className="material-symbols-outlined text-[19px] transition-transform duration-300 group-hover:translate-x-1"
+                className="pop-in relative inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-white backdrop-blur-md shadow-sm"
+                style={{ '--i': 0 }}
               >
-                arrow_forward
-              </span>
-            </Link>
-            <Link
-              to="/about"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-ash-300 bg-white px-8 py-4 font-ui text-[15.5px] font-semibold text-ash-800 transition-all duration-300 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-[19px]">
-                play_circle
-              </span>
-              See how it works
-            </Link>
-          </div>
-
-          <ul
-            className="pop-in mt-9 flex flex-wrap items-center justify-center gap-x-7 gap-y-3"
-            style={{ '--i': 4 }}
-          >
-            {HIGHLIGHTS.map(({ icon, label }) => (
-              <li key={label} className="inline-flex items-center gap-2 font-prose text-[14px] text-ash-600">
                 <span
                   aria-hidden="true"
-                  className="material-symbols-outlined text-[18px] text-mint-600"
-                >
-                  {icon}
+                  className="halo absolute -left-0.5 h-2 w-2 rounded-full bg-cyan-400"
+                />
+                <span className="ml-3">{badge}</span>
+              </span>
+            )}
+
+            <h1
+              className="pop-in mt-8 max-w-[54rem] font-display text-[clamp(2.5rem,6.8vw,4.5rem)] font-bold leading-[1.04] tracking-[-0.038em] text-balance text-white"
+              style={{ '--i': 1 }}
+            >
+              {title}{' '}
+              {accent && (
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-200 to-indigo-200">
+                  {accent}
                 </span>
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+              )}
+            </h1>
 
-        {/* ── Facsimile of a real search ─────────────────────────────── */}
-        <div className="pop-in mt-16 sm:mt-20" style={{ '--i': 5 }} aria-hidden="true">
-          <div className="relative mx-auto max-w-[62rem]">
-            {/* Glow behind the panel. */}
-            <span className="grad-brand pointer-events-none absolute inset-x-10 -bottom-6 h-24 rounded-full opacity-25 blur-3xl" />
+            {description && (
+              <p
+                className="pop-in mt-7 max-w-[42rem] font-prose text-[1.0625rem] leading-[1.8] text-white/85 sm:text-lg"
+                style={{ '--i': 2 }}
+              >
+                {description}
+              </p>
+            )}
 
-            {/* Two photographs pinned either side of the facsimile, tilted
-                off-axis so the panel reads as the top of a stack rather than
-                a floating rectangle. Hidden below xl, where the viewport is
-                narrower than the panel plus its margins. */}
-            <MediaFrame
-              name="volume"
-              eager
-              wash="soft"
-              ratio="1 / 1"
-              className="float-y-slow ring-photo absolute -left-36 top-12 hidden w-[11.5rem] -rotate-6 rounded-3xl shadow-card-lg xl:block 2xl:-left-52 2xl:w-[14rem]"
-            />
-            <MediaFrame
-              name="stacks"
-              eager
-              wash="soft"
-              ratio="3 / 4"
-              className="float-y ring-photo absolute -right-36 top-24 hidden w-[11rem] rotate-[5deg] rounded-3xl shadow-card-lg xl:block 2xl:-right-52 2xl:w-[13rem]"
-            />
-
-            <div className="relative overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card-lg">
-              {/* Search bar */}
-              <div className="flex flex-col gap-4 border-b border-ash-200 bg-ash-50 px-5 py-5 sm:flex-row sm:items-center sm:px-7">
-                <span className="flex flex-1 items-center gap-3 rounded-full border border-ash-200 bg-white px-5 py-3 shadow-soft">
-                  <span className="material-symbols-outlined text-[20px] text-brand-500">search</span>
-                  <span className="truncate font-prose text-[14.5px] text-ash-700">
-                    Is a claim relating to dower within the jurisdiction of a Family Court?
-                  </span>
-                </span>
-                <span className="grad-btn inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-3 font-ui text-[13.5px] font-bold text-white">
-                  Search
-                </span>
-              </div>
-
-              {/* Results + the answer */}
-              <div className="grid grid-cols-1 lg:grid-cols-[0.88fr_1.12fr]">
-                <ul className="divide-y divide-ash-200 border-b border-ash-200 lg:border-b-0 lg:border-r">
-                  {RESULTS.map(({ ref, score, outcome, top }) => (
-                    <li
-                      key={ref}
-                      className={`flex items-center justify-between gap-3 px-5 py-4 sm:px-7 ${
-                        top ? 'bg-brand-50/60' : ''
-                      }`}
+            {(primaryCta || secondaryCta) && (
+              <div
+                className="pop-in mt-10 flex w-full flex-col items-stretch gap-3.5 sm:w-auto sm:flex-row sm:items-center"
+                style={{ '--i': 3 }}
+              >
+                {primaryCta && (
+                  <Link
+                    to={primaryCta.to}
+                    className="grad-btn group inline-flex items-center justify-center gap-2.5 rounded-full px-8 py-4 font-ui text-[15.5px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0"
+                  >
+                    {primaryCta.label}
+                    <span
+                      aria-hidden="true"
+                      className="material-symbols-outlined text-[19px] transition-transform duration-300 group-hover:translate-x-1"
                     >
-                      <span className="flex min-w-0 flex-col gap-1">
-                        <span className="truncate font-display text-[13.5px] font-semibold text-ash-900">
-                          {ref}
-                        </span>
-                        <span className="font-prose text-[12px] text-ash-500">{outcome}</span>
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 font-ui text-[11.5px] font-bold ${
-                          top ? 'bg-brand-500 text-white' : 'bg-ash-100 text-ash-600'
-                        }`}
-                      >
-                        {score}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="px-5 py-6 sm:px-7">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 font-ui text-[11px] font-bold uppercase tracking-[0.08em] text-brand-700">
-                    <span className="material-symbols-outlined text-[14px]">gavel</span>
-                    Court reasoning
-                  </span>
-
-                  <p className="mt-4 font-prose text-[14.5px] leading-[1.72] text-ash-700">
-                    The respondent was in exclusive possession and received <em>Ijjara</em> from the
-                    tenants, and never pleaded non-payment of dower. The dispute concerned wrong
-                    entries in the revenue record, which{' '}
-                    <mark className="rounded bg-brand-100 px-1 text-ash-900">
-                      in no way can be termed as a matter relating to dower
-                    </mark>
-                    .
-                  </p>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-400/15 px-3 py-1 font-ui text-[11.5px] font-bold text-mint-700">
-                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                      Appeal dismissed
+                      {primaryCta.icon || 'arrow_forward'}
                     </span>
-                    <span className="rounded-full border border-ash-200 px-3 py-1 font-ui text-[11.5px] font-medium text-ash-500">
-                      C.A. 23-P/2017
-                    </span>
-                  </div>
-                </div>
+                  </Link>
+                )}
+                {secondaryCta && (
+                  <Link
+                    to={secondaryCta.to}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-8 py-4 font-ui text-[15.5px] font-semibold text-white backdrop-blur-md transition-all duration-300 hover:border-white/50 hover:bg-white/20"
+                  >
+                    {secondaryCta.icon && (
+                      <span aria-hidden="true" className="material-symbols-outlined text-[19px]">
+                        {secondaryCta.icon}
+                      </span>
+                    )}
+                    {secondaryCta.label}
+                  </Link>
+                )}
               </div>
-            </div>
+            )}
+
+            {highlights && highlights.length > 0 && (
+              <ul
+                className="pop-in mt-9 flex flex-wrap items-center justify-center gap-x-7 gap-y-3"
+                style={{ '--i': 4 }}
+              >
+                {highlights.map(({ icon, label }) => (
+                  <li key={label} className="inline-flex items-center gap-2 font-prose text-[14px] text-white/80">
+                    <span
+                      aria-hidden="true"
+                      className="material-symbols-outlined text-[18px] text-cyan-300"
+                    >
+                      {icon}
+                    </span>
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
-      </div>
+      </MediaFrame>
     </section>
   );
 };
