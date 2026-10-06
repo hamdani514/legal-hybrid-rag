@@ -468,6 +468,11 @@ async def card_wave(force: bool = False, limit: int | None = None, concurrency: 
         if card["card_status"] == "complete":
             stats["complete"] += 1
             logger.info(f"{jid}: {card['case_display']} | {card['subject']} | complete")
+            # This card was the last missing store: the judgment is complete, so
+            # its local PDF/text copy can go (only if Drive holds the original).
+            from app.indexing.sync import prune_local_copies
+
+            await prune_local_copies(jid)
         else:
             stats["metadata_only"] += 1
             if card.get("card_error", "").startswith("rate_limited") and not stop.is_set():

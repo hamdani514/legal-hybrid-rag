@@ -33,12 +33,15 @@ SQLite transaction; run inline they froze every concurrent search for the
 whole time. Both now run in worker threads (asyncio.to_thread); only the Mongo
 calls stay on the loop.
 
-Where the connection JSON goes
-------------------------------
-connection_dir() is settings.CONNECTION_DIR (or the CONNECTION_DIR environment
-variable), else backend/app/connection. Scratch and test runs point it
-elsewhere so they never drop files into the live index that
-app.retrieval.index_loader reads.
+The index lives in MongoDB only
+-------------------------------
+`embedding_mappings` IS the node -> vector index that app.retrieval.index_loader
+reads. This pipeline used to mirror every row to
+backend/app/connection/<judgment_id>_mappings.json as well; that copy could
+drift from the collection, had to be verified separately by the store check,
+and cost ~20 MB on a deployed server for data MongoDB already held. It is no
+longer written. connection_dir() survives only so the delete and prune paths
+can clear files left by older runs.
 """
 
 import asyncio
@@ -108,56 +111,6 @@ def _chunks_for(node: dict) -> list[dict]:
     return chunk_node(title, text)
 
 
-async def _write_index_json(pdf_ids: set[str]) -> None:
-    """Write the node -> vector index that app.retrieval.index_loader reads.
-
-    One entry per NODE, not per chunk: the retrieval side resolves nodes, and
-    `embedding_mappings` carries a unique index on node_id.
-
-    The embedding vectors themselves are deliberately not written. Chroma is
-    the vector store; duplicating 768 floats per chunk into JSON produced files
-    that nothing ever read and that would have run to hundreds of megabytes at
-    corpus scale.
-    """
-    out_dir = connection_dir()
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    for pdf_id in pdf_ids:
-        entries = []
-        async for mapping in db.database.embedding_mappings.find({"file_id": pdf_id}):
-            mapping["_id"] = str(mapping["_id"])
-            created = mapping.get("created_at")
-            if isinstance(created, datetime):
-                mapping["created_at"] = created.isoformat()
-
-            # Field aliases kept for the existing readers of this file.
-            mapping["nodeid"] = mapping.get("node_id", "")
-            mapping["pdfid"] = mapping.get("file_id", "")
-            mapping["treeid"] = mapping.get("tree_id", "")
-            mapping["pdf_id"] = mapping["pdfid"]
-            mapping["tree_id"] = mapping["treeid"]
-            mapping["embedding_id"] = mapping.get("vector_id", "")
-            mapping["embedding id"] = mapping["embedding_id"]
-
-            entries.append(mapping)
-
-        path = out_dir / f"{pdf_id}_mappings.json"
-        try:
-            await asyncio.to_thread(_dump_json, path, entries)
-            logger.info(f"[{pdf_id}] Wrote index: {path.name} ({len(entries)} nodes)")
-        except Exception as e:
-            logger.error(f"[{pdf_id}] Failed to write index {path}: {e}")
-
-        # Remove the vector dump left by earlier runs of this pipeline.
-        stale = out_dir / f"{pdf_id}_vectors.json"
-        if stale.exists():
-            try:
-                stale.unlink()
-                logger.info(f"[{pdf_id}] Removed obsolete {stale.name}")
-            except OSError as e:
-                logger.warning(f"[{pdf_id}] Could not remove {stale.name}: {e}")
-
-
 async def run_embedding_pipeline(pdf_id: str = None, force_regenerate: bool = False) -> dict:
     """Embed MongoDB nodes into ChromaDB, chunking sections to fit the model.
 
@@ -223,7 +176,6 @@ async def run_embedding_pipeline(pdf_id: str = None, force_regenerate: bool = Fa
 
     if not flat:
         logger.info("Nothing to embed; every node is already indexed.")
-        await _write_index_json({d for d in documents_seen if d})
         return {
             "documents_processed": len(documents_seen), "nodes_processed": len(nodes),
             "chunks_embedded": 0, "vector_store": "chroma", "status": "success",
@@ -295,10 +247,8 @@ async def run_embedding_pipeline(pdf_id: str = None, force_regenerate: bool = Fa
             upsert=True,
         )
 
-    await _write_index_json({d for d in documents_seen if d})
-
     logger.info(
-        f"Embedding complete: {len(documents_seen)} documents, "
+        f"Embedding complete:{len(documents_seen)} documents, "
         f"{len(pending)} nodes, {chunks_embedded} chunks"
     )
     return {

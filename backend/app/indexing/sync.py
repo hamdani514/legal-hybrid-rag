@@ -63,6 +63,10 @@ from app.retrieval.contracts import INDEX_REQUIRED_FOR_SEARCH, INDEX_STORES
 # The experiment collection reindex.py --contextual builds.
 DEFAULT_CONTEXTUAL_COLLECTION = "legal_embeddings_v3_ctx"
 
+# Local working copies of one judgment, under backend/uploads/.
+UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
+LOCAL_COPY_SUFFIXES = (".pdf", ".txt", "_sections.json", "_summary.md")
+
 # documents.status values owned by the indexing stages (see module docstring).
 STATUS_INDEXING = "indexing"
 STATUS_SEARCHABLE = "searchable"
@@ -311,6 +315,60 @@ async def warm_imports() -> None:
         import app.vectorstore.chroma_store  # noqa: F401
 
     await asyncio.to_thread(_imp)
+
+
+async def prune_local_copies(judgment_id: str) -> dict:
+    """Delete a finished judgment's local working files (backend/uploads/).
+
+    At 2,677 judgments the PDFs alone are ~431 MB and their cached text another
+    ~137 MB, all of it dead weight on a deployed server once the judgment is
+    indexed and its original is safe in Google Drive. This removes that copy,
+    but ONLY when both are true:
+
+        * documents.status == "complete" (every store written, card included),
+          so nothing is left to resume; and
+        * the judgment has a Drive file id, so the PDF still exists somewhere.
+
+    A judgment that is only "searchable", failed, or was ingested without
+    --drive keeps its files: those are exactly the cases Retry/Resume needs.
+
+    Nothing live reads these files for a complete judgment: downloads prefer
+    Drive (the local path is only a fallback), exact_match reads uploads/*.txt
+    only for judgments that have NO case card, and metadata_extractor returns
+    None when the text is gone and rebuilds a card from MongoDB instead.
+
+    Never raises; returns {"pruned": [names], "skipped": "reason"}.
+    """
+    try:
+        doc = await db.documents.find_one(
+            {"pdf_id": judgment_id}, {"status": 1, "drive": 1, "drive_file_id": 1})
+        if not doc:
+            return {"pruned": [], "skipped": "no document record"}
+        if doc.get("status") != STATUS_COMPLETE:
+            return {"pruned": [], "skipped": f"status is {doc.get('status')!r}, not complete"}
+        drive_id = (doc.get("drive") or {}).get("file_id") or doc.get("drive_file_id")
+        if not drive_id:
+            return {"pruned": [], "skipped": "no Google Drive copy; keeping the only original"}
+
+        def _unlink() -> list[str]:
+            removed = []
+            for suffix in LOCAL_COPY_SUFFIXES:
+                path = UPLOADS_DIR / f"{judgment_id}{suffix}"
+                try:
+                    if path.exists():
+                        path.unlink()
+                        removed.append(path.name)
+                except OSError as e:  # locked by another process: leave it
+                    logger.warning(f"[{judgment_id}] could not remove {path.name}: {e}")
+            return removed
+
+        pruned = await asyncio.to_thread(_unlink)
+        if pruned:
+            logger.info(f"[{judgment_id}] local copies pruned ({len(pruned)} files); PDF remains on Drive")
+        return {"pruned": pruned, "skipped": ""}
+    except Exception as e:  # noqa: BLE001 - housekeeping must never fail a job
+        logger.warning(f"[{judgment_id}] prune_local_copies failed: {e}")
+        return {"pruned": [], "skipped": str(e)}
 
 
 def _refresh_loader() -> None:

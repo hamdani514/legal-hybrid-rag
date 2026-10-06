@@ -20,8 +20,9 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-CONNECTION_DIR = Path(__file__).resolve().parents[1] / "connection"
-CONNECTION_DIR.mkdir(parents=True, exist_ok=True)
+# The node -> vector index lives in MongoDB (embedding_mappings); the old
+# app/connection/*.json mirror is no longer written, so nothing recreates that
+# folder here. The delete path below still clears files left by older runs.
 
 
 ACTIVE_INGESTION_TASKS: dict[str, asyncio.Task] = {}
@@ -284,6 +285,12 @@ async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
         final_status = (doc or {}).get("status") or "searchable"
         await _job_set(pdf_id, status=final_status, completed_at=datetime.now(timezone.utc), **drive_fields)
         logger.info(f"[{pdf_id}] Ingestion finished: {final_status} ({drive_fields})")
+
+        # The judgment is indexed and its original is on Drive: drop the local
+        # working copy so a deployed server does not accumulate every PDF.
+        from app.indexing.sync import prune_local_copies
+
+        await prune_local_copies(pdf_id)
 
     except asyncio.TimeoutError:
         error_message = "Parsing timed out after 600 seconds."

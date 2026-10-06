@@ -22,9 +22,10 @@ What "present" means (per judgment, pdf_id = J)
 -----------------------------------------------
 tree         document_trees has J, and its tree_id has nodes in `nodes`
 dense        every node of that tree has an embedding_mappings row, no mapping
-             points at a node outside it, the live Chroma collection holds
-             exactly sum(chunk_count) vectors with file_id J, and the
-             connection JSON lists every mapping
+             points at a node outside it, and the live Chroma collection holds
+             exactly sum(chunk_count) vectors with file_id J. (embedding_mappings
+             IS the index app.retrieval.index_loader reads; the old
+             connection/*.json mirror is no longer written or required.)
 fts          chunks_fts has rows for J, and cards_fts has J's card if a card exists
 card         case_cards has J with card_status "complete" (metadata_only = gap)
 card_vector  the card collection has id J, built from the card's current
@@ -201,8 +202,7 @@ def evaluate(pdf_id: str, snap: dict) -> dict:
     mapped = snap["mappings"].get(pdf_id, {})
     expected_vectors = sum(mapped.values())
     live = snap["live"].get(pdf_id, 0)
-    conn = snap["conn"].get(pdf_id)
-    dense = tree and set(mapped) == tree_nodes and live == expected_vectors > 0 and conn == len(mapped)
+    dense = tree and set(mapped) == tree_nodes and live == expected_vectors > 0
     if tree and not dense:
         if not mapped:
             notes.append("no vectors")
@@ -212,8 +212,6 @@ def evaluate(pdf_id: str, snap: dict) -> dict:
                              + (f" +{len(set(mapped) - tree_nodes)} stale" if set(mapped) - tree_nodes else ""))
             if live != expected_vectors:
                 notes.append(f"live vectors {live}/{expected_vectors}")
-            if conn != len(mapped):
-                notes.append("connection JSON missing" if conn is None else f"connection JSON {conn}/{len(mapped)}")
 
     card_doc = snap["cards"].get(pdf_id)
     card = bool(card_doc) and card_doc.get("card_status") == "complete"
@@ -421,7 +419,7 @@ def _self_check() -> None:
     r = evaluate("J", snap())
     assert all(r[s] for s in INDEX_STORES) and r["required_ok"], r
     assert not evaluate("J", snap(live={"J": 2}))["dense"]            # a chunk missing in Chroma
-    assert not evaluate("J", snap(conn={}))["dense"]                   # connection JSON missing
+    assert evaluate("J", snap(conn={}))["dense"]   # the JSON mirror is gone: dense must not depend on it
     assert not evaluate("J", snap(mappings={"J": {"a": 1}}, live={"J": 1}))["dense"]  # node unmapped
     assert not evaluate("J", snap(trees={}))["tree"]
     r = evaluate("J", snap(cards={"J": {"card_status": "metadata_only"}},
