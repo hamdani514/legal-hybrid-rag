@@ -44,8 +44,11 @@ backend/llm_pure_classifier.py
 backend/purge_embeddings_and_trees.py
 backend/run_classifier.py
 backend/test_and_verify.py
-backend/app/ingestion/llm_pure_classifier.py
-backend/app/ingestion/llm_section_classifier.py
+# NOTE: app/ingestion/llm_pure_classifier.py and llm_section_classifier.py were
+# listed here. They are NOT optional: app/ingestion/parser.py imports both at
+# module load. Ignoring them meant they were never pushed, so the GitHub
+# checkout had no such files and every Docker build produced an image that died
+# with ModuleNotFoundError. Do not re-add them.
 scratch/
 backend/scratch/
 chroma_db/
