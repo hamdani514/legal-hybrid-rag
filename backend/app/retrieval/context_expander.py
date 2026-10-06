@@ -19,6 +19,7 @@ ARGUMENTS, FACTS, ANALYSIS_RATIO, FINAL_ORDER) are recovered here from the
 fetched documents rather than trusted from the search results.
 """
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -140,10 +141,14 @@ async def expand_all_judgments(stage2_results: dict[str, list[dict]]) -> list[di
     Returns:
         One expanded context dict per judgment, in stage 2 order.
     """
-    results = [
-        await expand_judgment_context(judgment_id, sections)
+    # Concurrently: each judgment is a handful of independent MongoDB round
+    # trips, and awaiting them one judgment after another made a three-result
+    # search pay three times the latency for no reason. gather keeps the input
+    # order, so results stay in stage 2 order.
+    results = list(await asyncio.gather(*(
+        expand_judgment_context(judgment_id, sections)
         for judgment_id, sections in stage2_results.items()
-    ]
+    )))
 
     logger.info(f"Context expanded for {len(results)} judgments")
     return results

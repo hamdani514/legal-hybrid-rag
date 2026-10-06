@@ -7,6 +7,7 @@ import AdminPagination from '../components/AdminPagination';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import AdminTable from '../components/AdminTable';
 import AdminFormModal from '../components/AdminFormModal';
+import { apiFetch } from '../../lib/api';
 
 const ADMINS_PER_PAGE = 5;
 
@@ -20,7 +21,6 @@ const AdminManagementPage = () => {
   const [filterQuery, setFilterQuery] = useState('');
   const [sortBy, setSortBy] = useState('id_asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteAdminId, setDeleteAdminId] = useState(null);
@@ -67,7 +67,7 @@ const AdminManagementPage = () => {
     try {
       setLoading(true);
       setErrorMsg('');
-      const res = await fetch('/api/admin/admins');
+      const res = await apiFetch('/api/admin/admins');
       if (res.ok) {
         const data = await res.json();
         setAdmins(data.admins || []);
@@ -98,13 +98,6 @@ const AdminManagementPage = () => {
       .slice(0, 2);
   };
 
-  const togglePasswordVisibility = (adminid) => {
-    setVisiblePasswords((prev) => ({
-      ...prev,
-      [adminid]: !prev[adminid]
-    }));
-  };
-
   const handleAddClick = () => {
     setIsEditMode(false);
     setErrorMsg('');
@@ -131,8 +124,9 @@ const AdminManagementPage = () => {
       email: admin.email || admin.adminid || '',
       role: admin.role || 'admin',
       dob: admin.dob || '',
-      password: admin.password || '',
-      confirmPassword: admin.password || ''
+      // The server never returns passwords; blank keeps the current one.
+      password: '',
+      confirmPassword: ''
     });
     setModalOpen(true);
   };
@@ -148,7 +142,7 @@ const AdminManagementPage = () => {
   const confirmDeleteAdmin = async () => {
     if (!deleteAdminId) return;
     try {
-      const res = await fetch(`/api/admin/admins/${encodeURIComponent(deleteAdminId)}`, {
+      const res = await apiFetch(`/api/admin/admins/${encodeURIComponent(deleteAdminId)}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -181,7 +175,7 @@ const AdminManagementPage = () => {
     }
 
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
-    if (!pwRegex.test(formData.password)) {
+    if ((!isEditMode || formData.password) && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
       return;
     }
@@ -202,7 +196,7 @@ const AdminManagementPage = () => {
       const url = isEditMode ? `/api/admin/admins/${encodeURIComponent(formData.adminid)}` : '/api/admin/admins';
       const method = isEditMode ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
@@ -313,8 +307,6 @@ const AdminManagementPage = () => {
             sortBy={sortBy}
             setSortBy={setSortBy}
             setCurrentPage={setCurrentPage}
-            visiblePasswords={visiblePasswords}
-            togglePasswordVisibility={togglePasswordVisibility}
             handleEditClick={handleEditClick}
             handleDeleteClick={handleDeleteClick}
             currentAdmin={currentAdmin}

@@ -6,6 +6,7 @@ import AdminStatsCard from '../components/AdminStatsCard';
 import AdminPagination from '../components/AdminPagination';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import SupportQueriesTable from '../components/SupportQueriesTable';
+import { apiFetch } from '../../lib/api';
 
 const AdminSupportPage = () => {
   const [currentAdmin, setCurrentAdmin] = useState(null);
@@ -40,7 +41,7 @@ const AdminSupportPage = () => {
     if (showLoader) setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/admin/support');
+      const res = await apiFetch('/api/admin/support');
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Failed to load support queries.');
       setQueries(data.queries || []);
@@ -97,7 +98,7 @@ const AdminSupportPage = () => {
 
   const handleStatusChange = async (queryId, newStatus) => {
     try {
-      const res = await fetch(`/api/admin/support/${queryId}/status`, {
+      const res = await apiFetch(`/api/admin/support/${queryId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -117,7 +118,7 @@ const AdminSupportPage = () => {
 
   const handleDeleteQuery = async (queryId) => {
     try {
-      const res = await fetch(`/api/admin/support/${queryId}`, {
+      const res = await apiFetch(`/api/admin/support/${queryId}`, {
         method: 'DELETE',
       });
       if (!res.ok) {

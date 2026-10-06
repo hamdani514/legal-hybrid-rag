@@ -10,8 +10,6 @@ const AdminTable = ({
   sortBy,
   setSortBy,
   setCurrentPage,
-  visiblePasswords,
-  togglePasswordVisibility,
   handleEditClick,
   handleDeleteClick,
   currentAdmin,
@@ -95,9 +93,6 @@ const AdminTable = ({
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
                 Date of Birth
               </th>
-              <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Encrypted Password
-              </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280] text-right">
                 Actions
               </th>
@@ -163,24 +158,6 @@ const AdminTable = ({
                   {/* DOB */}
                   <td className="px-8 py-6">
                     <span className="font-prose text-sm text-[#4B5563]">{admin.dob || 'N/A'}</span>
-                  </td>
-
-                  {/* Password Eye Toggle */}
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-[#4B5563]">
-                        {visiblePasswords[admin.adminid] ? admin.password : '••••••••••••'}
-                      </span>
-                      <button
-                        onClick={() => togglePasswordVisibility(admin.adminid)}
-                        className="text-ash-400 hover:text-ash-600 transition-colors p-1"
-                        title={visiblePasswords[admin.adminid] ? 'Hide Password' : 'Show Password'}
-                      >
-                        <span className="material-symbols-outlined text-base">
-                          {visiblePasswords[admin.adminid] ? 'visibility_off' : 'visibility'}
-                        </span>
-                      </button>
-                    </div>
                   </td>
 
                   {/* Actions */}

@@ -1,0 +1,2753 @@
+{
+  "_README": "System PROPOSALS for the real logged queries. Never a label: proposed_relevant is just the system's top-1. Confirm via the review sheet.",
+  "generated_at": "2026-10-02T23:54:23",
+  "corpus_judgments": 10,
+  "queries": [
+    {
+      "id": "real-8fe6bdd397",
+      "query": "evacuee land granted and later disputed in Tando Adam",
+      "count": 17,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9970856180018727,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9970856180018727,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 27455.6
+    },
+    {
+      "id": "real-4b79298b4d",
+      "query": "Is a claim relating to dower within the jurisdiction of a Family Court?",
+      "count": 17,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9069077802370158,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9069077802370158,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2959.3
+    },
+    {
+      "id": "real-1fbf70f728",
+      "query": "did the Service Tribunal have jurisdiction to entertain the service appeal",
+      "count": 14,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9998094119337636,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9851570598289214,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.3580227988780602,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9998094119337636,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9851570598289214,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.3580227988780602,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 3667.8
+    },
+    {
+      "id": "real-4ab80f6304",
+      "query": "contempt application dismissed by the High Court of Balochistan",
+      "count": 11,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9903848189634791,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9364696117622566,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9903848189634791,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9364696117622566,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": "ce086b4a-d375-4051-9c82-11b97b903b01",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4897.3
+    },
+    {
+      "id": "real-b8933f5dfb",
+      "query": "agricultural land allotted after partition and the title later questioned",
+      "count": 10,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.0017673688244281328
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.00022117795441376124
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 9.665052294934578e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5871.2
+    },
+    {
+      "id": "real-8d135c8cbe",
+      "query": "appeal allowed and the impugned judgment set aside with parties bearing their own costs",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9999551251891458,
+          "filename": "judgement_C_A_1_2020.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.9984713858818008,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9970298572247451,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9999551251891458,
+          "filename": "judgement_C_A_1_2020.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.9984713858818008,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9970298572247451,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9964293501386408,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.4325595732503182,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.33708177252933813,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.3148680524992675,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.24998522207098117,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "49c42cc9-1123-4fc3-a387-67a738820871": 2
+      },
+      "proposed_type": "disposition",
+      "legacy_match": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5442.9
+    },
+    {
+      "id": "real-06b4f3116a",
+      "query": "appeal dismissed with no order as to costs for want of merit",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9999170658606061,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.984348595038403,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9169091595888217,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9999170658606061,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.984348595038403,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9169091595888217,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7": 2
+      },
+      "proposed_type": "disposition",
+      "legacy_match": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2697.9
+    },
+    {
+      "id": "real-fc82e7e936",
+      "query": "Can rejected ballot papers be recounted after a narrow victory margin?",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.47266644717743256,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.47266644717743256,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "49c42cc9-1123-4fc3-a387-67a738820871": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2849.9
+    },
+    {
+      "id": "real-fe6bdcbe74",
+      "query": "challenge to a narrow win in a provincial assembly constituency in Balochistan",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.5743253950519818,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.5743253950519818,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "49c42cc9-1123-4fc3-a387-67a738820871": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2622.9
+    },
+    {
+      "id": "real-8e5b98824e",
+      "query": "civil revision dismissed by the High Court of Balochistan at Quetta",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9996512920405081,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9695857436550904,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9340492807084352,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9996512920405081,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9695857436550904,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9340492807084352,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9086001381610572,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2887.1
+    },
+    {
+      "id": "real-7ff96802c0",
+      "query": "civil servant denied a fair opportunity of hearing by the tribunal",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.8786852178646081,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.8492564894799898,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.8786852178646081,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.8492564894799898,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4415.4
+    },
+    {
+      "id": "real-6c8ba995db",
+      "query": "constitutional petitions decided by the High Court of Sindh at Karachi in 2021",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9993976464476081,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9616824458619847,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.874326530999217,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9993976464476081,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9616824458619847,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.874326530999217,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.5336407743881577,
+          "filename": "judgement_C_A_1_2020.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.46213952086624593,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.352530856087203,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 12711.3
+    },
+    {
+      "id": "real-7393246480",
+      "query": "dispute over wrong entries in the revenue record between spouses",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.8155192948223616,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.8155192948223616,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 10701.2
+    },
+    {
+      "id": "real-bba332c295",
+      "query": "election petition where the winning margin was only sixty five votes",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.6003239141596886,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.24589154317740033,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.6003239141596886,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.24589154317740033,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4966.7
+    },
+    {
+      "id": "real-12e8c3c11b",
+      "query": "general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9998165417843395,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9998165417843395,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": "5a14105d-8a45-413c-8c93-26d6301cf028",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4558.0
+    },
+    {
+      "id": "real-52178cf439",
+      "query": "lower school course dates determining a police officer's seniority",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.7685221199305713,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.7685221199305713,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 3321.1
+    },
+    {
+      "id": "real-2ad478b37e",
+      "query": "seniority and promotion of police officers before a service tribunal",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.23827707187826794,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.22470543523477574,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.23827707187826794,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.22470543523477574,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 6177.3
+    },
+    {
+      "id": "real-66c0cd348e",
+      "query": "trade mark assignment agreement was incorrectly relied upon",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.9989275874791785,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.9989275874791785,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 18605.6
+    },
+    {
+      "id": "real-6ada17c7de",
+      "query": "two service appeals raising common questions of law decided together",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.42033915848478737,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.42033915848478737,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 7178.2
+    },
+    {
+      "id": "real-4d05f72637",
+      "query": "when will this Court decline leave to appeal under Article 185(3)",
+      "count": 10,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.4246096371482536,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.4246096371482536,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": "ce086b4a-d375-4051-9c82-11b97b903b01",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 6136.3
+    },
+    {
+      "id": "real-1c79366717",
+      "query": "who owns a brand name after a company is restructured",
+      "count": 10,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.00013187676554606565
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 4.0555689501926705e-05
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 2.2418819263065785e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4849.9
+    },
+    {
+      "id": "real-612daadf58",
+      "query": "Appeal by Pirzada Noor-ul-Basar against Mst. Pakistan Bibi and others regarding a family dispute under the Family Courts Act, 1964. The Supreme Court held that the Court interpreted the relevant statutory provisions and rules. Appeal dismissed.",
+      "count": 7,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.995168719533712,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.8828239727451745,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.5734617337902232,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.995168719533712,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.8828239727451745,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.5734617337902232,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.4101356151502536,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.30639313918543526,
+          "filename": "judgement_C_A_1_2020.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.28413996243054723,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.2278049363376293,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5812.8
+    },
+    {
+      "id": "real-707868e56a",
+      "query": "imran khan bail case",
+      "count": 6,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.1598242446878033
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.034532338596671604
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.017878671683113738
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5430.5
+    },
+    {
+      "id": "real-0bf5672561",
+      "query": "bail granted despite murder charges",
+      "count": 5,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.0003009294932260896
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00013699571715569293
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 8.020968051421679e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 14121.2
+    },
+    {
+      "id": "real-a08ab20753",
+      "query": "bail granted despite murder charges weak evidence",
+      "count": 5,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.00030576550968562595
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.00016165967401320997
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.00010282416325550902
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 6986.4
+    },
+    {
+      "id": "real-0200c4245d",
+      "query": "Co-owners under a family settlement transferring more than their share",
+      "count": 5,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.023714021945811403
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 9.440804620703047e-05
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 4.583505304610979e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 18456.3
+    },
+    {
+      "id": "real-7c564c3515",
+      "query": "Dispute over evacuee land devolving on legal heirs",
+      "count": 5,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.710386562326629,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.710386562326629,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 8440.8
+    },
+    {
+      "id": "real-d4839bdc6f",
+      "query": "family dispute case",
+      "count": 5,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.04499661498114738
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.011583475679796517
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00456813854494114
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5348.3
+    },
+    {
+      "id": "real-91be4867bf",
+      "query": "Seniority and promotion dispute between police officers",
+      "count": 5,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.3923599647159852,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.3923599647159852,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4108.2
+    },
+    {
+      "id": "real-df5d41b6ec",
+      "query": "Service appeal remanded for fresh hearing after denial of opportunity",
+      "count": 5,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9917356978820023,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9917356978820023,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4324.2
+    },
+    {
+      "id": "real-6becea4518",
+      "query": "service tribunal jurisdiction over a civil servant appeal",
+      "count": 5,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9941927071556231,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9658964643895792,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.6690441196390969,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9941927071556231,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9658964643895792,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.6690441196390969,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4117.9
+    },
+    {
+      "id": "real-47fcd38255",
+      "query": "Was the penalty imposed on the civil servant proportionate to the misconduct?",
+      "count": 5,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9286597541129735,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9286597541129735,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 3887.4
+    },
+    {
+      "id": "real-d6986f2824",
+      "query": "What did the Court decide about family court jurisdiction under the Family Courts Act 1964?",
+      "count": 5,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.0032183316307107758
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.0022487596301759127
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.0017555467374896466
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4171.1
+    },
+    {
+      "id": "real-cef436867c",
+      "query": "family dispute",
+      "count": 4,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.026252643325890345
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.004524197025565119
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.002223894693031081
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 17082.1
+    },
+    {
+      "id": "real-01f618d859",
+      "query": "Order of the Punjab Service Tribunal set aside on appeal",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.9941043666659152,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9521034175757909,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9244476208049232,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.9941043666659152,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9521034175757909,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9244476208049232,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5538.4
+    },
+    {
+      "id": "real-89a09eddce",
+      "query": "Requirements under the Representation of the People Act for alleging rigging",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9986113378695454,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9986113378695454,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5695.8
+    },
+    {
+      "id": "real-95250d05de",
+      "query": "Service dispute involving employees of the Ministry of Foreign Affairs",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.6783995583205614,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.6783995583205614,
+          "filename": "judgement_C_A_6_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 7885.8
+    },
+    {
+      "id": "real-39c56dc870",
+      "query": "service tribunal appeal",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9992565511700009,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.98907620971904,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.6052203485565741,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9992565511700009,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.98907620971904,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.6052203485565741,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 15684.4
+    },
+    {
+      "id": "real-4fbfc5e215",
+      "query": "What must an election petition plead to establish corrupt practices?",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9992663967388102,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9992663967388102,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2985.4
+    },
+    {
+      "id": "real-926fcca2b9",
+      "query": "Wife claiming ownership of land on the basis of a dower deed",
+      "count": 4,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.7546657357684057,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.7546657357684057,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 3159.9
+    },
+    {
+      "id": "real-ab0af3d40c",
+      "query": "Appeal against conviction and death sentence for murder",
+      "count": 2,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.004044474422529311
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.0006971860989749658
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.0006791804073910696
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4338.4
+    },
+    {
+      "id": "real-95317ea1a1",
+      "query": "Bail granted in a narcotics possession case",
+      "count": 2,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.002129653795269524
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.00036786701891025066
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.00020893387922281132
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4588.3
+    },
+    {
+      "id": "real-97409e68fb",
+      "query": "Can a Single Judge of a High Court exercise suo motu jurisdiction under Article 199?",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9974955613816097,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9974955613816097,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 7604.9
+    },
+    {
+      "id": "real-0fc380c073",
+      "query": "Challenge to the election of a returned candidate before an election tribunal",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9861417616285176,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9022516563016713,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9861417616285176,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9022516563016713,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5020.1
+    },
+    {
+      "id": "real-789cd21f31",
+      "query": "Constitutional petitions decided by the High Court of Sindh at Karachi",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9981683503776517,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.9744579157700664,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.7121051167685962,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9981683503776517,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.9744579157700664,
+          "filename": "judgement_C_A_57-K_2018.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.7121051167685962,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.6169679542236131,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.579828935058472,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.3834470316412362,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.286021160214431,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2982.5
+    },
+    {
+      "id": "real-029b5fa672",
+      "query": "Correction of wrong entries in the revenue record",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9626186897447656,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.961228810675374,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.2326968352645142,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9626186897447656,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.961228810675374,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.2326968352645142,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2768.3
+    },
+    {
+      "id": "real-8e7277d8ac",
+      "query": "family court jurisdiction under the Family Courts Act 1964",
+      "count": 2,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.002816042649551978
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.002599498458976849
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.0010099096732901836
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2616.9
+    },
+    {
+      "id": "real-0024604d44",
+      "query": "legal dispute between the families",
+      "count": 2,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.02290342044993894
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.000779749411171822
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00039779421672271235
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 18305.0
+    },
+    {
+      "id": "real-23b3df0dfe",
+      "query": "What must an election petition plead to establish corrupt practices and rigging?",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9996266906547712,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9996266906547712,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5350.2
+    },
+    {
+      "id": "real-2711963520",
+      "query": "Whether the Service Tribunal had jurisdiction to entertain the appeal",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9998526161632849,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9591242528158899,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.2531147825848238,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9998526161632849,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9591242528158899,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.2531147825848238,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 3048.0
+    },
+    {
+      "id": "real-879f3fe6e7",
+      "query": "Who qualifies as a civil servant under the Service Tribunals Act 1973?",
+      "count": 2,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9988023371252572,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.7064204857276538,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.3578514340429165,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9988023371252572,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.7064204857276538,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.3578514340429165,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2821.9
+    },
+    {
+      "id": "real-6f945690cb",
+      "query": "Why was bail granted despite murder charges?",
+      "count": 2,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.0002512555315854775
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00010377521346143515
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 7.785239666104749e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "issue",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2790.1
+    },
+    {
+      "id": "real-07a0a20b25",
+      "query": "any family dispute case",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.00907179095065976
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.0041835945887871515
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.0009574654247682661
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 18155.6
+    },
+    {
+      "id": "real-bda1c7dd7e",
+      "query": "bail granted to accused in a murder case",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.0007742288714809198
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.0001970299765187836
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.00016206172274831662
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 4684.9
+    },
+    {
+      "id": "real-b86f1a8200",
+      "query": "case of car selling",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.005397899227920783
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00013936631147536891
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 9.852633839081328e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 7809.6
+    },
+    {
+      "id": "real-9f8aecaf5d",
+      "query": "Case where accused got bail in a murder case 2019, bail was granted",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.0009338492858055135
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.00039685165765447877
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.00019392892978096303
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "disposition",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5767.3
+    },
+    {
+      "id": "real-42007fa3c6",
+      "query": "civil servant appeal against dismissal before the Service Tribunal",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9930685964417869,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9764054133156445,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9930685964417869,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9764054133156445,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": 2
+      },
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2650.0
+    },
+    {
+      "id": "real-8ef3288da7",
+      "query": "cryptocurrency regulation in Europe",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 4.4105749434335294e-05
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 2.0428752359550465e-05
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 1.7924380184509173e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2724.1
+    },
+    {
+      "id": "real-92cfd862fe",
+      "query": "cryptocurrency regulation in the European Union",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 3.1209708317607156e-05
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 1.968886198237688e-05
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 1.6213073247479488e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 17795.9
+    },
+    {
+      "id": "real-ccd4d9be01",
+      "query": "dispute on car",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.0018599603772349548
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00016627072941244645
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.0001577637152638536
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5349.9
+    },
+    {
+      "id": "real-92e8454dd5",
+      "query": "election petition alleging rigging by the returned candidate",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9994557890718014,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.953850715818584,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9994557890718014,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.953850715818584,
+          "filename": "judgement_C_A_1_2020.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a14105d-8a45-413c-8c93-26d6301cf028": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 7514.4
+    },
+    {
+      "id": "real-f662533d12",
+      "query": "family court jurisdiction dower deed",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.501286315687863,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.501286315687863,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 16336.3
+    },
+    {
+      "id": "real-3226c5c968",
+      "query": "got it",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.003844484540373325
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.00339585370256498
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.0031697856834793582
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2739.9
+    },
+    {
+      "id": "real-f6ec7e183b",
+      "query": "goveronment of pakistan vs pso",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.05146348700875387
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.037908936055760116
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.01558043630117686
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "entity",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2579.2
+    },
+    {
+      "id": "real-c22b5f9178",
+      "query": "hi",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.001587199386921731
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.0015740928306632622
+        },
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "score": 0.0015071270765816237
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2161.7
+    },
+    {
+      "id": "real-b6f1287842",
+      "query": "hiiii",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.0006168886715124658
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.0006012236297710368
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.0002541789335335283
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 2663.8
+    },
+    {
+      "id": "real-8696220609",
+      "query": "legal dispute",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.3925104079095332,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.3925104079095332,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.24470062811575077,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.3925104079095332,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.3925104079095332,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.24470062811575077,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 10187.9
+    },
+    {
+      "id": "real-b3bd2b034b",
+      "query": "legal dispute case",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.365763614463133,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.252834624485203,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.252834624485203,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.365763614463133,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.252834624485203,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.252834624485203,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7": 2
+      },
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 15822.0
+    },
+    {
+      "id": "real-dad172f144",
+      "query": "legal issue",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9978858705118347,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9978858705118347,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9951293549835817,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9978858705118347,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9978858705118347,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.9951293549835817,
+          "filename": "judgement_C_A_42-K_2016.pdf"
+        },
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.994273202708682,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        },
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "score": 0.9925590265102732,
+          "filename": "judgement_C_A_1_2020.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.9921733803553057,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        },
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9897960518766635,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "score": 0.9749407171787471,
+          "filename": "judgement_C_A_5-Q_2014.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 6989.8
+    },
+    {
+      "id": "real-ddbce45db7",
+      "query": "okyyyy",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.00024921898018714743
+        },
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "score": 0.00018059174225287984
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.00010623591028679518
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 6536.9
+    },
+    {
+      "id": "real-113b6dbf15",
+      "query": "police officer removed from service after departmental inquiry",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9317877252272865,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9317877252272865,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 16787.9
+    },
+    {
+      "id": "real-f03706ae6d",
+      "query": "postal department employee seeking reinstatement and back benefits",
+      "count": 1,
+      "abstained": true,
+      "top": [],
+      "top_all": [],
+      "below_floor": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.001356747400855426
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.00010273556362971693
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 6.090543917354973e-05
+        }
+      ],
+      "proposed_relevant": {},
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 5978.2
+    },
+    {
+      "id": "real-91dc9f287b",
+      "query": "Regularisation of contractual employees under a provincial 2013 Act",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9991331802577467,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9991331802577467,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 10826.2
+    },
+    {
+      "id": "real-ad301dd6d0",
+      "query": "service tribunal",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9954919966121357,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9841051287713476,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.885016848672363,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "score": 0.9954919966121357,
+          "filename": "judgement_C_A_1-K_2021.pdf"
+        },
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "score": 0.9841051287713476,
+          "filename": "judgement_C_A_6_2016.pdf"
+        },
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "score": 0.885016848672363,
+          "filename": "judgement_C_A_3-L_2016.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "d40e2887-6f06-4840-8665-d1da6933f415": 2
+      },
+      "proposed_type": "vague",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 17437.3
+    },
+    {
+      "id": "real-b49b314472",
+      "query": "suit for possession of property decided in civil revision",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9918059772971471,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9488069204183743,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9918059772971471,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        },
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9488069204183743,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 8109.8
+    },
+    {
+      "id": "real-738390314a",
+      "query": "suit for possession, civil revision",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9177976581827298,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9071616748434694,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "score": 0.9177976581827298,
+          "filename": "judgement_C_A_43-Q_2018.pdf"
+        },
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "score": 0.9071616748434694,
+          "filename": "judgement_C_A_23-P_2017.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "adaeb488-96ae-474e-8570-76fd85648f9d": 2
+      },
+      "proposed_type": "paraphrase",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 12583.4
+    },
+    {
+      "id": "real-9bafe24577",
+      "query": "suo motu jurisdiction under Article 199",
+      "count": 1,
+      "abstained": false,
+      "top": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9988123060830244,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "top_all": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "score": 0.9988123060830244,
+          "filename": "judgement_C_A_26-K_2021.pdf"
+        }
+      ],
+      "below_floor": [],
+      "proposed_relevant": {
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c": 2
+      },
+      "proposed_type": "statute",
+      "legacy_match": null,
+      "status": "proposed",
+      "origin": "real",
+      "latency_ms": 14409.9
+    }
+  ]
+}

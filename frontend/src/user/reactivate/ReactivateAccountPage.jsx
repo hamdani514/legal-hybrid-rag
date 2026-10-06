@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import AuthShell from '../components/bound/AuthShell';
+import { apiFetch } from '../../lib/api';
 
 export default function ReactivateAccountPage() {
   const { token } = useParams();
@@ -17,7 +18,7 @@ export default function ReactivateAccountPage() {
 
     const reactivate = async () => {
       try {
-        const res = await fetch(`/api/auth/reactivate/${encodeURIComponent(token)}`, {
+        const res = await apiFetch(`/api/auth/reactivate/${encodeURIComponent(token)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });

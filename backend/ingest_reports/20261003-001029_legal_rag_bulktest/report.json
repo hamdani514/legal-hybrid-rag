@@ -1,0 +1,231 @@
+{
+  "run_id": "20261003-001029",
+  "db_name": "legal_rag_bulktest",
+  "interrupted": false,
+  "options": {
+    "input_dir": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2",
+    "triage_only": "False",
+    "pilot": "None",
+    "llm_concurrency": "3",
+    "ocr_workers": "7",
+    "retry_failed": "False",
+    "embed": "False",
+    "drive": "False",
+    "recursive": "False",
+    "max_attempts": "5",
+    "backoff_base": "5.0",
+    "parse_timeout": "600.0",
+    "report_dir": "C:\\Projects\\legal-hybrid-rag\\backend\\ingest_reports",
+    "allow_main_db": "False",
+    "protected_db": "legal_rag"
+  },
+  "triage": {
+    "files": 4,
+    "by_category": {
+      "digital": 4
+    },
+    "detected": {
+      "text": 4,
+      "scanned": 0
+    },
+    "total_pages": 22,
+    "pages_to_process": {
+      "digital": 22,
+      "scanned": 0
+    },
+    "seconds": 6.11
+  },
+  "processed": 4,
+  "outcomes": {
+    "done": 4
+  },
+  "processing_wall_s": 26.81,
+  "throughput": {
+    "overall_docs_per_min": 8.95,
+    "digital": {
+      "completed": 4,
+      "pages": 22,
+      "makespan_s": 23.16,
+      "docs_per_min": 10.36,
+      "mean_doc_latency_s": 14.98
+    },
+    "scanned": {
+      "completed": 0,
+      "pages": 0,
+      "makespan_s": 0.0,
+      "docs_per_min": null,
+      "mean_doc_latency_s": null
+    },
+    "ocr_seconds_per_page": null
+  },
+  "stage_timings": {
+    "validate": {
+      "n": 0
+    },
+    "ocr": {
+      "n": 0
+    },
+    "extract": {
+      "n": 4,
+      "total_s": 0.45,
+      "mean_s": 0.113,
+      "p50_s": 0.16,
+      "p95_s": 0.16,
+      "max_s": 0.16
+    },
+    "parse_llm": {
+      "n": 4,
+      "total_s": 47.03,
+      "mean_s": 11.757,
+      "p50_s": 11.758,
+      "p95_s": 12.578,
+      "max_s": 12.578
+    },
+    "tree": {
+      "n": 4,
+      "total_s": 0.21,
+      "mean_s": 0.052,
+      "p50_s": 0.082,
+      "p95_s": 0.098,
+      "max_s": 0.098
+    },
+    "embed": {
+      "n": 0
+    },
+    "drive": {
+      "n": 0
+    },
+    "total": {
+      "n": 4,
+      "total_s": 59.92,
+      "mean_s": 14.98,
+      "p50_s": 12.918,
+      "p95_s": 23.144,
+      "max_s": 23.144
+    }
+  },
+  "llm": {
+    "gemini_calls": 0,
+    "groq_calls": 0,
+    "rate_limit_hits": 0,
+    "retries": 0,
+    "parse_seconds_waiting": 0.0,
+    "event_loop_lag": {
+      "max_s": 0.073,
+      "stalls_over_1s": 0
+    }
+  },
+  "parse_modes": {
+    "hybrid_llm_ner": 4
+  },
+  "failures": [],
+  "rejected": [],
+  "needs_review": [],
+  "documents": [
+    {
+      "filename": "judgement_C_A_3-L_2016.pdf",
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_3-L_2016.pdf",
+      "pdf_id": "b9f7a6d2-5466-46f7-b0f6-89f3bd35d482",
+      "queue": "digital",
+      "category_in": "digital",
+      "pages": 6,
+      "outcome": "done",
+      "stage": "done",
+      "error": "",
+      "timings": {
+        "extract": 0.16,
+        "parse_llm": 11.396,
+        "tree": 0.098,
+        "total": 11.835
+      },
+      "parse_attempts": 1,
+      "parse_mode": "hybrid_llm_ner",
+      "confidence": 0.7999999999999999,
+      "quality_passed": true,
+      "quality_issues": [
+        "LEGAL_ISSUES synthesized (derived), not extracted",
+        "ARGUMENTS contains no counsel submission marker"
+      ],
+      "total_s": 11.835,
+      "finished_offset_s": 11.853
+    },
+    {
+      "filename": "judgement_C_A_1_2020.pdf",
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_1_2020.pdf",
+      "pdf_id": "5ff66a34-a710-46ab-a501-4fe1f5ab579f",
+      "queue": "digital",
+      "category_in": "digital",
+      "pages": 5,
+      "outcome": "done",
+      "stage": "done",
+      "error": "",
+      "timings": {
+        "extract": 0.057,
+        "parse_llm": 11.758,
+        "tree": 0.014,
+        "total": 12.025
+      },
+      "parse_attempts": 1,
+      "parse_mode": "hybrid_llm_ner",
+      "confidence": 0.8999999999999999,
+      "quality_passed": true,
+      "quality_issues": [
+        "LEGAL_ISSUES synthesized (derived), not extracted"
+      ],
+      "total_s": 12.025,
+      "finished_offset_s": 12.026
+    },
+    {
+      "filename": "judgement_C_A_23-P_2017.pdf",
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_23-P_2017.pdf",
+      "pdf_id": "8712f218-1770-468a-9339-bc0f615e54cb",
+      "queue": "digital",
+      "category_in": "digital",
+      "pages": 6,
+      "outcome": "done",
+      "stage": "done",
+      "error": "",
+      "timings": {
+        "extract": 0.075,
+        "parse_llm": 12.578,
+        "tree": 0.014,
+        "total": 12.918
+      },
+      "parse_attempts": 1,
+      "parse_mode": "hybrid_llm_ner",
+      "confidence": 0.8999999999999999,
+      "quality_passed": true,
+      "quality_issues": [
+        "LEGAL_ISSUES synthesized (derived), not extracted"
+      ],
+      "total_s": 12.918,
+      "finished_offset_s": 12.931
+    },
+    {
+      "filename": "judgement_C_A_42-K_2016.pdf",
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_42-K_2016.pdf",
+      "pdf_id": "6a4224ca-c4e2-4b2f-bcfb-fd7c51531705",
+      "queue": "digital",
+      "category_in": "digital",
+      "pages": 5,
+      "outcome": "done",
+      "stage": "done",
+      "error": "",
+      "timings": {
+        "extract": 0.16,
+        "parse_llm": 11.296,
+        "tree": 0.082,
+        "total": 23.144
+      },
+      "parse_attempts": 1,
+      "parse_mode": "hybrid_llm_ner",
+      "confidence": 0.8999999999999999,
+      "quality_passed": true,
+      "quality_issues": [
+        "LEGAL_ISSUES synthesized (derived), not extracted"
+      ],
+      "total_s": 23.144,
+      "finished_offset_s": 23.165
+    }
+  ]
+}

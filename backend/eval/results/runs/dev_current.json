@@ -1,0 +1,824 @@
+{
+  "label": "dev, current system",
+  "frozen_at": "2026-10-03T00:06:48",
+  "corpus_judgments": 10,
+  "queries_file": "eval\\datasets\\dev.jsonl",
+  "queries_sha256": "1d168fd15d02ab74",
+  "split": "dev",
+  "config": {
+    "CHROMA_COLLECTION": "legal_embeddings_v2",
+    "EMBEDDING_MODEL": "BAAI/bge-base-en-v1.5",
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "RERANK_ENABLED": true,
+    "RERANK_CANDIDATES": 40,
+    "RELEVANCE_THRESHOLD": 0.2,
+    "CHUNK_MAX_TOKENS": 480,
+    "USE_QUERY_ANALYZER": false,
+    "USE_EXACT_MATCH": false,
+    "USE_BM25": false,
+    "USE_CARDS": false,
+    "USE_FUSION": false,
+    "USE_LLM_JUDGE": false
+  },
+  "top_k": 50,
+  "metrics": {
+    "p_at_1": 0.5909090909090909,
+    "p_at_3": 0.6363636363636364,
+    "recall_at_5": 0.6363636363636364,
+    "recall_at_10": 0.6363636363636364,
+    "recall_at_50": 0.6363636363636364,
+    "mrr": 0.6136363636363636,
+    "ndcg_at_10": 0.6195877160714299,
+    "false_refusal_rate": 0.22727272727272727,
+    "abstention_recall": 1.0,
+    "abstention_recall_strict": 1.0,
+    "abstention_precision": 0.8529411764705882,
+    "p50_ms": 5352.121299976716,
+    "p95_ms": 19302.489900001092
+  },
+  "p_at_1_ci95": [
+    0.364,
+    0.773
+  ],
+  "p_at_1_ci95_wilson": [
+    0.387,
+    0.767
+  ],
+  "recall_at_10_ci95": [
+    0.409,
+    0.818
+  ],
+  "n": 22,
+  "n_negative": 29,
+  "unreachable": [
+    {
+      "id": "legacy-14",
+      "query": "contempt application dismissed by the High Court of Balochistan",
+      "expect": "ce086b4a-d375-4051-9c82-11b97b903b01"
+    },
+    {
+      "id": "legacy-15",
+      "query": "when will this Court decline leave to appeal under Article 185(3)",
+      "expect": "ce086b4a-d375-4051-9c82-11b97b903b01"
+    }
+  ],
+  "pending_negatives": [],
+  "ablation": null,
+  "per_query": [
+    {
+      "id": "legacy-01",
+      "query": "Is a claim relating to dower within the jurisdiction of a Family Court?",
+      "group": "paraphrase",
+      "query_type": "issue",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "top_scores": [
+        0.9069
+      ],
+      "latency_ms": 6931.0848000168335
+    },
+    {
+      "id": "legacy-02",
+      "query": "dispute over wrong entries in the revenue record between spouses",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 0,
+      "abstained": false,
+      "top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "top_scores": [
+        0.8155
+      ],
+      "latency_ms": 6302.946100011468
+    },
+    {
+      "id": "legacy-07",
+      "query": "general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad",
+      "group": "citation",
+      "query_type": "entity",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "top_scores": [
+        0.9998
+      ],
+      "latency_ms": 7761.12069998635
+    },
+    {
+      "id": "legacy-10",
+      "query": "seniority and promotion of police officers before a service tribunal",
+      "group": "subject",
+      "query_type": "issue",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "top_scores": [
+        0.2383,
+        0.2247
+      ],
+      "latency_ms": 5904.764399980195
+    },
+    {
+      "id": "legacy-11",
+      "query": "lower school course dates determining a police officer's seniority",
+      "group": "subject",
+      "query_type": "paraphrase",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "top_scores": [
+        0.7685
+      ],
+      "latency_ms": 19302.489900001092
+    },
+    {
+      "id": "legacy-12",
+      "query": "did the Service Tribunal have jurisdiction to entertain the service appeal",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "top_scores": [
+        0.9998,
+        0.9852,
+        0.358
+      ],
+      "latency_ms": 5729.376500006765
+    },
+    {
+      "id": "legacy-13",
+      "query": "civil servant denied a fair opportunity of hearing by the tribunal",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "top_scores": [
+        0.8787,
+        0.8493
+      ],
+      "latency_ms": 9151.885200000834
+    },
+    {
+      "id": "legacy-14",
+      "query": "contempt application dismissed by the High Court of Balochistan",
+      "group": "subject",
+      "query_type": "entity",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 0,
+      "abstained": false,
+      "top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "top_scores": [
+        0.9904,
+        0.9365
+      ],
+      "latency_ms": 5905.043100006878
+    },
+    {
+      "id": "legacy-15",
+      "query": "when will this Court decline leave to appeal under Article 185(3)",
+      "group": "issue",
+      "query_type": "statute",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 0,
+      "abstained": false,
+      "top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "top_scores": [
+        0.4246
+      ],
+      "latency_ms": 9174.900999991223
+    },
+    {
+      "id": "legacy-16",
+      "query": "civil revision dismissed by the High Court of Balochistan at Quetta",
+      "group": "subject",
+      "query_type": "entity",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "49c42cc9-1123-4fc3-a387-67a738820871"
+      ],
+      "top_scores": [
+        0.9997,
+        0.9696,
+        0.934,
+        0.9086
+      ],
+      "latency_ms": 10653.01609999733
+    },
+    {
+      "id": "legacy-18",
+      "query": "two service appeals raising common questions of law decided together",
+      "group": "subject",
+      "query_type": "paraphrase",
+      "origin": "legacy",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "top_scores": [
+        0.4203
+      ],
+      "latency_ms": 20564.439200010384
+    },
+    {
+      "id": "neg-001",
+      "query": "how do I make chicken biryani at home",
+      "group": "unknown",
+      "query_type": "unknown",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 23877.929899987066
+    },
+    {
+      "id": "neg-004",
+      "query": "how to reset a forgotten Gmail password",
+      "group": "unknown",
+      "query_type": "unknown",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 10183.93910001032
+    },
+    {
+      "id": "neg-005",
+      "query": "Python list comprehension examples",
+      "group": "unknown",
+      "query_type": "unknown",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 17683.4824999969
+    },
+    {
+      "id": "neg-006",
+      "query": "Miranda rights under the United States Supreme Court",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3177.371800004039
+    },
+    {
+      "id": "neg-007",
+      "query": "GDPR fines imposed on technology companies in Ireland",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3042.7040999929886
+    },
+    {
+      "id": "neg-008",
+      "query": "Brexit withdrawal agreement and the Northern Ireland protocol",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3126.0821000032593
+    },
+    {
+      "id": "neg-009",
+      "query": "Roe v. Wade overturned by Dobbs",
+      "group": "citation",
+      "query_type": "citation",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2994.306399981724
+    },
+    {
+      "id": "neg-010",
+      "query": "Indian Supreme Court ruling on Section 377 decriminalisation",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3187.691500002984
+    },
+    {
+      "id": "neg-012",
+      "query": "price of gold per tola today",
+      "group": "unknown",
+      "query_type": "unknown",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 6215.962699992815
+    },
+    {
+      "id": "neg-014",
+      "query": "visa requirements for travelling to Canada",
+      "group": "unknown",
+      "query_type": "unknown",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 9884.679499984486
+    },
+    {
+      "id": "neg-019",
+      "query": "conviction for qatl-e-amd set aside for want of eyewitness credibility",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2831.5159999765456
+    },
+    {
+      "id": "neg-021",
+      "query": "recovery of heroin and chain of custody of the sample sent to the chemical examiner",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2779.2023999791127
+    },
+    {
+      "id": "neg-022",
+      "query": "Control of Narcotic Substances Act 1997 section 9(c) sentence",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2476.6535999951884
+    },
+    {
+      "id": "neg-023",
+      "query": "income tax assessment reopened under section 122 of the Income Tax Ordinance 2001",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2236.5479999862146
+    },
+    {
+      "id": "neg-024",
+      "query": "sales tax refund withheld by the Federal Board of Revenue",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2350.8142000064254
+    },
+    {
+      "id": "neg-026",
+      "query": "custody of minor children and the welfare of the minor principle",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2224.3868999939878
+    },
+    {
+      "id": "neg-027",
+      "query": "maintenance allowance for a divorced wife during iddat",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2709.7780000185594
+    },
+    {
+      "id": "neg-028",
+      "query": "winding up of a company unable to pay its debts",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2520.8950999949593
+    },
+    {
+      "id": "neg-030",
+      "query": "dishonour of cheque under section 489-F PPC",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2300.7167000032496
+    },
+    {
+      "id": "neg-031",
+      "query": "blasphemy conviction under section 295-C",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 12477.626000007149
+    },
+    {
+      "id": "neg-032",
+      "query": "terrorism charges and jurisdiction of the Anti-Terrorism Court",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3763.1679000041913
+    },
+    {
+      "id": "neg-033",
+      "query": "National Accountability Bureau reference for assets beyond means",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2387.83059999696
+    },
+    {
+      "id": "neg-035",
+      "query": "pre-emption suit and the talb-e-muwathibat requirement",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2649.1303000075277
+    },
+    {
+      "id": "neg-038",
+      "query": "gift (hiba) of land to one son excluding daughters from inheritance",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 4931.733199977316
+    },
+    {
+      "id": "neg-039",
+      "query": "customs duty on imported vehicles and the valuation ruling",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 7714.095000002999
+    },
+    {
+      "id": "neg-040",
+      "query": "compensation for land acquired under the Land Acquisition Act 1894",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 3101.802899996983
+    },
+    {
+      "id": "neg-042",
+      "query": "disqualification of a parliamentarian under Article 62(1)(f) for not being sadiq and ameen",
+      "group": "statute",
+      "query_type": "statute",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2768.4819000132848
+    },
+    {
+      "id": "neg-044",
+      "query": "medical negligence claim against a private hospital",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 2682.6387000037357
+    },
+    {
+      "id": "neg-050",
+      "query": "electricity overbilling dispute with WAPDA consumer court",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "negative",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 17003.483699983917
+    },
+    {
+      "id": "syn-3628e429-issue",
+      "query": "Whether a police employee can be granted retrospective promotion over colleagues whose dates of appointment and mandatory training completion preceded his own.",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "top_scores": [
+        0.7606
+      ],
+      "latency_ms": 6384.393299988005
+    },
+    {
+      "id": "syn-3628e429-paraphrase",
+      "query": "A police constable claimed he was denied timely promotions while colleagues who joined after him moved up ahead of schedule, but employment records proved the others had actually joined the department years earlier.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 5010.448599990923
+    },
+    {
+      "id": "syn-3eff8217-paraphrase",
+      "query": "A widow fought her husband's family for decades over land given to her as marriage payment, while the relatives tried to grab the property through fake inheritance entries.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 6246.616099990206
+    },
+    {
+      "id": "syn-5a14105d-entity",
+      "query": "Mir Saleem Ahmed Khosa Zafarullah Khan Jamali NA-266 Quetta election appeal",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "top_scores": [
+        0.9984,
+        0.7684,
+        0.768,
+        0.3242
+      ],
+      "latency_ms": 2810.9377000073437
+    },
+    {
+      "id": "syn-5a14105d-issue",
+      "query": "Whether an election challenge can succeed on general allegations of corrupt practices without concrete supporting evidence or proof of anomalous voter turnout.",
+      "group": "issue",
+      "query_type": "issue",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "top_scores": [
+        0.9553
+      ],
+      "latency_ms": 3015.4788000218105
+    },
+    {
+      "id": "syn-5a14105d-paraphrase",
+      "query": "Two candidates ran for a National Assembly seat in Balochistan. After one won, the runner-up claimed there was widespread vote rigging and filed a challenge, but failed to prove it with solid evidence.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 2,
+      "abstained": false,
+      "top": [
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "top_scores": [
+        0.6875,
+        0.2423
+      ],
+      "latency_ms": 5352.121299976716
+    },
+    {
+      "id": "syn-adaeb488-entity",
+      "query": "Ghulam Mustafa Mah Begum Balochistan limitation",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "top_scores": [
+        0.8571
+      ],
+      "latency_ms": 20569.873900007224
+    },
+    {
+      "id": "syn-adaeb488-paraphrase",
+      "query": "Family members fought over shared land after some relatives sold portions without permission, leading to a delayed court challenge over property ownership.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 5726.926300005289
+    },
+    {
+      "id": "syn-d40e2887-entity",
+      "query": "Usman Ghani Chief Post Master Karachi GPO pension fraud",
+      "group": "entity",
+      "query_type": "entity",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 1,
+      "abstained": false,
+      "top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "top_scores": [
+        0.9411
+      ],
+      "latency_ms": 6316.98669999605
+    },
+    {
+      "id": "syn-d40e2887-paraphrase",
+      "query": "A postal worker was accused of missing pension funds when a coworker already confessed to the theft and went to prison, but authorities still penalized him and the service tribunal refused to properly review the evidence.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 5146.70459998888
+    },
+    {
+      "id": "syn-fa86ba1f-paraphrase",
+      "query": "Two workers hired locally by international embassies lost their jobs and successfully challenged their dismissals, prompting the government to argue they lacked the right to approach the employment forum.",
+      "group": "paraphrase",
+      "query_type": "paraphrase",
+      "origin": "synthetic",
+      "split": "dev",
+      "rank": 0,
+      "abstained": true,
+      "top": [],
+      "top_scores": [],
+      "latency_ms": 6779.848600010155
+    }
+  ]
+}

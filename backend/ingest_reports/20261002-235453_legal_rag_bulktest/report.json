@@ -1,0 +1,155 @@
+{
+  "run_id": "20261002-235453",
+  "db_name": "legal_rag_bulktest",
+  "interrupted": false,
+  "options": {
+    "input_dir": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot",
+    "triage_only": "False",
+    "pilot": "None",
+    "llm_concurrency": "3",
+    "ocr_workers": "2",
+    "retry_failed": "False",
+    "embed": "False",
+    "drive": "False",
+    "recursive": "False",
+    "max_attempts": "5",
+    "backoff_base": "5.0",
+    "parse_timeout": "600.0",
+    "report_dir": "C:\\Projects\\legal-hybrid-rag\\backend\\ingest_reports"
+  },
+  "triage": {
+    "files": 8,
+    "by_category": {
+      "corrupt": 2,
+      "duplicate": 4,
+      "duplicate_in_folder": 1,
+      "scanned": 1
+    },
+    "detected": {
+      "text": 5,
+      "scanned": 1
+    },
+    "total_pages": 38,
+    "pages_to_process": {
+      "digital": 0,
+      "scanned": 10
+    },
+    "seconds": 12.93
+  },
+  "processed": 1,
+  "outcomes": {
+    "done": 1
+  },
+  "processing_wall_s": 238.03,
+  "throughput": {
+    "overall_docs_per_min": 0.25,
+    "digital": {
+      "completed": 0,
+      "pages": 0,
+      "makespan_s": 0.0,
+      "docs_per_min": null,
+      "mean_doc_latency_s": null
+    },
+    "scanned": {
+      "completed": 1,
+      "pages": 10,
+      "makespan_s": 237.41,
+      "docs_per_min": 0.25,
+      "mean_doc_latency_s": 237.4
+    },
+    "ocr_seconds_per_page": 18.05
+  },
+  "stage_timings": {
+    "validate": {
+      "n": 1,
+      "total_s": 9.3,
+      "mean_s": 9.305,
+      "p50_s": 9.305,
+      "p95_s": 9.305,
+      "max_s": 9.305
+    },
+    "ocr": {
+      "n": 1,
+      "total_s": 180.5,
+      "mean_s": 180.5,
+      "p50_s": 180.5,
+      "p95_s": 180.5,
+      "max_s": 180.5
+    },
+    "extract": {
+      "n": 0
+    },
+    "parse_llm": {
+      "n": 1,
+      "total_s": 42.76,
+      "mean_s": 42.764,
+      "p50_s": 42.764,
+      "p95_s": 42.764,
+      "max_s": 42.764
+    },
+    "tree": {
+      "n": 1,
+      "total_s": 0.01,
+      "mean_s": 0.014,
+      "p50_s": 0.014,
+      "p95_s": 0.014,
+      "max_s": 0.014
+    },
+    "embed": {
+      "n": 0
+    },
+    "drive": {
+      "n": 0
+    },
+    "total": {
+      "n": 1,
+      "total_s": 237.4,
+      "mean_s": 237.404,
+      "p50_s": 237.404,
+      "p95_s": 237.404,
+      "max_s": 237.404
+    }
+  },
+  "llm": {
+    "gemini_calls": 1,
+    "groq_calls": 0,
+    "rate_limit_hits": 0,
+    "retries": 0,
+    "parse_seconds_waiting": 0.0
+  },
+  "parse_modes": {
+    "hybrid_llm_ner": 1
+  },
+  "failures": [],
+  "rejected": [],
+  "needs_review": [],
+  "documents": [
+    {
+      "filename": "scanned_C_A_57-K_2018.pdf",
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot\\scanned_C_A_57-K_2018.pdf",
+      "pdf_id": "4eab74b7-a399-44d8-a58d-ef5bca83a31c",
+      "queue": "scanned",
+      "category_in": "scanned",
+      "pages": 10,
+      "outcome": "done",
+      "stage": "done",
+      "error": "",
+      "timings": {
+        "validate": 9.305,
+        "ocr": 180.5,
+        "parse_llm": 42.764,
+        "tree": 0.014,
+        "total": 237.404
+      },
+      "parse_attempts": 1,
+      "parse_mode": "hybrid_llm_ner",
+      "confidence": 0.85,
+      "quality_passed": true,
+      "quality_issues": [
+        "LEGAL_ISSUES missing 'Whether' questions"
+      ],
+      "total_s": 237.404,
+      "finished_offset_s": 237.405
+    }
+  ]
+}

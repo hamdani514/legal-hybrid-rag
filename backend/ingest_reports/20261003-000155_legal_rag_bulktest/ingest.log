@@ -1,0 +1,12 @@
+2026-10-03 00:01:55.760 | INFO     | __main__:_amain:129 - Bulk ingest INGEST: db=legal_rag_bulktest input=C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot ocr_workers=6 llm_concurrency=3 embed=False drive=False pilot=None
+2026-10-03 00:01:55.762 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 8 PDFs in C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot (6 workers)
+2026-10-03 00:02:02.837 | INFO     | app.ingestion.bulk.pipeline:run:150 - Processing 2 files: 0 scanned, OCR workers 6, LLM concurrency 3
+2026-10-03 00:02:02.864 | INFO     | app.ingestion.extractor:extract:246 - [c992dc00-d2bf-4a2a-805f-b35ad651580e] Existing extracted text found, skipping extraction
+2026-10-03 00:02:02.873 | INFO     | app.ingestion.extractor:extract:246 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Existing extracted text found, skipping extraction
+2026-10-03 00:02:02.885 | INFO     | app.ingestion.parser:parse_sections:2200 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Using cached parsed result
+2026-10-03 00:02:02.889 | INFO     | app.ingestion.parser:parse_sections:2200 - [c992dc00-d2bf-4a2a-805f-b35ad651580e] Using cached parsed result
+2026-10-03 00:02:02.911 | WARNING  | app.ingestion.bulk.pipeline:_build_tree:368 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Removed 7 orphan nodes from an interrupted tree build
+2026-10-03 00:02:02.912 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Inserting root node and 6 child nodes into MongoDB
+2026-10-03 00:02:02.916 | INFO     | app.ingestion.bulk.pipeline:_build_tree:357 - [c992dc00-d2bf-4a2a-805f-b35ad651580e] Tree already built by an earlier run; finalised record
+2026-10-03 00:02:02.917 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Saving tree structure to document_trees collection
+2026-10-03 00:02:02.924 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [095fa301-1e6e-4008-bac5-150dfaf881d3] Tree build completed. Total nodes: 7

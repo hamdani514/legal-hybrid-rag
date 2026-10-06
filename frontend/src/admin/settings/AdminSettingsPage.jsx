@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import AdminSettingsForm from '../components/AdminSettingsForm';
+import { apiFetch } from '../../lib/api';
 
 const AdminSettingsPage = () => {
   const [currentAdmin, setCurrentAdmin] = useState(null);
@@ -45,14 +46,15 @@ const AdminSettingsPage = () => {
     try {
       setLoading(true);
       setErrorMsg('');
-      const res = await fetch(`/api/admin/profile?adminid=${encodeURIComponent(adminid)}`);
+      const res = await apiFetch(`/api/admin/profile?adminid=${encodeURIComponent(adminid)}`);
       if (res.ok) {
         const data = await res.json();
         setFormData({
           adminid: data.adminid || '',
           name: data.name || '',
           dob: data.dob || '',
-          password: data.password || '',
+          // The server never returns passwords; blank keeps the current one.
+          password: '',
           role: data.role || 'admin'
         });
       } else {
@@ -93,7 +95,7 @@ const AdminSettingsPage = () => {
     }
 
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
-    if (!pwRegex.test(formData.password)) {
+    if (formData.password && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
       return;
     }
@@ -106,7 +108,7 @@ const AdminSettingsPage = () => {
 
     try {
       setSaving(true);
-      const res = await fetch('/api/admin/profile', {
+      const res = await apiFetch('/api/admin/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

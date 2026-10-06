@@ -102,10 +102,10 @@ const AdminSettingsForm = ({
             <div className="relative w-full">
               <input
                 type={showPassword ? 'text' : 'password'}
-                required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
+                placeholder="Leave blank to keep the current password"
+                autoComplete="new-password"
                 className="w-full px-4 py-3 rounded-xl border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827] pr-12"
               />
               <button

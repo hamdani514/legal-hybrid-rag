@@ -1,0 +1,14 @@
+
+=== BULK INGEST REPORT ===
+run 20261003-000155  db=legal_rag_bulktest
+processed 2 files in 0.09s: {'done': 2}
+throughput overall: 1336.98 docs/min
+  digital: 2 docs, 1333.33 docs/min, mean latency 0.09s
+  scanned: 0 docs (0 pages), None docs/min, mean latency Nones, OCR None s/page
+stage timings (mean / p95 / total, seconds):
+  extract    n=2       0.013 /    0.013 /      0.03
+  parse_llm  n=2       0.004 /    0.004 /      0.01
+  tree       n=2       0.026 /    0.032 /      0.05
+  total      n=2       0.085 /    0.089 /      0.17
+LLM: gemini calls 0, groq calls 0, rate-limit hits 0, retries 0
+parse modes: {'hybrid_llm_ner': 2}

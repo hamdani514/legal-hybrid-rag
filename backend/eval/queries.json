@@ -1,0 +1,146 @@
+{
+  "_README": [
+    "Labelled queries for backend/eval/run_eval.py.",
+    "",
+    "`expect` is the pdf_id of the judgment that should rank first. Ground truth",
+    "here was read off the judgments themselves (FACTS and LEGAL_ISSUES), not",
+    "guessed from the filenames.",
+    "",
+    "`note` says WHY that judgment is the answer, so a disagreement can be",
+    "settled by reading the judgment rather than by argument.",
+    "",
+    "Queries are grouped by what they are testing. The `paraphrase` group is the",
+    "important one: those share little or no vocabulary with the judgment, which",
+    "is exactly the case keyword search cannot handle and the whole system",
+    "exists to answer.",
+    "",
+    "THIS SET IS TOO SMALL. Seventeen to twenty queries over eleven judgments",
+    "carries a confidence interval of roughly +/-12 points, which cannot resolve",
+    "the differences this harness is meant to measure. Before the 1000-document",
+    "run, grow it to at least 50 and ideally 100 queries. Add one query per",
+    "judgment as you ingest, while its subject matter is fresh."
+  ],
+
+  "queries": [
+    {
+      "query": "Is a claim relating to dower within the jurisdiction of a Family Court?",
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "group": "paraphrase",
+      "note": "C.A. 23-P/2017 held the revenue-record dispute was in no way a matter relating to dower."
+    },
+    {
+      "query": "dispute over wrong entries in the revenue record between spouses",
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "group": "paraphrase",
+      "note": "Same judgment, described by its facts rather than its legal question."
+    },
+    {
+      "query": "trade mark assignment agreement was incorrectly relied upon",
+      "expect": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+      "group": "subject",
+      "note": "C.A. 57-K/2018, the Shezan trade mark assignment."
+    },
+    {
+      "query": "who owns a brand name after a company is restructured",
+      "expect": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+      "group": "paraphrase",
+      "note": "Shezan, asked without using the words trade mark or assignment."
+    },
+    {
+      "query": "election petition where the winning margin was only sixty five votes",
+      "expect": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "group": "subject",
+      "note": "C.A. 1/2020, PB-08 Barkhan, returned by a margin of 65 votes."
+    },
+    {
+      "query": "challenge to a narrow win in a provincial assembly constituency in Balochistan",
+      "expect": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "group": "paraphrase",
+      "note": "Same judgment; distinguishes it from the NA-266 election case below."
+    },
+    {
+      "query": "general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad",
+      "expect": "5a14105d-8a45-413c-8c93-26d6301cf028",
+      "group": "citation",
+      "note": "C.A. 5-Q/2014. Deliberately near the other election case, to test discrimination."
+    },
+    {
+      "query": "evacuee land granted and later disputed in Tando Adam",
+      "expect": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "group": "subject",
+      "note": "C.A. 42-K/2016, 56 acres and 28 ghuntas in Deh and Taluqa Tando Adam, Sanghar."
+    },
+    {
+      "query": "agricultural land allotted after partition and the title later questioned",
+      "expect": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "group": "paraphrase",
+      "note": "The evacuee land case, phrased as a lawyer would describe it to a colleague."
+    },
+    {
+      "query": "seniority and promotion of police officers before a service tribunal",
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "group": "subject",
+      "note": "C.A. 3-L/2016, ASI and SI seniority, Punjab Service Tribunal."
+    },
+    {
+      "query": "lower school course dates determining a police officer's seniority",
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "group": "subject",
+      "note": "Distinguishes the Punjab police case from the Federal Service Tribunal cases."
+    },
+    {
+      "query": "did the Service Tribunal have jurisdiction to entertain the service appeal",
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "group": "issue",
+      "note": "C.A. 1-K/2021 frames exactly this issue; remanded to be decided afresh."
+    },
+    {
+      "query": "civil servant denied a fair opportunity of hearing by the tribunal",
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "group": "issue",
+      "note": "Second framed issue of C.A. 1-K/2021."
+    },
+    {
+      "query": "contempt application dismissed by the High Court of Balochistan",
+      "expect": "ce086b4a-d375-4051-9c82-11b97b903b01",
+      "group": "subject",
+      "note": "C.P. 34-Q/2019, Contempt Application No. 1/2014."
+    },
+    {
+      "query": "when will this Court decline leave to appeal under Article 185(3)",
+      "expect": "ce086b4a-d375-4051-9c82-11b97b903b01",
+      "group": "issue",
+      "note": "C.P. 34-Q/2019 discusses Article 185(3) and declines leave."
+    },
+    {
+      "query": "civil revision dismissed by the High Court of Balochistan at Quetta",
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "group": "subject",
+      "note": "C.A. 43-Q/2018, civil revision dismissed by Balochistan High Court."
+    },
+    {
+      "query": "constitutional petitions decided by the High Court of Sindh at Karachi in 2021",
+      "expect": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+      "group": "citation",
+      "note": "C.A. 26-K to 38-K/2021, against the Sindh High Court judgment of 08.04.2021."
+    },
+    {
+      "query": "two service appeals raising common questions of law decided together",
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "group": "subject",
+      "note": "C.A. 06 and 724/2016, expressly decided by a single judgment on common questions."
+    },
+    {
+      "query": "appeal allowed and the impugned judgment set aside with parties bearing their own costs",
+      "expect": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "group": "disposition",
+      "note": "C.A. 1/2020's final order, near-verbatim. Tests FINAL_ORDER retrieval."
+    },
+    {
+      "query": "appeal dismissed with no order as to costs for want of merit",
+      "expect": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "group": "disposition",
+      "note": "C.A. 42-K/2016's final order. Deliberately close to the query above, opposite outcome."
+    }
+  ]
+}

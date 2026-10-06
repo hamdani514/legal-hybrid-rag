@@ -1,5 +1,20 @@
 import React from 'react';
 import AdminPagination from './AdminPagination';
+import { ADMIN_TOKEN_KEY } from '../../lib/api';
+
+// A plain <a href> cannot send an Authorization header, so the PDF download
+// carries the admin token as ?token= (the backend accepts it on download
+// routes only).
+const downloadHref = (id) => {
+  let token = '';
+  try {
+    token = localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+  } catch {
+    /* storage unavailable: download goes out unauthenticated */
+  }
+  const base = `/api/admin/judgments/${id}/download`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+};
 
 const RecentJobsTable = ({
   recentLoading,
@@ -129,7 +144,7 @@ const RecentJobsTable = ({
                   <td className="py-4 px-8 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <a
-                        href={`/api/admin/judgments/${job.pdf_id || job.job_id}/download`}
+                        href={downloadHref(job.pdf_id || job.job_id)}
                         target="_blank"
                         rel="noopener noreferrer"
                         download={job.filename || "judgment.pdf"}

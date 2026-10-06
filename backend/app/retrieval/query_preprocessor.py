@@ -33,8 +33,16 @@ _MIN_YEAR = 1947
 _MAX_YEAR = 2026
 
 # Characters kept by clean_query: letters, digits, spaces, hyphens, periods,
-# commas and question marks. Everything else is dropped.
-_DISALLOWED_CHARS = re.compile(r"[^a-zA-Z0-9 \-.,?]")
+# commas, question marks, and the citation punctuation / ( ) §. Everything else
+# is dropped.
+#
+# The citation characters matter because they carry meaning in Pakistani legal
+# references and dropping them corrupts the reference rather than simplifying
+# it: "C.A. 23-P/2017" became "c.a. 23-p2017" (the slash fused number and year,
+# so case_keys could no longer parse it), "Article 185(3)" became
+# "article 1853", and "§ 9" lost its marker. Downstream consumers (case_keys,
+# statutes, the FTS5 query builder) all expect these characters intact.
+_DISALLOWED_CHARS = re.compile(r"[^a-zA-Z0-9 \-.,?/()§]")
 _WHITESPACE_RUN = re.compile(r"\s+")
 _FOUR_DIGIT = re.compile(r"\b\d{4}\b")
 
@@ -115,3 +123,22 @@ if __name__ == "__main__":
     cleaned, intent = preprocess(test_query)
     print(f"Cleaned: {cleaned}")
     print(f"Intent:  {intent}")
+    assert intent["case_type"] == "bail" and intent["years_mentioned"] == [2019]
+    assert intent["outcome_bias"] == "positive"
+
+    # Citation punctuation survives; everything else behaves as before.
+    checks = [
+        ("C.A. 23-P/2017", "c.a. 23-p/2017"),
+        ("Article 185(3) of the Constitution", "article 185(3) of the constitution"),
+        ("§ 9 of the Act", "§ 9 of the act"),
+        ("s.302 PPC!!  murder\n\tcase", "s.302 ppc murder case"),
+        ("What's the *holding*?", "whats the holding?"),
+    ]
+    for raw, expected in checks:
+        got = clean_query(raw)
+        assert got == expected, f"clean_query({raw!r}) = {got!r}, expected {expected!r}"
+        print(f"  OK  {raw!r:<42} -> {got!r}")
+
+    from app.retrieval.case_keys import case_keys
+    assert case_keys(clean_query("C.A. 23-P/2017")) == ["CA-23-P-2017"]
+    print("OK: clean_query keeps citations parseable.")

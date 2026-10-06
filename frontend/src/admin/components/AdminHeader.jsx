@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { clearToken } from '../../lib/api';
 
 /**
  * The console page header. The primary action carries the brand gradient and
@@ -10,6 +11,7 @@ const AdminHeader = ({ title, subtitle, actionButtonText, onActionClick }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('currentAdmin');
+    clearToken({ admin: true });
     navigate('/admin-login');
   };
 

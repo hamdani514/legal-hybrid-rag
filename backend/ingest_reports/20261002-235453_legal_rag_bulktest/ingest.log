@@ -1,0 +1,18 @@
+2026-10-02 23:54:53.096 | INFO     | __main__:_amain:116 - Bulk ingest INGEST: db=legal_rag_bulktest input=C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot ocr_workers=2 llm_concurrency=3 embed=False drive=False pilot=None
+2026-10-02 23:54:53.097 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 8 PDFs in C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot (2 workers)
+2026-10-02 23:55:06.026 | INFO     | app.ingestion.bulk.pipeline:run:127 - Processing 1 files: 1 scanned, OCR workers 2, LLM concurrency 3
+2026-10-02 23:58:20.647 | INFO     | app.ingestion.extractor:extract:246 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Existing extracted text found, skipping extraction
+2026-10-02 23:58:20.664 | INFO     | app.ingestion.parser:parse_sections:2240 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Performing Cost-Optimized Hybrid LLM Boundary + NER classification with Groq...
+2026-10-02 23:58:20.666 | INFO     | app.ingestion.llm_hybrid_classifier:classify:786 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Starting hybrid classification across 58 paragraphs (short=False, election=False)...
+2026-10-02 23:58:20.963 | INFO     | app.ingestion.llm_hybrid_classifier:_validate_boundaries:1213 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Boundaries validated: {'HEADER_CORAM': {'start_idx': 0, 'end_idx': 0}, 'FACTS': {'start_idx': 1, 'end_idx': 4}, 'ARGUMENTS': {'start_idx': 5, 'end_idx': 13}, 'LEGAL_ISSUES': {'start_idx': 1, 'end_idx': 1}, 'ANALYSIS_RATIO': {'start_idx': 27, 'end_idx': 55}, 'FINAL_ORDER': {'start_idx': 56, 'end_idx': 57}}
+2026-10-02 23:58:20.963 | INFO     | app.ingestion.llm_hybrid_classifier:classify:807 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Section detection mode: content_markers
+2026-10-02 23:58:21.288 | INFO     | app.ingestion.llm_hybrid_classifier:classify:911 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Hybrid section extraction complete.
+2026-10-02 23:58:21.299 | INFO     | app.ingestion.parser:parse_sections:2277 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Hybrid classification completed (confidence 0.85, 1 issues).
+2026-10-02 23:58:21.299 | INFO     | app.ingestion.parser:parse_sections:2289 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Generating case context
+2026-10-02 23:58:21.299 | DEBUG    | app.ingestion.bulk.llm_guard:_counted:112 - bulk: gemini call #1
+2026-10-02 23:59:03.416 | INFO     | app.ingestion.parser:validate_parsing_for_every_pdf:1954 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] VALIDATION PASSED - 6/6 sections populated, quality checks OK
+2026-10-02 23:59:03.418 | INFO     | app.ingestion.parser:parse_sections:2312 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Parsing completed and saved: C:\Projects\legal-hybrid-rag\backend\uploads\4eab74b7-a399-44d8-a58d-ef5bca83a31c_sections.json
+2026-10-02 23:59:03.420 | INFO     | app.ingestion.parser:parse_sections:2316 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Markdown summary completed and saved: C:\Projects\legal-hybrid-rag\backend\uploads\4eab74b7-a399-44d8-a58d-ef5bca83a31c_summary.md
+2026-10-02 23:59:03.436 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Inserting root node and 6 child nodes into MongoDB
+2026-10-02 23:59:03.441 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Saving tree structure to document_trees collection
+2026-10-02 23:59:03.444 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [4eab74b7-a399-44d8-a58d-ef5bca83a31c] Tree build completed. Total nodes: 7

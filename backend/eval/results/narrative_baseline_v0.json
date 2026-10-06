@@ -1,0 +1,359 @@
+{
+  "label": "narrative baseline v0 (pre round-2 agents)",
+  "frozen_at": "2026-10-03T23:33:34",
+  "corpus_judgments": 11,
+  "summary": {
+    "detailed_right_first": "11/11",
+    "loose_right_first": "3/5",
+    "out_of_archive_leaked": "2/7",
+    "out_of_archive_shown_high": 1,
+    "party_misfire_pinned": "2/2"
+  },
+  "rows": [
+    {
+      "kind": "detailed",
+      "expect": "3eff8217",
+      "query": "My client is a widow. Her husband gave her agricultural land as dower at the time of their nikah in 1967 and she has been in possession and collecting rent from the tenants ever since. After he died his relatives got inheritance mutations entered in their names in the revenue record. We filed a suit for declaration and correction of the record. The other side argues the suit is time-barred and should have gone to the Family Court. The High Court decreed our suit.",
+      "words": 84,
+      "shown": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.2938548047871086,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "3eff8217",
+      "query": "We are the heirs of the deceased. His wife claims land was given to her in lieu of dower through the nikah nama and she sued decades later to correct the revenue entries. We say her claim is barred by limitation and the nikah nama is not genuine. The High Court ruled in her favour and we appealed to the Supreme Court.",
+      "words": 62,
+      "shown": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.9661915740963039,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "5a06e4ef",
+      "query": "My parents were allotted evacuee land against their claim. After they died we found the revenue record showed they had sold it to some people who then sold it on to others. We say no such sale ever happened and the entries were fabricated. The trial court decreed our suit, the appellate court reversed it, and the High Court restored the decree.",
+      "words": 62,
+      "shown": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.8927996116023382,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "5a06e4ef",
+      "query": "We bought agricultural land from people who had purchased it from the original allottees. Years later the allottees' children sued claiming their parents never sold it. The revenue record showed the transfer entries but the witnesses to the sale were never produced in court. We lost in the High Court and appealed.",
+      "words": 52,
+      "shown": [
+        {
+          "judgment_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.02428155336697337,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "d40e2887",
+      "query": "I worked as a clerk in the post office pension branch. A shortage in pension payments was found and I was charged even though another clerk admitted he was responsible, repaid the money and was convicted. I was punished with a reduction in my pay scale and recovery of money. The Federal Service Tribunal dismissed my appeal without considering the inquiry evidence.",
+      "words": 62,
+      "shown": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.027131560434897145,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "4083a42e",
+      "query": "Two companies both use the same brand name for food products. My client registered the trade mark decades ago. The other company applied to register the same name claiming it had been assigned to them under an agreement. The Registrar and the High Court allowed their application. We say the mark is identical to ours and will confuse customers.",
+      "words": 59,
+      "shown": [
+        {
+          "judgment_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.4214527871804527,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "fa86ba1f",
+      "query": "I was hired locally on contract at a Pakistani embassy abroad and my services were terminated. The Federal Service Tribunal reinstated me, but the government appealed saying a locally recruited contract employee is not a civil servant.",
+      "words": 37,
+      "shown": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.9836937746364285,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "adaeb488",
+      "query": "My family members and I jointly owned land under a family settlement. Some of the co-owners sold part of my share and a mutation was sanctioned in 1984. I filed a civil suit in 1998 for declaration and possession but the courts held my suit was time-barred.",
+      "words": 47,
+      "shown": [
+        {
+          "judgment_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.042614563587576856,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "3628e429",
+      "query": "I am a police officer. My juniors were promoted to sub-inspector before me because they completed the lower school course earlier. I claimed proforma promotion from the date my juniors were promoted and the service tribunal accepted my claim, but the police department appealed against it.",
+      "words": 46,
+      "shown": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.9712888796905942,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "49c42cc9",
+      "query": "In the 2018 provincial assembly election in Barkhan my client won by a margin of 65 votes. The losing candidate filed an election petition saying many ballot papers were wrongly rejected, and the election tribunal ordered a re-poll in the whole constituency. We appealed against the re-poll order.",
+      "words": 48,
+      "shown": [
+        {
+          "judgment_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.9853604050925806,
+      "top_votes": 4
+    },
+    {
+      "kind": "detailed",
+      "expect": "2df8aea1",
+      "query": "I was appointed on contract as a Deputy District Attorney in Sindh. We asked the High Court to regularise our services and it allowed our constitutional petitions, but the province appealed saying the High Court had overstepped its jurisdiction.",
+      "words": 39,
+      "shown": [
+        {
+          "judgment_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": true,
+      "top_relevance": 0.9928140950829442,
+      "top_votes": 5
+    },
+    {
+      "kind": "loose",
+      "expect": "3eff8217",
+      "query": "A woman says land was given to her by her husband when they married and his family later took it in the government records after he died. Is she too late to go to court?",
+      "words": 35,
+      "shown": [
+        {
+          "judgment_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.14463712987174573,
+      "top_votes": 4
+    },
+    {
+      "kind": "loose",
+      "expect": "d40e2887",
+      "query": "A government employee was punished for money that went missing in his office even though a colleague confessed. Can the tribunal ignore the evidence?",
+      "words": 24,
+      "shown": [
+        {
+          "judgment_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.11649700574155851,
+      "top_votes": 4
+    },
+    {
+      "kind": "loose",
+      "expect": "4083a42e",
+      "query": "Who gets to keep a famous food brand name when two related companies both claim it?",
+      "words": 16,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 1.9991778561851235e-05,
+      "top_votes": 1
+    },
+    {
+      "kind": "loose",
+      "expect": "49c42cc9",
+      "query": "After a very close provincial election the tribunal ordered fresh voting in the whole area. Was that right?",
+      "words": 18,
+      "shown": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.07903513026685877,
+      "top_votes": 4
+    },
+    {
+      "kind": "loose",
+      "expect": "fa86ba1f",
+      "query": "Are people hired locally by our embassies abroad on contract treated as government servants?",
+      "words": 14,
+      "shown": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.9336167173356491,
+      "top_votes": 4
+    },
+    {
+      "kind": "out_of_archive:near: land",
+      "expect": null,
+      "query": "My client purchased a residential plot in Lahore through a registered sale deed. The seller's brother later filed a suit for pre-emption claiming a superior right as a co-sharer and alleged the price in the deed was inflated. The trial court decreed the pre-emption suit and the High Court upheld it.",
+      "words": 51,
+      "shown": [
+        {
+          "judgment_id": "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+          "confidence": "medium"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.04302016969332512,
+      "top_votes": 3
+    },
+    {
+      "kind": "out_of_archive:near: family",
+      "expect": null,
+      "query": "My client's husband divorced her and refused to pay maintenance for her and their two minor children. She filed a suit in the Family Court for maintenance and recovery of dowry articles. The Family Court decreed the suit but the appellate court reduced the maintenance amount.",
+      "words": 46,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 0.12607804090618324,
+      "top_votes": 1
+    },
+    {
+      "kind": "out_of_archive:near: service",
+      "expect": null,
+      "query": "I was a lecturer in a government college and was compulsorily retired after an inquiry into absence from duty. I say I was on approved medical leave. The service tribunal upheld my retirement and I want to challenge it.",
+      "words": 39,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 0.0014762888109125815,
+      "top_votes": 0
+    },
+    {
+      "kind": "out_of_archive:near: election",
+      "expect": null,
+      "query": "A candidate for the Senate was disqualified because he held dual nationality at the time of filing his nomination papers. He says he renounced his foreign nationality before the polls. The High Court upheld his disqualification.",
+      "words": 36,
+      "shown": [
+        {
+          "judgment_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": false,
+      "top_relevance": 0.36110326362328066,
+      "top_votes": 4
+    },
+    {
+      "kind": "out_of_archive:far: bail",
+      "expect": null,
+      "query": "My client was arrested for murder after an FIR was lodged by the deceased's brother. There is no eyewitness and the recovery of the pistol is doubtful. The sessions court refused bail and the High Court also refused it.",
+      "words": 39,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 0.0009065320528751228,
+      "top_votes": 1
+    },
+    {
+      "kind": "out_of_archive:far: cheque",
+      "expect": null,
+      "query": "A businessman issued a cheque to a supplier which bounced due to insufficient funds. The supplier lodged an FIR under section 489-F. The accused says the cheque was given as security, not for payment of a debt. He was convicted by the trial court.",
+      "words": 44,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 0.0006866728577005055,
+      "top_votes": 1
+    },
+    {
+      "kind": "out_of_archive:far: tax",
+      "expect": null,
+      "query": "The tax department reopened my company's income tax assessment for 2015 after five years, saying income was concealed. We say the reopening is time-barred and there was no definite information. The appellate tribunal upheld the reassessment.",
+      "words": 36,
+      "shown": [],
+      "pinned_any": false,
+      "top_relevance": 2.797621214974085e-05,
+      "top_votes": 2
+    },
+    {
+      "kind": "party_misfire",
+      "expect": null,
+      "query": "My client is a police constable in Punjab who was dismissed after a departmental inquiry into absence from duty. He says the inquiry officer never recorded his evidence. The Inspector General of Police said the dismissal was proper and his departmental appeal was rejected.",
+      "words": 44,
+      "shown": [
+        {
+          "judgment_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": true,
+      "top_relevance": 0.9,
+      "top_votes": 4
+    },
+    {
+      "kind": "party_misfire",
+      "expect": null,
+      "query": "The Federation of Pakistan through the Ministry refused to pay my client's pension after he retired from a corporation, saying he was never a civil servant. The tribunal agreed with the Ministry and dismissed his appeal.",
+      "words": 36,
+      "shown": [
+        {
+          "judgment_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+          "confidence": "high"
+        }
+      ],
+      "pinned_any": true,
+      "top_relevance": 0.9,
+      "top_votes": 3
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "summary": {
+    "files": 4,
+    "by_category": {
+      "digital": 4
+    },
+    "detected": {
+      "text": 4,
+      "scanned": 0
+    },
+    "total_pages": 22,
+    "pages_to_process": {
+      "digital": 22,
+      "scanned": 0
+    },
+    "seconds": 6.11
+  },
+  "files": [
+    {
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_1_2020.pdf",
+      "size": 27415,
+      "pages": 5,
+      "file_hash": "103497f1480a9cd8a8f49cefc39514ac954105884bb09d480926b63a469dfbb7",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "",
+      "error": "",
+      "seconds": 0.0655,
+      "category": "digital",
+      "pdf_id": null,
+      "db_status": null,
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_23-P_2017.pdf",
+      "size": 23869,
+      "pages": 6,
+      "file_hash": "8d2eb037c49b1bd01a607305538060fe618c08ada87413e5cacc67767a22c9e8",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "",
+      "error": "",
+      "seconds": 0.0435,
+      "category": "digital",
+      "pdf_id": null,
+      "db_status": null,
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_3-L_2016.pdf",
+      "size": 27697,
+      "pages": 6,
+      "file_hash": "5298f8ebc936585472b0da684cc3c89067c0a3cfaea2346888bfc192d3b6606d",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "",
+      "error": "",
+      "seconds": 0.0634,
+      "category": "digital",
+      "pdf_id": null,
+      "db_status": null,
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Users\\Muhammad Wafa Haider\\AppData\\Local\\Temp\\claude\\C--Projects-legal-hybrid-rag\\233cff91-6b14-4cac-b062-9e7c55ac25c1\\scratchpad\\pilot2\\judgement_C_A_42-K_2016.pdf",
+      "size": 23302,
+      "pages": 5,
+      "file_hash": "4789bb1ba30b34446c5e5d086b972ef57ea3a89c2b7ea727f42da056c6386e59",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "",
+      "error": "",
+      "seconds": 0.0452,
+      "category": "digital",
+      "pdf_id": null,
+      "db_status": null,
+      "dup_of": null
+    }
+  ]
+}

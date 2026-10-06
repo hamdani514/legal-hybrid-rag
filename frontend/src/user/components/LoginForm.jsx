@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
+import { apiFetch, setToken } from '../../lib/api';
+
+/**
+ * User sign-in. POST /api/auth/login verifies the password with bcrypt and
+ * returns {token, user}: the token goes to setToken (sent by apiFetch on every
+ * later request), `user` is the same object stored as currentUser before.
+ * The credential exchange itself uses plain fetch: it carries no token, and a
+ * 401 here means "wrong password", not "session expired".
+ */
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -27,7 +36,7 @@ const LoginForm = () => {
     }
 
     try {
-      const res = await fetch('/api/admin/users/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +46,8 @@ const LoginForm = () => {
 
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('currentUser', JSON.stringify(data));
+        setToken(data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
         navigate('/welcome');
       } else {
         const err = await res.json();
@@ -74,7 +84,7 @@ const LoginForm = () => {
     setErrorMsg('');
 
     try {
-      const res = await fetch('/api/auth/send-reactivation-link', {
+      const res = await apiFetch('/api/auth/send-reactivation-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

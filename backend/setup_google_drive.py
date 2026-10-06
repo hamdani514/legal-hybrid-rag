@@ -40,17 +40,18 @@ def check_status():
     print(f"OAuth Token File:       {status['token_file']}")
 
     if not status["configured"]:
-        print("\n[!] Setup Instructions:")
-        print("To connect Google Drive for verdictaisupport@gmail.com, choose ONE of these methods:")
-        print("\nMETHOD 1 (Recommended for Servers - Service Account):")
+        print("\nMETHOD 1 (Recommended for 10,000 cases - Lifetime Service Account):")
         print("1. Go to https://console.cloud.google.com and enable 'Google Drive API'.")
-        print("2. Create a Service Account, generate a JSON key, and save it as 'backend/service_account.json'.")
-        print(f"3. In verdictaisupport@gmail.com's Google Drive, create a folder 'Verdict AI Judgments'.")
-        print("4. Share that folder with your Service Account email (give 'Editor' permission).")
-        print("5. Put GOOGLE_DRIVE_FOLDER_ID=<folder_id> in backend/.env")
-        print("\nMETHOD 2 (Interactive OAuth 2.0):")
-        print("1. In Google Cloud Console, create an OAuth 2.0 Client ID (Desktop App).")
-        print("2. Download the JSON credentials as 'backend/client_secret.json'.")
+        print("2. Under 'IAM & Admin' > 'Service Accounts', create a Service Account.")
+        print("3. Generate a JSON key and save it as 'backend/service_account.json'.")
+        print(f"4. In verdictaisupport@gmail.com's Google Drive, share your folder 'Verdict AI Judgments'")
+        print("   with the Service Account email (give 'Editor' permission).")
+        print("   -> Never expires, zero human re-auth, completely lifetime!")
+        print("\nMETHOD 2 (OAuth 2.0 - Lifetime Refresh Token):")
+        print("1. In Google Cloud Console, navigate to 'APIs & Services' > 'OAuth consent screen'.")
+        print("2. Under 'Publishing status', click 'PUBLISH APP' (change from Testing to In production).")
+        print("   -> NOTE: Google expires refresh tokens after 7 days if the app is in 'Testing' mode!")
+        print("   -> In 'Production' mode, the token NEVER expires (lifetime).")
         print("3. Run: python setup_google_drive.py auth")
         print("4. Log in with verdictaisupport@gmail.com in your browser when prompted.")
     else:
@@ -73,7 +74,8 @@ def run_oauth_flow(client_secrets_path: str):
     print(f"Please log in with: {settings.GOOGLE_DRIVE_TARGET_EMAIL}")
 
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets_file), SCOPES)
-    creds = flow.run_local_server(port=0)
+    print("A browser window will open for authorization. Please select 'verdictaisupport@gmail.com'.")
+    creds = flow.run_local_server(port=0, prompt="consent", access_type="offline")
 
     token_file = Path(__file__).resolve().parent / settings.GOOGLE_DRIVE_TOKEN_FILE
     with open(token_file, "w", encoding="utf-8") as token:
@@ -81,13 +83,17 @@ def run_oauth_flow(client_secrets_path: str):
 
     print(f"\n[OK] Successfully authenticated! Token saved to: {token_file}")
     print(f"Verdict AI can now upload judgment PDFs to {settings.GOOGLE_DRIVE_TARGET_EMAIL}'s Google Drive.")
+    print("[TIP] If your Google Cloud OAuth Consent Screen is set to 'In production', this token will NOT expire.")
 
     # Reset cached service so it picks up the new token
     google_drive_service._service = None
 
     print("\nSynchronizing pending judgments to Google Drive...")
     import asyncio
-    asyncio.run(sync_pending_documents())
+    try:
+        asyncio.run(sync_pending_documents())
+    except Exception as e:
+        print(f"[!] Sync note: {e}")
 
 
 async def test_integration():
@@ -118,7 +124,15 @@ async def test_integration():
         content = stream.read()
         print(f"Successfully downloaded {len(content)} bytes. Name: {name}, Mime: {mime}")
 
-        print("\n[OK] Verification test completed successfully!")
+        # Test Delete from Google Drive
+        print(f"Deleting test document from Google Drive (file_id: {file_id})...")
+        deleted = await google_drive_service.delete_file(file_id)
+        if deleted:
+            print(f"[OK] File {file_id} successfully deleted from Google Drive!")
+        else:
+            print(f"[!] Warning: delete_file returned False for {file_id}")
+
+        print("\n[OK] Verification test (Upload -> Download -> Delete) completed successfully!")
     finally:
         if test_file.exists():
             test_file.unlink()
@@ -129,7 +143,11 @@ async def sync_pending_documents():
     from app.database import connect_db, db
 
     print("\nConnecting to database to check for pending judgments...")
-    await connect_db()
+    try:
+        await connect_db()
+    except Exception as e:
+        print(f"[!] Could not connect to MongoDB ({e}). Skipping document sync.")
+        return
 
     if not google_drive_service.is_configured():
         print("[!] Error: Google Drive is not configured yet.")

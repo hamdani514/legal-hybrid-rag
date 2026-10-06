@@ -1,0 +1,129 @@
+{
+  "label": "baseline-v1 (pre precision-v2)",
+  "frozen_at": "2026-10-02T23:29:43",
+  "corpus_judgments": 11,
+  "queries_file": "eval\\queries.json",
+  "queries_sha256": "622058cf93b73cc4",
+  "config": {
+    "EMBEDDING_MODEL": "BAAI/bge-base-en-v1.5",
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "RERANK_CANDIDATES": 40,
+    "RELEVANCE_THRESHOLD": 0.2,
+    "CHUNK_MAX_TOKENS": 480
+  },
+  "metrics": {
+    "p_at_1": 0.8,
+    "p_at_3": 0.85,
+    "recall_at_5": 0.85,
+    "mrr": 0.825,
+    "p50_ms": 2435.9924,
+    "p95_ms": 2630.7096
+  },
+  "p_at_1_ci95": [
+    0.584,
+    0.919
+  ],
+  "n": 20,
+  "per_query": [
+    {
+      "query": "Is a claim relating to dower within the jurisdiction of a Family Court?",
+      "group": "paraphrase",
+      "rank": 1
+    },
+    {
+      "query": "dispute over wrong entries in the revenue record between spouses",
+      "group": "paraphrase",
+      "rank": 0
+    },
+    {
+      "query": "trade mark assignment agreement was incorrectly relied upon",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "who owns a brand name after a company is restructured",
+      "group": "paraphrase",
+      "rank": 0
+    },
+    {
+      "query": "election petition where the winning margin was only sixty five votes",
+      "group": "subject",
+      "rank": 2
+    },
+    {
+      "query": "challenge to a narrow win in a provincial assembly constituency in Balochistan",
+      "group": "paraphrase",
+      "rank": 1
+    },
+    {
+      "query": "general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad",
+      "group": "citation",
+      "rank": 1
+    },
+    {
+      "query": "evacuee land granted and later disputed in Tando Adam",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "agricultural land allotted after partition and the title later questioned",
+      "group": "paraphrase",
+      "rank": 0
+    },
+    {
+      "query": "seniority and promotion of police officers before a service tribunal",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "lower school course dates determining a police officer's seniority",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "did the Service Tribunal have jurisdiction to entertain the service appeal",
+      "group": "issue",
+      "rank": 1
+    },
+    {
+      "query": "civil servant denied a fair opportunity of hearing by the tribunal",
+      "group": "issue",
+      "rank": 1
+    },
+    {
+      "query": "contempt application dismissed by the High Court of Balochistan",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "when will this Court decline leave to appeal under Article 185(3)",
+      "group": "issue",
+      "rank": 1
+    },
+    {
+      "query": "civil revision dismissed by the High Court of Balochistan at Quetta",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "constitutional petitions decided by the High Court of Sindh at Karachi in 2021",
+      "group": "citation",
+      "rank": 1
+    },
+    {
+      "query": "two service appeals raising common questions of law decided together",
+      "group": "subject",
+      "rank": 1
+    },
+    {
+      "query": "appeal allowed and the impugned judgment set aside with parties bearing their own costs",
+      "group": "disposition",
+      "rank": 1
+    },
+    {
+      "query": "appeal dismissed with no order as to costs for want of merit",
+      "group": "disposition",
+      "rank": 1
+    }
+  ]
+}

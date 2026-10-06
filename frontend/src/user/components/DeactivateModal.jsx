@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch, clearToken } from '../../lib/api';
 
 export default function DeactivateModal({ isOpen, onClose, userEmail }) {
   const [password, setPassword] = useState('');
@@ -24,7 +25,7 @@ export default function DeactivateModal({ isOpen, onClose, userEmail }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/deactivate', {
+      const res = await apiFetch('/api/auth/deactivate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -47,6 +48,7 @@ export default function DeactivateModal({ isOpen, onClose, userEmail }) {
       // Sign out and redirect after 2.5 seconds
       setTimeout(() => {
         localStorage.removeItem('currentUser');
+        clearToken();
         navigate('/login');
       }, 2500);
     } catch (err) {

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../../../lib/api';
 
 /**
  * Step 2: OTP Verification Component
@@ -101,7 +102,7 @@ const OtpVerificationStep = ({
     setErrorMsg('');
     setInfoMsg('');
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -134,7 +135,7 @@ const OtpVerificationStep = ({
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+      const res = await apiFetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: enteredCode }),

@@ -7,6 +7,7 @@ import AdminPagination from '../components/AdminPagination';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import UserTable from '../components/UserTable';
 import UserFormModal from '../components/UserFormModal';
+import { apiFetch } from '../../lib/api';
 
 const USERS_PER_PAGE = 10;
 
@@ -61,7 +62,7 @@ const AdminDashboardPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users');
+      const res = await apiFetch('/api/admin/users');
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
@@ -108,7 +109,8 @@ const AdminDashboardPage = () => {
       email: user.email || '',
       org: user.org || '',
       plan: user.plan || 'Standard',
-      password: user.password || '',
+      // The server never returns passwords; blank keeps the current one.
+      password: '',
       dob: user.dob || '',
       gender: user.gender || 'Male',
       phone_no: user.phone_no || ''
@@ -123,7 +125,7 @@ const AdminDashboardPage = () => {
   const confirmDeleteUser = async () => {
     if (!deleteUserId) return;
     try {
-      const res = await fetch(`/api/admin/users/${deleteUserId}`, {
+      const res = await apiFetch(`/api/admin/users/${deleteUserId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -151,7 +153,7 @@ const AdminDashboardPage = () => {
     }
 
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
-    if (!pwRegex.test(formData.password)) {
+    if ((!isEditMode || formData.password) && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
       return;
     }
@@ -181,7 +183,7 @@ const AdminDashboardPage = () => {
       const url = isEditMode ? `/api/admin/users/${formData.id}` : '/api/admin/users';
       const method = isEditMode ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
@@ -207,7 +209,7 @@ const AdminDashboardPage = () => {
 
   const handlePlanChange = async (userId, newPlan) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/plan`, {
+      const res = await apiFetch(`/api/admin/users/${userId}/plan`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

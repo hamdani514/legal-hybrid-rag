@@ -1,0 +1,2 @@
+2026-10-02 23:52:25.923 | INFO     | __main__:_amain:116 - Bulk ingest TRIAGE ONLY (read-only): db=legal_rag_bulktest input=C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot ocr_workers=6 llm_concurrency=3 embed=False drive=False pilot=None
+2026-10-02 23:52:25.926 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 8 PDFs in C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot (6 workers)

@@ -1,0 +1,170 @@
+{
+  "summary": {
+    "files": 10,
+    "by_category": {
+      "duplicate": 10
+    },
+    "detected": {
+      "text": 10,
+      "scanned": 0
+    },
+    "total_pages": 76,
+    "pages_to_process": {
+      "digital": 0,
+      "scanned": 0
+    },
+    "seconds": 6.09
+  },
+  "files": [
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\2df8aea1-9ea7-45cf-aa1c-893a951d018c.pdf",
+      "size": 53444,
+      "pages": 12,
+      "file_hash": "92208903d41fa5a503251b0d68de0fc52faf80a5ebd455d71a391d4c30dbc464",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_26-K_2021.pdf' (2df8aea1-9ea7-45cf-aa1c-893a951d018c)",
+      "error": "",
+      "seconds": 0.2893,
+      "category": "duplicate",
+      "pdf_id": "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\3628e429-82b2-489e-81ad-9cad8ae36894.pdf",
+      "size": 27697,
+      "pages": 6,
+      "file_hash": "5298f8ebc936585472b0da684cc3c89067c0a3cfaea2346888bfc192d3b6606d",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_3-L_2016.pdf' (3628e429-82b2-489e-81ad-9cad8ae36894)",
+      "error": "",
+      "seconds": 0.2901,
+      "category": "duplicate",
+      "pdf_id": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\3eff8217-9d3f-48e3-84b8-8b152069e5de.pdf",
+      "size": 23869,
+      "pages": 6,
+      "file_hash": "8d2eb037c49b1bd01a607305538060fe618c08ada87413e5cacc67767a22c9e8",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_23-P_2017.pdf' (3eff8217-9d3f-48e3-84b8-8b152069e5de)",
+      "error": "",
+      "seconds": 0.1169,
+      "category": "duplicate",
+      "pdf_id": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\4083a42e-318d-4a7a-b832-e4aa9d036f2b.pdf",
+      "size": 38314,
+      "pages": 10,
+      "file_hash": "f9b165f0ac39f4599137935d72e97af81b7aa389edd701f5126eb69aff7c6a1d",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_57-K_2018.pdf' (4083a42e-318d-4a7a-b832-e4aa9d036f2b)",
+      "error": "",
+      "seconds": 0.0922,
+      "category": "duplicate",
+      "pdf_id": "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\49c42cc9-1123-4fc3-a387-67a738820871.pdf",
+      "size": 27415,
+      "pages": 5,
+      "file_hash": "103497f1480a9cd8a8f49cefc39514ac954105884bb09d480926b63a469dfbb7",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_1_2020.pdf' (49c42cc9-1123-4fc3-a387-67a738820871)",
+      "error": "",
+      "seconds": 0.0617,
+      "category": "duplicate",
+      "pdf_id": "49c42cc9-1123-4fc3-a387-67a738820871",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7.pdf",
+      "size": 23302,
+      "pages": 5,
+      "file_hash": "4789bb1ba30b34446c5e5d086b972ef57ea3a89c2b7ea727f42da056c6386e59",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_42-K_2016.pdf' (5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7)",
+      "error": "",
+      "seconds": 0.1427,
+      "category": "duplicate",
+      "pdf_id": "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\5a14105d-8a45-413c-8c93-26d6301cf028.pdf",
+      "size": 21620,
+      "pages": 6,
+      "file_hash": "a07f9e3d947bafd8c124498d24849f05566602209400dda30a5be8fe5c339d30",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_5-Q_2014.pdf' (5a14105d-8a45-413c-8c93-26d6301cf028)",
+      "error": "",
+      "seconds": 0.0323,
+      "category": "duplicate",
+      "pdf_id": "5a14105d-8a45-413c-8c93-26d6301cf028",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\adaeb488-96ae-474e-8570-76fd85648f9d.pdf",
+      "size": 22073,
+      "pages": 5,
+      "file_hash": "d31bbea4c143355c42987dcb055fac499a89ea8181eaa6b44d6aa589f0b264ab",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_43-Q_2018.pdf' (adaeb488-96ae-474e-8570-76fd85648f9d)",
+      "error": "",
+      "seconds": 0.0642,
+      "category": "duplicate",
+      "pdf_id": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\d40e2887-6f06-4840-8665-d1da6933f415.pdf",
+      "size": 25038,
+      "pages": 5,
+      "file_hash": "44491726d98da56c56ce5d266be3eed8e3cec408d5b49b88989e0f8d2e007d11",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_1-K_2021.pdf' (d40e2887-6f06-4840-8665-d1da6933f415)",
+      "error": "",
+      "seconds": 0.0656,
+      "category": "duplicate",
+      "pdf_id": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "db_status": "complete",
+      "dup_of": null
+    },
+    {
+      "path": "C:\\Projects\\legal-hybrid-rag\\backend\\uploads\\fa86ba1f-0f41-4c11-bad8-f004dd3a7af8.pdf",
+      "size": 57660,
+      "pages": 16,
+      "file_hash": "9d52f283c465f012f1e424b711595216a7b7bf24093263a5d2b0193f66083a07",
+      "detected_type": "text",
+      "valid": true,
+      "reason": "already ingested as 'judgement_C_A_6_2016.pdf' (fa86ba1f-0f41-4c11-bad8-f004dd3a7af8)",
+      "error": "",
+      "seconds": 0.0526,
+      "category": "duplicate",
+      "pdf_id": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "db_status": "complete",
+      "dup_of": null
+    }
+  ]
+}

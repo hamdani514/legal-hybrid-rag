@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { setToken } from '../../lib/api';
 
 /**
  * Administrator sign-in. The form only — AuthShell supplies the split layout
  * and the visual panel, so this no longer carries its own branding column.
  *
- * The authentication contract is unchanged: POST /api/admin/login, the
- * response stored as `currentAdmin`, then on to the dashboard.
+ * POST /api/auth/admin/login verifies the password with bcrypt and returns
+ * {token, user}: the admin token is stored with setToken({admin: true}) and
+ * sent by apiFetch on every /api/admin/* request; `user` is the same object
+ * stored as `currentAdmin` before. Plain fetch here on purpose: the request
+ * carries no token, and apiFetch's 401 handling would treat a wrong password
+ * as an expired session.
  */
 const AdminLoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +27,7 @@ const AdminLoginForm = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('/api/auth/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +37,8 @@ const AdminLoginForm = () => {
 
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('currentAdmin', JSON.stringify(data));
+        setToken(data.token, { admin: true });
+        localStorage.setItem('currentAdmin', JSON.stringify(data.user));
         navigate('/admin/dashboard');
       } else {
         const data = await res.json();

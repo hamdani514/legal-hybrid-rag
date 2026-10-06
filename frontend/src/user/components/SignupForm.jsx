@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
+import { apiFetch } from '../../lib/api';
 
 const SignupForm = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ const SignupForm = () => {
     setUsernameUniqueStatus('checking');
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/admin/users/check-username?username=${encodeURIComponent(formData.username.trim())}`);
+        const res = await apiFetch(`/api/admin/users/check-username?username=${encodeURIComponent(formData.username.trim())}`);
         if (res.ok) {
           const data = await res.json();
           setUsernameUniqueStatus(data.available ? 'available' : 'taken');
@@ -60,7 +61,7 @@ const SignupForm = () => {
     setEmailUniqueStatus('checking');
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/admin/users/check-email?email=${encodeURIComponent(emailTrim)}`);
+        const res = await apiFetch(`/api/admin/users/check-email?email=${encodeURIComponent(emailTrim)}`);
         if (res.ok) {
           const data = await res.json();
           setEmailUniqueStatus(data.available ? 'available' : 'taken');
@@ -162,7 +163,9 @@ const SignupForm = () => {
         created_at: regDate.toISOString()
       };
 
-      const res = await fetch('/api/admin/users', {
+      // /api/auth/signup stores a bcrypt hash (the old /api/admin/users
+      // stored the password in plain text and is now admin-only).
+      const res = await apiFetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

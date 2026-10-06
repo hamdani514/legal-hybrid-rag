@@ -70,9 +70,22 @@ class GoogleDriveService:
                 creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
                 if creds and creds.expired and creds.refresh_token:
                     logger.info("Refreshing expired Google Drive user credentials...")
-                    creds.refresh(Request())
-                    with open(token_path, "w", encoding="utf-8") as f:
-                        f.write(creds.to_json())
+                    try:
+                        creds.refresh(Request())
+                        with open(token_path, "w", encoding="utf-8") as f:
+                            f.write(creds.to_json())
+                    except Exception as refresh_err:
+                        logger.warning(
+                            f"Google Drive refresh token is expired or revoked: {refresh_err}. "
+                            "Please re-authenticate via 'python setup_google_drive.py auth' or provide service_account.json."
+                        )
+                        try:
+                            expired_backup = token_path.with_suffix(".json.expired")
+                            token_path.replace(expired_backup)
+                            logger.info(f"Moved invalid token to {expired_backup.name}")
+                        except Exception:
+                            pass
+                        creds = None
                 if creds and creds.valid:
                     self._service = build("drive", "v3", credentials=creds)
                     self._auth_method = "oauth2_user"
@@ -307,20 +320,62 @@ class GoogleDriveService:
             raise
 
     async def delete_file(self, file_id: str) -> bool:
-        """Deletes a file from Google Drive."""
+        """Deletes a file from Google Drive by its file ID."""
         if not file_id or file_id.startswith("local_"):
+            logger.info(f"Skipping Google Drive delete: local or invalid file_id '{file_id}'.")
+            return False
+
+        service = self.get_service()
+        if not service:
+            logger.warning(f"Cannot delete file {file_id} from Google Drive: service not initialized.")
+            return False
+
+        try:
+            service.files().delete(fileId=file_id).execute()
+            logger.info(f"Successfully deleted file {file_id} from Google Drive.")
+            return True
+        except Exception as e:
+            logger.warning(f"Could not delete file {file_id} from Google Drive: {e}")
+            return False
+
+    async def delete_file_by_name(self, filename: str) -> bool:
+        """Searches for and deletes a file by name inside the destination folder."""
+        if not filename:
             return False
 
         service = self.get_service()
         if not service:
             return False
 
+        folder_id = self._get_or_create_destination_folder()
         try:
-            service.files().delete(fileId=file_id).execute()
-            logger.info(f"Deleted file {file_id} from Google Drive.")
-            return True
+            safe_name = filename.replace("'", "\\'")
+            query = f"name = '{safe_name}' and trashed = false"
+            if folder_id:
+                query += f" and '{folder_id}' in parents"
+
+            results = service.files().list(
+                q=query,
+                spaces="drive",
+                fields="files(id, name)",
+                pageSize=10
+            ).execute()
+
+            files = results.get("files", [])
+            if not files:
+                logger.info(f"No Google Drive file found with name '{filename}' to delete.")
+                return False
+
+            deleted_any = False
+            for f in files:
+                fid = f.get("id")
+                if fid:
+                    service.files().delete(fileId=fid).execute()
+                    logger.info(f"Deleted Google Drive file '{f.get('name')}' (id: {fid}).")
+                    deleted_any = True
+            return deleted_any
         except Exception as e:
-            logger.warning(f"Could not delete file {file_id} from Google Drive: {e}")
+            logger.warning(f"Error deleting file '{filename}' by name from Google Drive: {e}")
             return False
 
 

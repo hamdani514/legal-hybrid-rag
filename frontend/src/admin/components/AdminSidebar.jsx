@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { clearToken } from '../../lib/api';
 
 const AdminSidebar = ({ activeRoute, currentAdmin }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -17,6 +18,7 @@ const AdminSidebar = ({ activeRoute, currentAdmin }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('currentAdmin');
+    clearToken({ admin: true });
     navigate('/admin-login');
   };
 

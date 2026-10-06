@@ -8,7 +8,6 @@ pymongo
 motor
 
 python-jose
-passlib[bcrypt]
 bcrypt
 python-dotenv
 

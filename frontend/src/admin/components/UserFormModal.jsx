@@ -99,10 +99,12 @@ const UserFormModal = ({
             <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Password</label>
             <input
               type="text"
-              required
+              required={!isEditMode}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="At least 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec"
+              placeholder={isEditMode
+                ? 'Leave blank to keep the current password'
+                : 'At least 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec'}
               className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
             />
           </div>

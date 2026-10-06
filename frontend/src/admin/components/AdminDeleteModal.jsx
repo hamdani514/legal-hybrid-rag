@@ -4,7 +4,7 @@ const AdminDeleteModal = ({ isOpen, title, message, onConfirm, onCancel, confirm
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[120] animate-fade-in">
       <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl relative border border-ash-100 flex flex-col gap-6">
         <div>
           <h3 className="font-display font-semibold text-xl text-[#111827]">{title || 'Confirm Deletion'}</h3>

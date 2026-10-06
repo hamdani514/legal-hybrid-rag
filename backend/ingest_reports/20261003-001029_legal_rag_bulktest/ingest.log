@@ -1,0 +1,31 @@
+2026-10-03 00:10:29.071 | INFO     | __main__:_amain:129 - Bulk ingest INGEST: db=legal_rag_bulktest input=C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot2 ocr_workers=7 llm_concurrency=3 embed=False drive=False pilot=None
+2026-10-03 00:10:29.073 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 4 PDFs in C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot2 (7 workers)
+2026-10-03 00:10:35.181 | INFO     | app.ingestion.bulk.pipeline:run:166 - Processing 4 files: 0 scanned, OCR workers 7, LLM concurrency 3
+2026-10-03 00:10:35.290 | INFO     | app.ingestion.extractor:extract_digital:131 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Starting digital extraction
+2026-10-03 00:10:35.334 | INFO     | app.ingestion.extractor:extract_digital:141 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Digital extraction complete (chars=10811)
+2026-10-03 00:10:35.342 | INFO     | app.ingestion.extractor:extract:271 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Saved extracted text to C:\Projects\legal-hybrid-rag\backend\uploads\5ff66a34-a710-46ab-a501-4fe1f5ab579f.txt
+2026-10-03 00:10:35.345 | INFO     | app.ingestion.extractor:extract_digital:131 - [8712f218-1770-468a-9339-bc0f615e54cb] Starting digital extraction
+2026-10-03 00:10:35.389 | INFO     | app.ingestion.extractor:extract_digital:141 - [8712f218-1770-468a-9339-bc0f615e54cb] Digital extraction complete (chars=12042)
+2026-10-03 00:10:35.392 | INFO     | app.ingestion.extractor:extract_digital:131 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Starting digital extraction
+2026-10-03 00:10:35.396 | INFO     | app.ingestion.extractor:extract:271 - [8712f218-1770-468a-9339-bc0f615e54cb] Saved extracted text to C:\Projects\legal-hybrid-rag\backend\uploads\8712f218-1770-468a-9339-bc0f615e54cb.txt
+2026-10-03 00:10:35.426 | INFO     | app.ingestion.extractor:extract_digital:141 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Digital extraction complete (chars=8399)
+2026-10-03 00:10:35.432 | INFO     | app.ingestion.extractor:extract:271 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Saved extracted text to C:\Projects\legal-hybrid-rag\backend\uploads\6a4224ca-c4e2-4b2f-bcfb-fd7c51531705.txt
+2026-10-03 00:10:35.439 | INFO     | app.ingestion.extractor:extract_digital:131 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Starting digital extraction
+2026-10-03 00:10:35.492 | INFO     | app.ingestion.extractor:extract_digital:141 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Digital extraction complete (chars=13672)
+2026-10-03 00:10:35.494 | INFO     | app.ingestion.extractor:extract:271 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Saved extracted text to C:\Projects\legal-hybrid-rag\backend\uploads\b9f7a6d2-5466-46f7-b0f6-89f3bd35d482.txt
+2026-10-03 00:10:46.929 | DEBUG    | app.ingestion.bulk.llm_guard:_parse_in_pool:170 - bulk: [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] worker made 0 gemini call(s); total 0
+2026-10-03 00:10:46.937 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Inserting root node and 6 child nodes into MongoDB
+2026-10-03 00:10:46.960 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Saving tree structure to document_trees collection
+2026-10-03 00:10:47.031 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [b9f7a6d2-5466-46f7-b0f6-89f3bd35d482] Tree build completed. Total nodes: 7
+2026-10-03 00:10:47.188 | DEBUG    | app.ingestion.bulk.llm_guard:_parse_in_pool:170 - bulk: [5ff66a34-a710-46ab-a501-4fe1f5ab579f] worker made 0 gemini call(s); total 0
+2026-10-03 00:10:47.197 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Inserting root node and 6 child nodes into MongoDB
+2026-10-03 00:10:47.203 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Saving tree structure to document_trees collection
+2026-10-03 00:10:47.206 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [5ff66a34-a710-46ab-a501-4fe1f5ab579f] Tree build completed. Total nodes: 7
+2026-10-03 00:10:48.092 | DEBUG    | app.ingestion.bulk.llm_guard:_parse_in_pool:170 - bulk: [8712f218-1770-468a-9339-bc0f615e54cb] worker made 0 gemini call(s); total 0
+2026-10-03 00:10:48.102 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [8712f218-1770-468a-9339-bc0f615e54cb] Inserting root node and 6 child nodes into MongoDB
+2026-10-03 00:10:48.107 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [8712f218-1770-468a-9339-bc0f615e54cb] Saving tree structure to document_trees collection
+2026-10-03 00:10:48.110 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [8712f218-1770-468a-9339-bc0f615e54cb] Tree build completed. Total nodes: 7
+2026-10-03 00:10:58.226 | DEBUG    | app.ingestion.bulk.llm_guard:_parse_in_pool:170 - bulk: [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] worker made 0 gemini call(s); total 0
+2026-10-03 00:10:58.279 | INFO     | app.ingestion.tree_builder:build_and_save_tree:114 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Inserting root node and 6 child nodes into MongoDB
+2026-10-03 00:10:58.306 | INFO     | app.ingestion.tree_builder:build_and_save_tree:120 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Saving tree structure to document_trees collection
+2026-10-03 00:10:58.328 | INFO     | app.ingestion.tree_builder:build_and_save_tree:134 - [6a4224ca-c4e2-4b2f-bcfb-fd7c51531705] Tree build completed. Total nodes: 7

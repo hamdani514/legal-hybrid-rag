@@ -9,14 +9,14 @@ This module has ONE job. No database calls, no file I/O, no ChromaDB.
 Consistency with ingestion
 --------------------------
 The document side (app/ingestion/embedding_pipeline.py) embeds via the
-EmbeddingGenerator singleton using BAAI/bge-small-en-v1.5. This module reuses
-that same singleton so the model is loaded exactly once per process and the
-query/document vectors can never drift apart.
+EmbeddingGenerator singleton, which reads settings.EMBEDDING_MODEL. This module
+reuses that same singleton, so the model is loaded exactly once per process and
+the query/document vectors can never drift apart.
 
 Two BGE-specific details:
   * Queries get an instruction prefix; documents do not.
-  * Vectors are L2-normalised. bge-small-en-v1.5 ships a Normalize module in
-    its sentence-transformers config, so the stored document vectors already
+  * Vectors are L2-normalised. The BGE models ship a Normalize module in
+    their sentence-transformers config, so the stored document vectors already
     have norm 1.0; passing normalize_embeddings=True here is the explicit,
     idempotent form of the same guarantee.
 """
@@ -33,13 +33,15 @@ if __package__ in (None, ""):
 import numpy as np
 from loguru import logger
 
+from app.config import settings
 from app.embeddings.embedding_generator import EmbeddingGenerator
 
 # BGE models expect this instruction prefix on the QUERY side only.
 QUERY_INSTRUCTION_PREFIX = "Represent this sentence for searching relevant passages: "
 
-MODEL_NAME = "BAAI/bge-small-en-v1.5"
-EMBEDDING_DIM = 384
+# Read from settings so the query side can never drift from the document side.
+MODEL_NAME = settings.EMBEDDING_MODEL
+EMBEDDING_DIM = settings.EMBEDDING_DIM
 
 _generator = EmbeddingGenerator()
 

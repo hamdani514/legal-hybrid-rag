@@ -4,7 +4,8 @@ import asyncio
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 from loguru import logger
 
 from app.database import db
@@ -25,8 +26,112 @@ CONNECTION_DIR.mkdir(parents=True, exist_ok=True)
 
 ACTIVE_INGESTION_TASKS: dict[str, asyncio.Task] = {}
 
+# ── Single-upload ingestion ──────────────────────────────────────────────────
+# An upload walks the same chain as bulk ingest (app/ingestion/bulk):
+#   extract -> parse -> tree -> dense -> card -> FTS -> card vector [-> Drive]
+# with three rules that the earlier version broke:
+#   * nothing CPU-heavy runs on the event loop: extraction/OCR, validation and
+#     embedding go to worker threads, so an upload never freezes searches;
+#   * every store write is recorded on documents.index_status and the job
+#     status names the stage that failed (extraction_failed, parse_failed,
+#     tree_failed, embedding_failed, index_failed) — an embedding error is no
+#     longer reported as a parse failure;
+#   * a failed or stuck upload (server restarted mid-ingest) can be resumed from
+#     its last good store: POST /jobs/{id}/retry, or simply uploading the same
+#     PDF again. Finished stages are cached (uploads/{id}.txt, _sections.json,
+#     the tree), so a retry repeats only what is missing.
+# The case card is built here (one LLM call); if it is rate-limited the
+# judgment is still searchable ("searchable"), and the card wave completes it.
+
+# ── Several uploads at once ──────────────────────────────────────────────────
+# The Cases page can send many PDFs; each is its own request and its own
+# judgment. Isolation is by construction: every judgment gets a fresh uuid4
+# pdf_id, and everything it writes is keyed by it (uploads/{pdf_id}.*, nodes
+# with uuid4 node ids, vectors "{node_id}::{chunk}" with file_id=pdf_id,
+# keyword rows deleted and re-inserted per judgment_id, the card by
+# judgment_id). No stage reads another judgment's data.
+#
+# What concurrency does need is a bound, so the queue below:
+#   * at most ADMIN_INGEST_CONCURRENCY judgments past the queue at a time
+#     (extraction/OCR and the parse are the CPU- and LLM-heavy stages);
+#   * the index stage (embedding, case card, keyword index, card vector) one
+#     judgment at a time — the shape bulk ingest uses (its embed semaphore of
+#     1), so Chroma and SQLite writes never interleave and the embedding model
+#     is not shared between two judgments mid-write;
+#   * two copies of the same PDF in one batch: the hash is reserved before the
+#     first is saved, so the second is rejected as a duplicate instead of both
+#     passing the duplicate check.
+# The queue lives in this process: a server restart drops waiting uploads,
+# which then show as stalled and resume with Retry (or by uploading again).
+
+_queue_state: dict = {"loop": None}
+_PENDING_HASHES: set[str] = set()
+
+
+def _queue() -> dict:
+    """The semaphore and locks, created on (and bound to) the running loop."""
+    loop = asyncio.get_running_loop()
+    if _queue_state["loop"] is not loop:
+        from app.config import settings
+
+        _queue_state.update(
+            loop=loop,
+            slots=asyncio.Semaphore(max(1, int(getattr(settings, "ADMIN_INGEST_CONCURRENCY", 2) or 2))),
+            index=asyncio.Lock(),
+            register=asyncio.Lock(),
+        )
+    return _queue_state
+
+
+def _remove_upload_files(pdf_id: str, suffixes=(".pdf", ".txt", "_sections.json", "_summary.md")) -> None:
+    for suffix in suffixes:
+        f_path = UPLOADS_DIR / f"{pdf_id}{suffix}"
+        if f_path.exists():
+            try:
+                f_path.unlink()
+            except Exception:
+                pass
+
+
+_FAILED_JOB_STATUS = {"extract": "extraction_failed", "parse": "parse_failed",
+                      "tree": "tree_failed", "dense": "embedding_failed",
+                      "index": "embedding_failed", "fts": "index_failed"}
+
+
+async def _job_set(pdf_id: str, **fields) -> None:
+    await db.jobs.update_one({"job_id": pdf_id},
+                             {"$set": {**fields, "updated_at": datetime.now(timezone.utc)}})
+
+
+async def _mark_ingest_failed(pdf_id: str, stage: str, reason: str) -> None:
+    from app.indexing.sync import record_index_status
+
+    now = datetime.now(timezone.utc)
+    await db.jobs.update_one({"job_id": pdf_id}, {"$set": {
+        "status": _FAILED_JOB_STATUS.get(stage, f"{stage}_failed"), "error": reason,
+        "failed_stage": stage, "failed_at": now, "updated_at": now}})
+    await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "failed"}})
+    error = reason if reason.startswith(f"{stage}:") else f"{stage}: {reason}"
+    await record_index_status(pdf_id, error=error, failed=True)
+
 
 async def run_extraction(pdf_id: str, pdf_path: str, detected_type: str) -> None:
+    """Queue one judgment, then run the whole chain for it (_run_pipeline)."""
+    try:
+        if db.jobs is not None:
+            await _job_set(pdf_id, status="queued", queued_at=datetime.now(timezone.utc))
+        async with _queue()["slots"]:
+            await _run_pipeline(pdf_id, pdf_path, detected_type)
+    except asyncio.CancelledError:
+        # Deleted while waiting or running: leave no files behind.
+        logger.warning(f"[{pdf_id}] Ingestion task was explicitly cancelled by user.")
+        _remove_upload_files(pdf_id)
+    finally:
+        ACTIVE_INGESTION_TASKS.pop(pdf_id, None)
+
+
+async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
+    stage = "extract"
     try:
         if db.jobs is None or db.documents is None:
             logger.error(f"[{pdf_id}] Skipping extraction: database is not connected")
@@ -42,179 +147,237 @@ async def run_extraction(pdf_id: str, pdf_path: str, detected_type: str) -> None
             logger.info(f"[{pdf_id}] Ingestion cancelled before starting extraction.")
             return
 
-        logger.info(f"[{pdf_id}] Extraction started")
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "extracting"}},
-        )
+        from app.indexing.sync import complete_judgment, warm_imports
+        from app.ingestion.tree_builder import ensure_tree
 
-        text = extract(pdf_path=pdf_path, pdf_id=pdf_id, detected_type=detected_type)
-        
-        if await is_cancelled():
-            logger.info(f"[{pdf_id}] Ingestion cancelled after text extraction.")
-            return
+        await warm_imports()  # no-op once torch/chromadb are loaded
 
-        now = datetime.now(timezone.utc)
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "extracted", "char_count": len(text), "extracted_at": now}},
-        )
-        await db.documents.update_one(
-            {"pdf_id": pdf_id},
-            {"$set": {"status": "extracted"}},
-        )
-        logger.info(f"[{pdf_id}] Extraction completed (chars={len(text)})")
+        # A retry of a judgment whose tree exists resumes at the missing stores.
+        has_tree = await db.database.document_trees.find_one({"pdf_id": pdf_id}, {"_id": 1})
+        if has_tree:
+            stage = "tree"
+            logger.info(f"[{pdf_id}] Tree already built; resuming at the search stores")
+            await _job_set(pdf_id, status="tree")
+            await ensure_tree(pdf_id, None)
+        else:
+            logger.info(f"[{pdf_id}] Extraction started")
+            await _job_set(pdf_id, status="extracting")
+            # OCR is seconds per page of synchronous CPU: in a thread.
+            text = await asyncio.to_thread(extract, pdf_path=pdf_path, pdf_id=pdf_id,
+                                           detected_type=detected_type)
+            if await is_cancelled():
+                logger.info(f"[{pdf_id}] Ingestion cancelled after text extraction.")
+                return
 
-        if await is_cancelled():
-            logger.info(f"[{pdf_id}] Ingestion cancelled before parsing.")
-            return
+            now = datetime.now(timezone.utc)
+            await _job_set(pdf_id, status="extracted", char_count=len(text), extracted_at=now)
+            await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "extracted"}})
+            logger.info(f"[{pdf_id}] Extraction completed (chars={len(text)})")
 
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "parsing"}},
-        )
-        logger.info(f"[{pdf_id}] Parsing started")
+            if await is_cancelled():
+                logger.info(f"[{pdf_id}] Ingestion cancelled before parsing.")
+                return
 
-        final = await asyncio.wait_for(
-            parse_sections(pdf_id=pdf_id, extracted_text=text),
-            timeout=600,
-        )
+            stage = "parse"
+            await _job_set(pdf_id, status="parsing")
+            logger.info(f"[{pdf_id}] Parsing started")
+            final = await asyncio.wait_for(
+                parse_sections(pdf_id=pdf_id, extracted_text=text),
+                timeout=600,
+            )
 
-        if await is_cancelled():
-            logger.info(f"[{pdf_id}] Ingestion cancelled after parsing.")
-            for suffix in ["_sections.json", "_summary.md"]:
-                f_path = UPLOADS_DIR / f"{pdf_id}{suffix}"
-                if f_path.exists():
-                    f_path.unlink()
-            return
+            if await is_cancelled():
+                logger.info(f"[{pdf_id}] Ingestion cancelled after parsing.")
+                for suffix in ["_sections.json", "_summary.md"]:
+                    f_path = UPLOADS_DIR / f"{pdf_id}{suffix}"
+                    if f_path.exists():
+                        f_path.unlink()
+                return
 
-        parsed_at = datetime.now(timezone.utc)
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "parsed", "parsed_at": parsed_at}},
-        )
-        await db.documents.update_one(
-            {"pdf_id": pdf_id},
-            {"$set": {"status": "parsed"}},
-        )
-        logger.info(f"[{pdf_id}] Parsing completed")
+            # Carry the parse-quality verdict onto both records, so a bad parse is
+            # findable later by query rather than only by reading the logs.
+            quality = {
+                "parse_mode": final.get("parse_mode", ""),
+                "confidence": float(final.get("confidence_score", 0.0) or 0.0),
+                "quality_passed": bool(final.get("quality_passed", True)),
+                "quality_issues": final.get("quality_issues", []),
+            }
+            await _job_set(pdf_id, status="parsed", parsed_at=datetime.now(timezone.utc), **quality)
+            await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "parsed", **quality}})
+            if not quality["quality_passed"]:
+                logger.warning(
+                    f"[{pdf_id}] Parse flagged for review "
+                    f"(confidence {quality['confidence']:.2f}): {quality['quality_issues']}"
+                )
+            logger.info(f"[{pdf_id}] Parsing completed")
 
-        if await is_cancelled():
-            logger.info(f"[{pdf_id}] Ingestion cancelled before building tree.")
-            return
+            if await is_cancelled():
+                logger.info(f"[{pdf_id}] Ingestion cancelled before building tree.")
+                return
 
-        # Build and save hierarchical tree in MongoDB
-        from app.ingestion.tree_builder import build_and_save_tree
-        await build_and_save_tree(pdf_id, final)
+            stage = "tree"
+            await _job_set(pdf_id, status="tree")
+            await ensure_tree(pdf_id, final)
 
         if await is_cancelled():
             logger.info(f"[{pdf_id}] Ingestion cancelled before embedding generation.")
             return
 
-        # Auto-generate embeddings and store in ChromaDB + JSON mapping
-        from app.ingestion.embedding_pipeline import run_embedding_pipeline
-        logger.info(f"[{pdf_id}] Tree created. Running embedding generation pipeline...")
-        await run_embedding_pipeline(pdf_id=pdf_id, force_regenerate=True)
-        logger.info(f"[{pdf_id}] Embedding generation pipeline completed successfully.")
+        # Dense vectors (worker thread), case card (one LLM call), BM25 rows,
+        # card vector; each recorded on index_status. Raises StoreError if a
+        # store needed for search fails; a failed card does not fail the job.
+        stage = "index"
+        await _job_set(pdf_id, status="embedding")
+        logger.info(f"[{pdf_id}] Tree ready. Building the search stores...")
+        # One judgment at a time through the index stage (see the queue notes).
+        async with _queue()["index"]:
+            if await is_cancelled():
+                logger.info(f"[{pdf_id}] Ingestion cancelled while waiting for the index stage.")
+                return
+            result = await complete_judgment(pdf_id, build_card=True)
+        await _job_set(pdf_id, embedding_status="done", index_report=result.get("report", {}))
+        logger.info(f"[{pdf_id}] Search stores written: {result.get('stores')}")
 
         if await is_cancelled():
             logger.info(f"[{pdf_id}] Ingestion cancelled before Google Drive upload.")
             return
 
-        # Upload original PDF to Google Drive for target account
-        from app.services.google_drive_service import google_drive_service
-        logger.info(f"[{pdf_id}] RAG ingestion completed. Uploading original PDF to Google Drive for {google_drive_service.target_email}...")
+        # The original PDF goes to Google Drive. A copy, not a search store: a
+        # Drive failure leaves the judgment searchable and is recorded as such.
+        stage = "drive"
+        drive_fields: dict = {}
+        doc = await db.documents.find_one({"pdf_id": pdf_id}, {"drive": 1})
+        if (doc or {}).get("drive", {}).get("file_id"):
+            drive_fields = {"drive_status": "already_uploaded"}
+        else:
+            try:
+                from app.services.google_drive_service import google_drive_service
 
-        job_doc = await db.jobs.find_one({"job_id": pdf_id})
-        original_name = job_doc.get("filename") if job_doc else Path(pdf_path).name
-
-        drive_res = await google_drive_service.upload_file(
-            file_path=pdf_path,
-            original_filename=original_name,
-            mime_type="application/pdf",
-        )
-
-        drive_file_id = drive_res.get("file_id")
-        drive_status = drive_res.get("status")
-        now = datetime.now(timezone.utc)
-
-        await db.documents.update_one(
-            {"pdf_id": pdf_id},
-            {
-                "$set": {
-                    "status": "complete",
+                job_doc = await db.jobs.find_one({"job_id": pdf_id})
+                original_name = job_doc.get("filename") if job_doc else Path(pdf_path).name
+                drive_res = await google_drive_service.upload_file(
+                    file_path=pdf_path,
+                    original_filename=original_name,
+                    mime_type="application/pdf",
+                )
+                now = datetime.now(timezone.utc)
+                await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {
                     "drive": {
-                        "file_id": drive_file_id,
+                        "file_id": drive_res.get("file_id"),
                         "file_name": drive_res.get("file_name", original_name),
                         "mime_type": drive_res.get("mime_type", "application/pdf"),
                         "web_view_link": drive_res.get("web_view_link"),
                         "web_content_link": drive_res.get("web_content_link"),
                         "uploaded_at": now,
                         "account": google_drive_service.target_email,
-                        "status": drive_status,
+                        "status": drive_res.get("status"),
                     },
                     "completed_at": now,
-                }
-            },
-        )
+                }})
+                drive_fields = {"drive_file_id": drive_res.get("file_id"),
+                                "drive_status": drive_res.get("status")}
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"[{pdf_id}] Google Drive upload failed (judgment stays searchable): {e}")
+                drive_fields = {"drive_status": f"failed: {e}"}
 
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {
-                "$set": {
-                    "status": "complete",
-                    "drive_file_id": drive_file_id,
-                    "drive_status": drive_status,
-                    "completed_at": now,
-                }
-            },
-        )
-        logger.info(f"[{pdf_id}] Ingestion & Google Drive sync completed successfully. File ID: {drive_file_id}")
+        doc = await db.documents.find_one({"pdf_id": pdf_id}, {"status": 1})
+        final_status = (doc or {}).get("status") or "searchable"
+        await _job_set(pdf_id, status=final_status, completed_at=datetime.now(timezone.utc), **drive_fields)
+        logger.info(f"[{pdf_id}] Ingestion finished: {final_status} ({drive_fields})")
 
-    except asyncio.CancelledError:
-        logger.warning(f"[{pdf_id}] Ingestion task was explicitly cancelled by user.")
-        for suffix in [".pdf", ".txt", "_sections.json", "_summary.md"]:
-            f_path = UPLOADS_DIR / f"{pdf_id}{suffix}"
-            if f_path.exists():
-                try:
-                    f_path.unlink()
-                except Exception:
-                    pass
     except asyncio.TimeoutError:
-        failed_at = datetime.now(timezone.utc)
         error_message = "Parsing timed out after 600 seconds."
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "parse_failed", "error": error_message, "failed_at": failed_at}},
-        )
-        await db.documents.update_one(
-            {"pdf_id": pdf_id},
-            {"$set": {"status": "failed"}},
-        )
+        await _mark_ingest_failed(pdf_id, "parse", error_message)
         logger.error(f"[{pdf_id}] {error_message}")
     except Exception as e:
-        now = datetime.now(timezone.utc)
-        await db.jobs.update_one(
-            {"job_id": pdf_id},
-            {"$set": {"status": "parse_failed", "error": str(e), "failed_at": now}},
-        )
-        await db.documents.update_one(
-            {"pdf_id": pdf_id},
-            {"$set": {"status": "failed"}},
-        )
-        logger.exception(f"[{pdf_id}] Ingestion failed: {e}")
-    finally:
-        ACTIVE_INGESTION_TASKS.pop(pdf_id, None)
+        from app.indexing.sync import StoreError
+
+        failed_stage = e.store if isinstance(e, StoreError) else stage
+        try:
+            await _mark_ingest_failed(pdf_id, failed_stage, str(e))
+        except Exception as ex:  # noqa: BLE001
+            logger.error(f"[{pdf_id}] could not record the failure: {ex}")
+        logger.exception(f"[{pdf_id}] Ingestion failed at {failed_stage}: {e}")
+
+
+def _ingestion_running(pdf_id: str) -> bool:
+    task = ACTIVE_INGESTION_TASKS.get(pdf_id)
+    return task is not None and not task.done()
+
+
+async def _resume_point(pdf_id: str) -> str:
+    """The first stage a retry will actually redo."""
+    from app.indexing.check import inspect_one
+    from app.indexing.sync import load_cached_parse
+
+    state = await inspect_one(pdf_id)
+    if state["tree"]:
+        for store in ("dense", "fts", "card", "card_vector"):
+            if not state[store]:
+                return store
+        return "none"
+    if load_cached_parse(pdf_id) is not None:
+        return "tree"
+    if (UPLOADS_DIR / f"{pdf_id}.txt").exists():
+        return "parse"
+    return "extract"
+
+
+async def _start_ingestion(pdf_id: str, reason: str) -> str:
+    """(Re)launch run_extraction for an existing document. Returns the resume point.
+
+    Raises HTTPException 409 when it is already running, 410 when the work
+    cannot be resumed because the original PDF is gone.
+    """
+    if _ingestion_running(pdf_id):
+        raise HTTPException(status_code=409, detail="This judgment is already being processed.")
+    doc = await db.documents.find_one({"pdf_id": pdf_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Judgment not found.")
+    resume_from = await _resume_point(pdf_id)
+    pdf_path = UPLOADS_DIR / f"{pdf_id}.pdf"
+    if resume_from == "extract" and not pdf_path.exists():
+        raise HTTPException(status_code=410, detail="The original PDF is no longer on the server; "
+                                                    "delete this record and upload the PDF again.")
+    now = datetime.now(timezone.utc)
+    await db.jobs.update_one({"job_id": pdf_id}, {
+        "$set": {"status": "queued", "retried_at": now, "updated_at": now, "resume_from": resume_from,
+                 "retry_reason": reason},
+        "$unset": {"error": "", "failed_at": "", "failed_stage": ""},
+        "$inc": {"retry_count": 1},
+    }, upsert=False)
+    if doc.get("status") == "failed":
+        await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "uploaded"}})
+    task = asyncio.create_task(run_extraction(pdf_id, str(pdf_path), doc.get("detected_type") or "text"))
+    ACTIVE_INGESTION_TASKS[pdf_id] = task
+    logger.info(f"[{pdf_id}] Ingestion (re)started from '{resume_from}' ({reason})")
+    return resume_from
+
+
+def _uploader(name: str, admin_id: str) -> dict | None:
+    """The admin who uploaded, as stored on the job/document (None if unknown).
+
+    Sent by the admin page from the signed-in admin (auth is currently off, so
+    the server cannot derive it from a token yet). Kept small: a display name
+    and the admin id (usually the email), both already non-secret.
+    """
+    name, admin_id = (name or "").strip(), (admin_id or "").strip()
+    if not name and not admin_id:
+        return None
+    return {"name": name, "id": admin_id}
 
 
 @router.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    uploaded_by: str = Form(""),
+    uploaded_by_id: str = Form(""),
+):
     original_filename = file.filename or "uploaded.pdf"
     if not original_filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
     pdf_id = str(uuid4())
-    job_id = pdf_id
     filename = original_filename
     saved_path = UPLOADS_DIR / f"{pdf_id}.pdf"
 
@@ -230,26 +393,89 @@ async def upload_pdf(file: UploadFile = File(...)):
     if db.jobs is None or db.documents is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
-    existing_doc = await db.documents.find_one(
-        {"file_hash": file_hash},
-        {"_id": 0, "pdf_id": 1, "filename": 1, "status": 1},
-    )
+    uploader = _uploader(uploaded_by, uploaded_by_id)
+
+    # The duplicate check and the hash reservation happen under one lock, so two
+    # copies of a PDF in the same batch cannot both pass the check.
+    async with _queue()["register"]:
+        existing_doc = await db.documents.find_one(
+            {"file_hash": file_hash},
+            {"_id": 0, "pdf_id": 1, "filename": 1, "status": 1},
+        )
+        if existing_doc:
+            return await _upload_of_known_pdf(existing_doc, file_bytes, filename, uploader)
+        if file_hash in _PENDING_HASHES:
+            raise HTTPException(status_code=409, detail=(
+                "Duplicate PDF detected: the same file is already being uploaded in this batch."))
+        _PENDING_HASHES.add(file_hash)
+
+    try:
+        return await _register_new_upload(pdf_id, filename, saved_path, file_bytes, file_hash, uploader)
+    finally:
+        _PENDING_HASHES.discard(file_hash)
+
+
+async def _upload_of_known_pdf(existing_doc: dict, file_bytes: bytes, filename: str,
+                               uploader: dict | None = None) -> dict:
+    """The PDF's hash is already on record: resume it if it failed or stalled, else 409.
+
+    Called under the registration lock, so two re-uploads of the same failed
+    PDF cannot both start a task for it.
+    """
     if existing_doc:
+        from app.indexing.sync import IN_FLIGHT_STATUSES
+
+        existing_id = existing_doc.get("pdf_id")
+        existing_status = existing_doc.get("status")
+        stuck = existing_status in IN_FLIGHT_STATUSES and not _ingestion_running(existing_id)
+        if existing_id and (existing_status == "failed" or stuck):
+            # The same PDF failed (or was interrupted) before: resume that
+            # record instead of refusing, and instead of creating a second one.
+            old_pdf = UPLOADS_DIR / f"{existing_id}.pdf"
+            if not old_pdf.exists():
+                await asyncio.to_thread(old_pdf.write_bytes, file_bytes)
+            if uploader:
+                # Record who re-uploaded, keeping the original uploader if set.
+                await db.jobs.update_one({"job_id": existing_id, "uploaded_by": {"$in": [None, {}]}},
+                                         {"$set": {"uploaded_by": uploader}})
+                await db.documents.update_one({"pdf_id": existing_id, "uploaded_by": {"$in": [None, {}]}},
+                                              {"$set": {"uploaded_by": uploader}})
+            resume_from = await _start_ingestion(existing_id, reason="re-uploaded")
+            return {
+                "pdf_id": existing_id,
+                "filename": existing_doc.get("filename", filename),
+                "job_id": existing_id,
+                "status": "queued",
+                "resumed": True,
+                "resume_from": resume_from,
+                "message": f"This PDF was uploaded before and {'failed' if existing_status == 'failed' else 'was interrupted'}; "
+                           f"resuming it from '{resume_from}'. Use job_id to track progress.",
+            }
+        if existing_id and _ingestion_running(existing_id):
+            raise HTTPException(status_code=409, detail=(
+                f"This PDF is already being processed as '{existing_doc.get('filename', 'unknown')}'."))
         raise HTTPException(
             status_code=409,
-            detail=f"Duplicate PDF detected. Already uploaded as '{existing_doc.get('filename', 'unknown')}'.",
+            detail=f"Duplicate PDF detected. Already uploaded as '{existing_doc.get('filename', 'unknown')}'"
+                   f" (status: {existing_status}).",
         )
 
-    saved_path.write_bytes(file_bytes)
+
+async def _register_new_upload(pdf_id: str, filename: str, saved_path: Path, file_bytes: bytes,
+                               file_hash: str, uploader: dict | None = None) -> dict:
+    """Save, validate and record a new PDF, then queue its ingestion."""
+    job_id = pdf_id
+    await asyncio.to_thread(saved_path.write_bytes, file_bytes)
 
     from app.ingestion.validator import validate_judgment
-    is_valid, validation_msg = validate_judgment(str(saved_path))
+    # Validation OCRs page 1 of a scanned PDF: seconds of CPU, so in a thread.
+    is_valid, validation_msg = await asyncio.to_thread(validate_judgment, str(saved_path))
     if not is_valid:
         if saved_path.exists():
             saved_path.unlink()
         raise HTTPException(status_code=400, detail=validation_msg)
 
-    detected_type = detect_pdf_type(str(saved_path))
+    detected_type = await asyncio.to_thread(detect_pdf_type, str(saved_path))
     now = datetime.now(timezone.utc)
 
     await db.jobs.insert_one(
@@ -260,7 +486,9 @@ async def upload_pdf(file: UploadFile = File(...)):
             "detected_type": detected_type,
             "status": "uploaded",
             "created_at": now,
+            "updated_at": now,
             "file_hash": file_hash,
+            "uploaded_by": uploader,
         }
     )
 
@@ -273,6 +501,8 @@ async def upload_pdf(file: UploadFile = File(...)):
             "upload_date": now,
             "total_nodes": 0,
             "file_hash": file_hash,
+            "index_status": {},
+            "uploaded_by": uploader,
         }
     )
     task = asyncio.create_task(run_extraction(pdf_id, str(saved_path), detected_type))
@@ -290,6 +520,32 @@ async def upload_pdf(file: UploadFile = File(...)):
     }
 
 
+@router.post("/jobs/{job_id}/retry")
+async def retry_job(job_id: str):
+    """Resume a failed or stuck ingestion from its last good store.
+
+    Stuck = an in-flight status with no running task (the server restarted
+    mid-ingest). A "searchable" judgment can be retried too: that builds its
+    missing card (one LLM call). A "complete" one has nothing to retry.
+    """
+    if db.jobs is None or db.documents is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+    job = await db.jobs.find_one({"$or": [{"job_id": job_id}, {"pdf_id": job_id}]})
+    pdf_id = (job or {}).get("pdf_id") or job_id
+    doc = await db.documents.find_one({"pdf_id": pdf_id}, {"status": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Judgment not found.")
+    if _ingestion_running(pdf_id):
+        raise HTTPException(status_code=409, detail="This judgment is already being processed.")
+    previous = doc.get("status")
+    if previous == "complete" and await _resume_point(pdf_id) == "none":
+        return {"job_id": pdf_id, "pdf_id": pdf_id, "status": "complete", "resume_from": "none",
+                "message": "Every store is already written; nothing to retry."}
+    resume_from = await _start_ingestion(pdf_id, reason="retry")
+    return {"job_id": pdf_id, "pdf_id": pdf_id, "status": "queued", "previous_status": previous,
+            "resume_from": resume_from, "message": f"Resuming from '{resume_from}'."}
+
+
 @router.get("/jobs/{job_id}")
 async def get_job(job_id: str):
     if db.jobs is None:
@@ -299,6 +555,17 @@ async def get_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
 
+    return _with_activity(job)
+
+
+def _with_activity(job: dict) -> dict:
+    """Mark whether a task is alive for this job (waiting in the queue or running).
+
+    The Cases page treats a job whose status has not moved for 15 minutes as
+    stalled (the server restarted mid-ingest). A judgment waiting behind a
+    batch of uploads is not stalled; `active` tells the two apart.
+    """
+    job["active"] = _ingestion_running(job.get("pdf_id") or job.get("job_id") or "")
     return job
 
 
@@ -309,7 +576,33 @@ async def list_jobs():
 
     cursor = db.jobs.find({}, {"_id": 0}).sort("created_at", -1)
     jobs = await cursor.to_list(length=None)
-    return {"jobs": jobs}
+    return {"jobs": [_with_activity(j) for j in jobs]}
+
+
+class JobLookup(BaseModel):
+    job_ids: list[str]
+
+
+MAX_LOOKUP_IDS = 500
+
+
+@router.post("/jobs/lookup")
+async def lookup_jobs(body: JobLookup):
+    """The current state of the given jobs only — what a multi-file upload polls.
+
+    GET /jobs returns every job ever uploaded (thousands at full corpus); a
+    batch only needs its own few dozen, every few seconds.
+    """
+    if db.jobs is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+    ids = list(dict.fromkeys(i for i in body.job_ids if i))[:MAX_LOOKUP_IDS]
+    if not ids:
+        return {"jobs": []}
+    cursor = db.jobs.find({"job_id": {"$in": ids}},
+                          {"_id": 0, "job_id": 1, "pdf_id": 1, "filename": 1, "status": 1, "error": 1,
+                           "failed_stage": 1, "updated_at": 1, "created_at": 1, "quality_passed": 1,
+                           "uploaded_by": 1})
+    return {"jobs": [_with_activity(j) async for j in cursor]}
 
 
 @router.get("/extracted/{pdf_id}")
@@ -428,11 +721,8 @@ async def download_judgment(judgment_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to download PDF: {str(e)}")
 
 
-@router.delete("/jobs/{job_id}")
-async def delete_job(job_id: str):
-    if db.jobs is None or db.documents is None:
-        raise HTTPException(status_code=503, detail="Database is not connected.")
-
+async def _perform_delete_job(job_id: str) -> dict:
+    """Internal helper to clean up all traces of a single judgment/job."""
     # Try finding job by job_id or pdf_id
     job = await db.jobs.find_one({"$or": [{"job_id": job_id}, {"pdf_id": job_id}]})
     doc = None
@@ -449,10 +739,21 @@ async def delete_job(job_id: str):
         actual_job_id = (job or doc).get("job_id") or job_id
 
     drive_file_id = None
-    if doc and isinstance(doc.get("drive"), dict):
+    if doc and isinstance(doc.get("drive"), dict) and doc.get("drive", {}).get("file_id"):
         drive_file_id = doc.get("drive", {}).get("file_id")
-    elif job:
+    elif doc and doc.get("drive_file_id"):
+        drive_file_id = doc.get("drive_file_id")
+    elif job and isinstance(job.get("drive"), dict) and job.get("drive", {}).get("file_id"):
+        drive_file_id = job.get("drive", {}).get("file_id")
+    elif job and job.get("drive_file_id"):
         drive_file_id = job.get("drive_file_id")
+
+    filename = (
+        (doc.get("drive", {}).get("file_name") if (doc and isinstance(doc.get("drive"), dict)) else None)
+        or (doc.get("filename") if doc else None)
+        or (job.get("filename") if job else None)
+        or f"{pdf_id}.pdf"
+    )
 
     # 0. Cancel active background task immediately if running
     for key in [job_id, pdf_id, actual_job_id]:
@@ -461,6 +762,14 @@ async def delete_job(job_id: str):
             if t and not t.done():
                 logger.info(f"Explicitly cancelling running extraction task for {key}")
                 t.cancel()
+
+    # Heavy modules (torch, chromadb) are imported in a thread if this process
+    # has not loaded them yet, so the cleanup below never stalls the loop.
+    try:
+        from app.indexing.sync import warm_imports
+        await warm_imports()
+    except Exception as e:
+        logger.warning(f"Notice while preloading index modules: {e}")
 
     # 1. MongoDB Collections Cleanup
     deleted_counts = {}
@@ -493,17 +802,28 @@ async def delete_job(job_id: str):
     except Exception as e:
         logger.error(f"Error purging MongoDB collections for {pdf_id}: {e}")
 
-    # 2. ChromaDB Vectors Cleanup
+    # 2. ChromaDB Vectors Cleanup (a synchronous SQLite write: in a thread)
     try:
-        chroma_store.delete_by_file_id(pdf_id)
+        await asyncio.to_thread(chroma_store.delete_by_file_id, pdf_id)
         logger.info(f"ChromaDB vectors purged for file_id: {pdf_id}")
     except Exception as e:
         logger.warning(f"Notice during ChromaDB vector purge for {pdf_id}: {e}")
 
-    # 3. Connection JSON Files Cleanup (backend/app/connection)
+    # 2b. Precision-v2 stores. Without this a deleted judgment lingers in the
+    # case cards, the BM25 index and the card/contextual collections, and exact
+    # match or keyword search can return a case whose PDF no longer exists.
     try:
-        if CONNECTION_DIR.exists():
-            for conn_file in list(CONNECTION_DIR.glob(f"{pdf_id}*")):
+        from app.indexing.sync import unindex_judgment
+        await unindex_judgment(pdf_id)
+    except Exception as e:
+        logger.warning(f"Notice during v2 index purge for {pdf_id}: {e}")
+
+    # 3. Connection JSON Files Cleanup (backend/app/connection, or CONNECTION_DIR)
+    try:
+        from app.ingestion.embedding_pipeline import connection_dir
+        conn_dir = connection_dir()
+        if conn_dir.exists():
+            for conn_file in list(conn_dir.glob(f"{pdf_id}_*")):
                 try:
                     conn_file.unlink()
                     logger.info(f"Deleted connection file: {conn_file.name}")
@@ -524,19 +844,89 @@ async def delete_job(job_id: str):
     except Exception as e:
         logger.error(f"Error cleaning upload files for {pdf_id}: {e}")
 
-    # 5. Google Drive File Cleanup
-    if drive_file_id:
-        try:
+    # The in-memory node index must forget the judgment now, not at restart.
+    try:
+        from app.retrieval import index_loader
+        await asyncio.to_thread(index_loader.reload_index)
+    except Exception as e:
+        logger.warning(f"Notice during index reload after deleting {pdf_id}: {e}")
+
+    # 5. Google Drive File Cleanup — ONLY by the file id stored at upload.
+    # There is deliberately no filename fallback: Drive names are not unique
+    # (thousands of judgments, many named "judgment.pdf" or "CA_12.pdf"), and
+    # delete_file_by_name permanently removed every match, i.e. other
+    # judgments' PDFs. Without a stored id the Drive copy is left alone.
+    drive_deleted = False
+    drive_action = "none"
+    try:
+        if drive_file_id:
             from app.services.google_drive_service import google_drive_service
-            await google_drive_service.delete_file(drive_file_id)
-            logger.info(f"Google Drive file deleted: {drive_file_id}")
-        except Exception as ex:
-            logger.warning(f"Notice during Google Drive delete for {drive_file_id}: {ex}")
+            drive_deleted = await google_drive_service.delete_file(drive_file_id)
+            drive_action = "deleted_by_id" if drive_deleted else "failed"
+            if drive_deleted:
+                logger.info(f"Google Drive file {drive_file_id} successfully deleted from cloud storage.")
+            else:
+                logger.warning(f"Google Drive deletion returned False for file {drive_file_id}.")
+        else:
+            drive_action = "skipped_no_file_id"
+            logger.info(f"No Drive file id stored for {pdf_id} ('{filename}'); Drive left untouched.")
+    except Exception as ex:
+        drive_action = f"error: {str(ex)}"
+        logger.warning(f"Notice during Google Drive delete for {drive_file_id}: {ex}")
 
     return {
-        "message": "Judgment, node tree, Chroma vectors, connection mappings, and all associated files deleted successfully.",
+        "message": (
+            "Judgment, node tree, Chroma vectors, and Google Drive cloud file deleted successfully."
+            if drive_deleted
+            else "Judgment, node tree, Chroma vectors, and local files deleted successfully."
+        ),
         "job_id": actual_job_id,
         "pdf_id": pdf_id,
+        "drive_deleted": drive_deleted,
+        "drive_file_id": drive_file_id,
+        "drive_action": drive_action,
+    }
+
+
+@router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    if db.jobs is None or db.documents is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+    return await _perform_delete_job(job_id)
+
+
+class BatchDeleteJobsRequest(BaseModel):
+    job_ids: list[str]
+
+
+@router.post("/jobs/batch-delete")
+async def batch_delete_jobs(body: BatchDeleteJobsRequest):
+    if db.jobs is None or db.documents is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+
+    job_ids = list(dict.fromkeys(j for j in body.job_ids if j))
+    if not job_ids:
+        return {"success": True, "deleted_count": 0, "results": []}
+
+    results = []
+    deleted_count = 0
+    failed_count = 0
+
+    for jid in job_ids:
+        try:
+            res = await _perform_delete_job(jid)
+            results.append({"job_id": jid, "success": True, "details": res})
+            deleted_count += 1
+        except Exception as e:
+            logger.error(f"Failed to delete job {jid} during batch delete: {e}")
+            results.append({"job_id": jid, "success": False, "error": str(e)})
+            failed_count += 1
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "failed_count": failed_count,
+        "results": results,
     }
 
 
@@ -547,13 +937,15 @@ async def admin_status():
 
     total_documents = await db.documents.count_documents({})
 
-    statuses = ["complete", "parsed", "failed", "uploaded", "processing"]
+    # "searchable" (findable, card pending) and "indexing" (tree written,
+    # search stores not yet) come from app.indexing.sync's per-store status.
+    statuses = ["complete", "searchable", "indexing", "parsed", "failed", "uploaded", "processing"]
     by_status = {}
     for status in statuses:
         by_status[status] = await db.documents.count_documents({"status": status})
 
     cursor = db.jobs.find({}, {"_id": 0}).sort("created_at", -1)
-    all_jobs = await cursor.to_list(length=None)
+    all_jobs = [_with_activity(j) for j in await cursor.to_list(length=None)]
 
     return {
         "total_documents": total_documents,
@@ -587,7 +979,7 @@ class UserUpdate(BaseModel):
     name: str
     org: str
     plan: str
-    password: str
+    password: str = ""  # blank keeps the current password
     dob: str
     gender: str = "Male"
     phone_no: str = ""
@@ -658,6 +1050,33 @@ async def validate_human_name(username: str) -> bool:
 # Import re for regex validation
 import re
 
+from app.api.security import hash_password
+
+# Account documents store a bcrypt hash in "password" (older ones may still
+# hold plain text until their next login upgrades them). Neither ever leaves
+# the server: every response below goes through _without_secrets or a
+# projection that drops the field.
+SECRET_FIELDS = ("password",)
+NO_SECRETS = {"_id": 0, "password": 0}
+
+
+def _without_secrets(doc: dict) -> dict:
+    return {k: v for k, v in doc.items() if k not in SECRET_FIELDS}
+
+
+def _password_hash(plain: str) -> str:
+    """Validate a new password's strength and return its bcrypt hash (400 if unusable)."""
+    try:
+        validate_password_strength(plain)
+        return hash_password(plain)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _password_change(plain: str) -> dict:
+    """{"password": hash} for a new password, {} for a blank one (keep the current password)."""
+    return {"password": _password_hash(plain)} if plain else {}
+
 @router.get("/users")
 async def get_users():
     if db.database is None:
@@ -670,8 +1089,8 @@ async def get_users():
         if "created_at" in doc and doc["created_at"]:
             if isinstance(doc["created_at"], datetime):
                 doc["created_at"] = doc["created_at"].isoformat()
-        users.append(doc)
-    
+        users.append(_without_secrets(doc))
+
     total_users = len(users)
     pro_users = sum(1 for u in users if u.get("plan") == "Pro")
     standard_users = sum(1 for u in users if u.get("plan") == "Standard")
@@ -695,14 +1114,11 @@ async def create_user(user: UserCreate):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    # 2. Validate Password
-    try:
-        validate_password_strength(user.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
+    # 2. Validate and hash the password
+    password_hash = _password_hash(user.password)
+
     # 3. Validate DOB
-    now = datetime.now(timezone.utc)
+    now= datetime.now(timezone.utc)
     if user.created_at:
         try:
             client_time_str = user.created_at.replace("Z", "+00:00")
@@ -759,7 +1175,7 @@ async def create_user(user: UserCreate):
         "statusColor": "bg-[#22C55E]",
         "dob": user.dob,
         "gender": user.gender,
-        "password": user.password,
+        "password": password_hash,
         "phone_no": user.phone_no,
         "created_at": now
     }
@@ -767,7 +1183,7 @@ async def create_user(user: UserCreate):
     await db.database.users.insert_one(new_user)
     new_user["_id"] = str(new_user["_id"])
     new_user["created_at"] = new_user["created_at"].isoformat()
-    return new_user
+    return _without_secrets(new_user)
 
 
 @router.get("/users/check-username")
@@ -786,41 +1202,6 @@ async def check_email_availability(email: str):
     return {"available": user is None}
 
 
-class UserLoginRequest(BaseModel):
-    email: str
-    password: str
-
-
-@router.post("/users/login")
-async def user_login(body: UserLoginRequest):
-    if db.database is None:
-        raise HTTPException(status_code=503, detail="Database is not connected.")
-    
-    user = await db.database.users.find_one({"email": body.email})
-    if not user or user.get("password") != body.password:
-        raise HTTPException(status_code=401, detail="Invalid Email or Password.")
-        
-    if user.get("status") != "Active" or user.get("isActive") is False:
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=403,
-            content={
-                "detail": "Your account has been deactivated. Do you want to reactivate your account?",
-                "is_deactivated": True,
-                "email": user.get("email"),
-            },
-        )
-        
-    return {
-        "id": user.get("id"),
-        "username": user.get("username"),
-        "name": user.get("name"),
-        "email": user.get("email"),
-        "plan": user.get("plan"),
-        "message": "Login successful"
-    }
-
-
 @router.put("/users/{user_id}")
 async def update_user(user_id: str, user: UserUpdate):
     if db.database is None:
@@ -836,13 +1217,10 @@ async def update_user(user_id: str, user: UserUpdate):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    # 2. Validate Password
-    try:
-        validate_password_strength(user.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
-    # 3. Validate DOB based on original registration date
+    # 2. A new password, if one was typed (blank keeps the current one)
+    password_change = _password_change(user.password)
+
+    # 3. Validate DOB based on originalregistration date
     reg_date = existing_user.get("created_at") or datetime.now(timezone.utc)
     try:
         validate_age_limit(user.dob, reg_date)
@@ -875,10 +1253,10 @@ async def update_user(user_id: str, user: UserUpdate):
         "planColor": plan_color,
         "dob": user.dob,
         "gender": user.gender,
-        "password": user.password,
-        "phone_no": user.phone_no
+        "phone_no": user.phone_no,
+        **password_change,
     }
-    
+
     await db.database.users.update_one({"id": user_id}, {"$set": update_doc})
     
     updated = await db.database.users.find_one({"id": user_id})
@@ -886,7 +1264,7 @@ async def update_user(user_id: str, user: UserUpdate):
     if "created_at" in updated and updated["created_at"]:
         if isinstance(updated["created_at"], datetime):
             updated["created_at"] = updated["created_at"].isoformat()
-    return updated
+    return _without_secrets(updated)
 
 
 @router.delete("/users/{user_id}")
@@ -1076,32 +1454,10 @@ async def delete_support_query(query_id: str):
     return {"message": "Support query deleted successfully.", "query_id": query_id}
 
 
-class AdminLoginRequest(BaseModel):
-    adminid: str
-    password: str
-
-
-@router.post("/login")
-async def admin_login(body: AdminLoginRequest):
-    if db.database is None:
-        raise HTTPException(status_code=503, detail="Database is not connected.")
-
-    admin = await db.database.admins.find_one({"adminid": body.adminid})
-    if not admin or admin.get("password") != body.password:
-        raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
-
-    return {
-        "adminid": admin.get("adminid"),
-        "name": admin.get("name", "Admin"),
-        "role": admin.get("role", "admin"),
-        "message": "Login successful",
-    }
-
-
 class AdminProfileUpdate(BaseModel):
     original_adminid: str
     adminid: str
-    password: str
+    password: str = ""  # blank keeps the current password
     dob: str
     name: str
 
@@ -1128,12 +1484,9 @@ async def update_admin_profile(body: AdminProfileUpdate):
     if not body.adminid.strip():
         raise HTTPException(status_code=400, detail="Admin ID cannot be empty.")
     
-    # Validate password strength
-    try:
-        validate_password_strength(body.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
+    # A new password, if one was typed (blank keeps the current one)
+    password_change = _password_change(body.password)
+
     try:
         # Validate DOB format (YYYY-MM-DD)
         datetime.strptime(body.dob, "%Y-%m-%d")
@@ -1145,9 +1498,9 @@ async def update_admin_profile(body: AdminProfileUpdate):
         {"adminid": body.original_adminid},
         {"$set": {
             "adminid": body.adminid.strip(),
-            "password": body.password,
             "dob": body.dob,
-            "name": body.name.strip()
+            "name": body.name.strip(),
+            **password_change,
         }}
     )
 
@@ -1166,7 +1519,7 @@ async def get_admin_profile(adminid: str):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
     
-    admin = await db.database.admins.find_one({"adminid": adminid}, {"_id": 0})
+    admin = await db.database.admins.find_one({"adminid": adminid}, NO_SECRETS)
     if not admin:
         raise HTTPException(status_code=404, detail="Admin account not found.")
         
@@ -1187,7 +1540,7 @@ class AdminUpdate(BaseModel):
     email: str
     role: str
     dob: str
-    password: str
+    password: str = ""  # blank keeps the current password
 
 @router.get("/admins")
 async def get_admins():
@@ -1200,7 +1553,7 @@ async def get_admins():
         [{"$set": {"email": "$adminid"}}]
     )
     
-    cursor = db.database.admins.find({}, {"_id": 0})
+    cursor = db.database.admins.find({}, NO_SECRETS)
     admins = await cursor.to_list(length=None)
     
     total = len(admins)
@@ -1239,12 +1592,8 @@ async def create_admin(body: AdminCreate):
     if existing_email:
         raise HTTPException(status_code=409, detail="Email is already registered.")
         
-    # Validate password strength
-    try:
-        validate_password_strength(password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
+    password_hash = _password_hash(password)
+
     try:
         # Validate date format (YYYY-MM-DD)
         datetime.strptime(dob, "%Y-%m-%d")
@@ -1257,7 +1606,7 @@ async def create_admin(body: AdminCreate):
         "email": email,
         "role": role,
         "dob": dob,
-        "password": password,
+        "password": password_hash,
         "gender": "Male"
     }
     
@@ -1280,9 +1629,9 @@ async def update_admin(adminid_param: str, body: AdminUpdate):
     dob = body.dob.strip()
     password = body.password
     
-    if not adminid or not name or not email or not role or not dob or not password:
-        raise HTTPException(status_code=400, detail="All fields are required.")
-        
+    if not adminid or not name or not email or not role or not dob:
+        raise HTTPException(status_code=400, detail="All fields except the password are required.")
+
     # If adminid is changed, check uniqueness
     if adminid != adminid_param:
         dup = await db.database.admins.find_one({"adminid": adminid})
@@ -1295,12 +1644,9 @@ async def update_admin(adminid_param: str, body: AdminUpdate):
         if dup:
             raise HTTPException(status_code=409, detail="Email is already registered.")
             
-    # Validate password strength
-    try:
-        validate_password_strength(password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
+    # A new password, if one was typed (blank keeps the current one)
+    password_change = _password_change(password)
+
     try:
         datetime.strptime(dob, "%Y-%m-%d")
     except ValueError:
@@ -1314,7 +1660,7 @@ async def update_admin(adminid_param: str, body: AdminUpdate):
             "email": email,
             "role": role,
             "dob": dob,
-            "password": password
+            **password_change,
         }}
     )
     return {"message": "Admin updated successfully."}

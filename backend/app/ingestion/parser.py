@@ -14,6 +14,7 @@ from app.ingestion.llm_pure_classifier import (
 )
 from app.ingestion.llm_hybrid_classifier import (
     HybridClassifier,
+    Validator,
 )
 from app.ingestion.llm_section_classifier import (
     call_llm_section_classifier,
@@ -554,6 +555,23 @@ def _chunk_text(text: str, size: int = 12000, overlap: int = 500) -> List[str]:
 # Google Gemini / LLM interaction (Groq commented as requested)
 # ===========================================================================
 
+# One client per process, keyed by API key. Building a genai.Client is not free:
+# measured at ~1.3s of blocking CPU, and because it ran inside the async upload
+# handler it stalled the event loop for every other request on each parse.
+_gemini_clients: dict[str, object] = {}
+
+
+def _gemini_client(api_key: str):
+    """Return the cached Gemini client for `api_key`, creating it once."""
+    client = _gemini_clients.get(api_key)
+    if client is None:
+        from google import genai
+
+        client = genai.Client(api_key=api_key)
+        _gemini_clients[api_key] = client
+    return client
+
+
 async def call_gemini(prompt: str, system: str) -> str:
     """
     Call Google Gemini 2.5 Flash-Lite API using official google-genai client.
@@ -563,11 +581,10 @@ async def call_gemini(prompt: str, system: str) -> str:
         logger.warning("GEMINI_API_KEY is not configured in settings or .env file.")
         return ""
 
-    from google import genai
     from google.genai import types
 
     try:
-        client = genai.Client(api_key=api_key)
+        client = _gemini_client(api_key)
         model_name = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash-lite")
         response = await client.aio.models.generate_content(
             model=model_name,
@@ -2241,22 +2258,42 @@ async def parse_sections(pdf_id: str, extracted_text: str) -> Dict:
                 hybrid_classifier = HybridClassifier()
                 classified = await hybrid_classifier.classify(cleaned_text, pdf_id)
                 if classified:
+                    # Score the parse against the ten structural checks in
+                    # HybridClassifier.Validator. Until this call existed the
+                    # validator was dead code and every judgment shipped the
+                    # hardcoded 0.95, so a parse that put the Court's reasoning
+                    # in FACTS looked exactly as trustworthy as a clean one.
+                    # At eleven documents that is survivable by eye; at a
+                    # thousand it is the only way to find the bad ones.
+                    report = Validator.validate_result(classified, cleaned_text)
+                    confidence = report["confidence"]
+                    if not report["passed"]:
+                        logger.warning(
+                            f"[{pdf_id}] Parse quality below threshold "
+                            f"(confidence {confidence:.2f}): {'; '.join(report['issues'])}"
+                        )
+
                     final = {
                         "pdf_id": pdf_id,
                         "parse_mode": "hybrid_llm_ner",
-                        "confidence_score": classified.confidence_score,
+                        "confidence_score": confidence,
+                        "quality_passed": report["passed"],
+                        "quality_issues": report["issues"],
                         "context_heading": classified.header_coram.split('\n')[0][:120].strip() if classified.header_coram else "",
                         "context_summary": "",
                         "sections": [
-                            {"section_type": "HEADER_CORAM", "heading_found": classified.header_coram[:120] if classified.header_coram else None, "text": classified.header_coram, "confidence": classified.confidence_score},
-                            {"section_type": "FACTS", "heading_found": classified.facts[:120] if classified.facts else None, "text": classified.facts, "confidence": classified.confidence_score},
-                            {"section_type": "ARGUMENTS", "heading_found": classified.arguments[:120] if classified.arguments else None, "text": classified.arguments, "confidence": classified.confidence_score},
-                            {"section_type": "LEGAL_ISSUES", "heading_found": classified.legal_issues[:120] if classified.legal_issues else None, "text": classified.legal_issues, "confidence": classified.confidence_score},
-                            {"section_type": "ANALYSIS_RATIO", "heading_found": classified.analysis_ratio[:120] if classified.analysis_ratio else None, "text": classified.analysis_ratio, "confidence": classified.confidence_score},
-                            {"section_type": "FINAL_ORDER", "heading_found": classified.final_order[:120] if classified.final_order else None, "text": classified.final_order, "confidence": classified.confidence_score},
+                            {"section_type": "HEADER_CORAM", "heading_found": classified.header_coram[:120] if classified.header_coram else None, "text": classified.header_coram, "confidence": confidence},
+                            {"section_type": "FACTS", "heading_found": classified.facts[:120] if classified.facts else None, "text": classified.facts, "confidence": confidence},
+                            {"section_type": "ARGUMENTS", "heading_found": classified.arguments[:120] if classified.arguments else None, "text": classified.arguments, "confidence": confidence},
+                            {"section_type": "LEGAL_ISSUES", "heading_found": classified.legal_issues[:120] if classified.legal_issues else None, "text": classified.legal_issues, "confidence": confidence},
+                            {"section_type": "ANALYSIS_RATIO", "heading_found": classified.analysis_ratio[:120] if classified.analysis_ratio else None, "text": classified.analysis_ratio, "confidence": confidence},
+                            {"section_type": "FINAL_ORDER", "heading_found": classified.final_order[:120] if classified.final_order else None, "text": classified.final_order, "confidence": confidence},
                         ],
                     }
-                    logger.info(f"[{pdf_id}] Hybrid classification completed (confidence: {classified.confidence_score}).")
+                    logger.info(
+                        f"[{pdf_id}] Hybrid classification completed "
+                        f"(confidence {confidence:.2f}, {len(report['issues'])} issues)."
+                    )
             except Exception as e:
                 logger.error(f"[{pdf_id}] Hybrid classification encountered error: {e}")
             

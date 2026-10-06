@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Reveal from './Reveal';
+import { apiFetch } from '../../lib/api';
 
 // A ruled entry line, as on a court form — no boxed inputs.
 const FIELD_CLASS =
@@ -65,7 +66,7 @@ const ContactForm = () => {
     setFieldErrors({});
     setSubmitting(true);
     try {
-      const res = await fetch('/api/admin/support', {
+      const res = await apiFetch('/api/admin/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

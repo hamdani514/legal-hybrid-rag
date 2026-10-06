@@ -27,6 +27,20 @@ else:
     logger.warning("Tesseract not found in default locations - relying on PATH")
 
 
+# One EasyOCR Reader per process, built on first use. Constructing a Reader
+# loads its detection and recognition models (seconds of CPU and hundreds of
+# MB), so building it inside the per-page fallback reloaded the model on every
+# page Tesseract failed on. Lazy, because most runs never reach the fallback.
+_EASYOCR_READER = None
+
+
+def _get_easyocr_reader():
+    global _EASYOCR_READER
+    if _EASYOCR_READER is None:
+        _EASYOCR_READER = easyocr.Reader(["en"], gpu=False)
+    return _EASYOCR_READER
+
+
 def _uploads_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "uploads"
 
@@ -146,7 +160,6 @@ def extract_scanned(pdf_path: str, pdf_id: str) -> str:
     ocr_dir = _uploads_dir() / f"ocr_tmp_{pdf_id}"
     ocr_dir.mkdir(parents=True, exist_ok=True)
     chunks = []
-    reader = None  # Lazy-init EasyOCR only if needed
 
     try:
         with fitz.open(pdf_path) as doc:
@@ -191,8 +204,7 @@ def extract_scanned(pdf_path: str, pdf_id: str) -> str:
                     )
                     # --- Attempt 2: EasyOCR fallback ---
                     try:
-                        if reader is None:
-                            reader = easyocr.Reader(["en"], gpu=False)
+                        reader = _get_easyocr_reader()
                         result = reader.readtext(str(img_path), detail=0)
                         text = " ".join(result)
                     except Exception as e2:

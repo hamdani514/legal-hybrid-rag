@@ -4,36 +4,22 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import ChatInput from './ChatInput';
 import EmptyState from './EmptyState';
+import ResultsPanel from './ResultsPanel';
+import apiFetch, { clearToken } from '../../lib/api';
+import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
 
-// The responder is asked for these five headings. Models wrap them
-// inconsistently ("[LEGAL ISSUE]", "**[LEGAL ISSUE]**", "**LEGAL ISSUE**"),
-// so match the label and ignore the decoration around it.
-const HEADING_RE = /^\s*\**\s*\[?\s*(RELEVANT FACTS|LEGAL ISSUE|COURT REASONING|FINAL DECISION|KEY PRINCIPLE)\s*\]?\s*\**\s*:?\s*$/i;
+// The backend's MAX_QUERY_CHARS; checked here too so a long description gets
+// a clear message instead of a validation error.
+const MAX_QUERY_CHARS = 4000;
 
-const stripEmphasis = (line) => line.replace(/\*\*/g, '').trimEnd();
-
-// Split a generated answer into { heading, body } blocks. An answer that
-// arrives without recognisable headings is returned as one unlabelled block.
-const parseAnswer = (answer) => {
-  const sections = [];
-  let current = null;
-
-  for (const rawLine of (answer || '').split('\n')) {
-    const match = rawLine.match(HEADING_RE);
-    if (match) {
-      current = { heading: match[1].toUpperCase(), lines: [] };
-      sections.push(current);
-    } else if (current) {
-      current.lines.push(stripEmphasis(rawLine));
-    } else if (rawLine.trim()) {
-      current = { heading: null, lines: [stripEmphasis(rawLine)] };
-      sections.push(current);
-    }
+/** The `detail` of an error response, when it is a plain string. */
+const errorDetail = async (res) => {
+  try {
+    const body = await res.json();
+    return typeof body?.detail === 'string' ? body.detail : '';
+  } catch {
+    return '';
   }
-
-  return sections
-    .map((s) => ({ heading: s.heading, body: s.lines.join('\n').trim() }))
-    .filter((s) => s.heading || s.body);
 };
 
 const WelcomeContent = () => {
@@ -66,6 +52,7 @@ const WelcomeContent = () => {
   const userEmail = currentUser?.email || currentUser?.user?.email || '';
 
   const handleLogout = () => {
+    clearToken();
     localStorage.removeItem('currentUser');
     navigate('/login');
   };
@@ -81,10 +68,22 @@ const WelcomeContent = () => {
     // Add user message
     const userMessage = { sender: 'user', text: queryText };
     setChatHistory((prev) => [...prev, userMessage]);
+
+    if (queryText.length > MAX_QUERY_CHARS) {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: `Your description is ${queryText.length} characters long; please shorten it to ${MAX_QUERY_CHARS} or fewer. The facts, what each side claims and what the courts decided are what matter most.`,
+        },
+      ]);
+      return;
+    }
+
     setIsSearching(true);
 
     try {
-      const res = await fetch('/query/search', {
+      const res = await apiFetch('/query/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,49 +97,60 @@ const WelcomeContent = () => {
       });
 
       if (!res.ok) {
-        const detail = await res.text();
+        const detail = await errorDetail(res);
         console.error('Search API returned status', res.status, detail);
-        setChatHistory((prev) => [
-          ...prev,
-          { sender: 'ai', text: `The search service returned an error (${res.status}). Please try again.` },
-        ]);
+        // 429 is a rate limit (per user, or the shared service): say "busy",
+        // with the server's own explanation when it gave one.
+        const text =
+          res.status === 429
+            ? detail || 'The service is busy right now. Please try again in a minute.'
+            : res.status === 401
+              ? 'Your session has expired. Please sign in again.'
+              : `The search service returned an error (${res.status}). Please try again.`;
+        setChatHistory((prev) => [...prev, { sender: 'ai', text }]);
         return;
       }
 
       const data = await res.json();
-      const answer = data.top_judgment_answer || '';
       const citations = data.judgments || [];
 
-      if (citations.length === 0) {
-        setChatHistory((prev) => [
-          ...prev,
-          { sender: 'ai', text: 'No judgments in the archive matched your query. Try broader legal terms.' },
-        ]);
-        return;
-      }
-
-      // The pipeline returns this sentinel when the LLM call itself failed;
-      // the retrieved judgments are still worth showing.
-      if (!answer || answer.startsWith('Error:')) {
+      // The backend decides whether anything in the archive answers the
+      // query. When it says nothing does, that verdict is shown as-is: no
+      // judgments, no downloads, no answer. Presenting an unrelated case with
+      // a relevance score attached is what this replaced.
+      if (data.no_results || citations.length === 0) {
         setChatHistory((prev) => [
           ...prev,
           {
             sender: 'ai',
-            text: 'I found matching judgments but could not draft an answer from them. The retrieved authorities are listed below.',
-            citations,
-            latencyMs: data.latency_ms,
+            noResults: true,
+            text:
+              data.message ||
+              'No relevant case is available in our data centre for this query.',
           },
         ]);
         return;
       }
 
+      // Each result renders its own state (ready / on demand / busy / error)
+      // inside the panel. Only when every result failed outright is that worth
+      // a sentence up front.
+      const allFailed = citations.every((c) => answerStatusOf(c) === ANSWER_STATUS.ERROR);
+
       setChatHistory((prev) => [
         ...prev,
         {
           sender: 'ai',
-          sections: parseAnswer(answer),
           citations,
+          // The query as typed: "Analyse this case" and retries send it back
+          // to POST /query/answer for that result.
+          query: queryText,
           latencyMs: data.latency_ms,
+          // Set when a broad query was answered with a category browse.
+          notice: data.notice || '',
+          text: allFailed
+            ? 'I found matching judgments but could not draft an analysis from them. The authorities are listed below.'
+            : '',
         },
       ]);
     } catch (error) {
@@ -213,76 +223,7 @@ const WelcomeContent = () => {
                   <div className="flex flex-col gap-2">
                     <span className="font-display text-base font-semibold text-ash-900">Verdict AI</span>
                     <div className="font-prose text-sm text-ash-900 leading-relaxed">
-                      {message.text && (
-                        <p className="whitespace-pre-line">{message.text}</p>
-                      )}
-
-                      {message.sections?.map((section, sIdx) => (
-                        <div key={sIdx} className={sIdx > 0 ? 'mt-5' : ''}>
-                          {section.heading && (
-                            <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-1.5">
-                              {section.heading}
-                            </h3>
-                          )}
-                          <p className="whitespace-pre-line">{section.body}</p>
-                        </div>
-                      ))}
-
-                      {message.citations?.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-ash-200">
-                          <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-brand-500 mb-3 flex items-center justify-between">
-                            <span>Authorities Retrieved ({message.citations.length})</span>
-                            <span className="text-[11px] font-normal text-ash-400">Google Drive Storage</span>
-                          </h3>
-                          <div className="flex flex-col gap-2.5">
-                            {message.citations.map((cite) => (
-                              <div
-                                key={cite.judgment_id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-ash-200 bg-ash-50/70 hover:bg-ash-50 hover:border-brand-300 transition-all shadow-xs"
-                              >
-                                <div className="flex items-start gap-2.5 min-w-0">
-                                  <div className="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-medium text-sm text-ash-900 truncate max-w-xs md:max-w-md" title={cite.filename}>
-                                        {cite.filename}
-                                      </span>
-                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-100 text-brand-800">
-                                        Relevance {(cite.similarity_score * 100).toFixed(0)}%
-                                      </span>
-                                    </div>
-                                    {cite.sections_retrieved?.length > 0 && (
-                                      <p className="text-xs text-ash-500 mt-0.5 truncate">
-                                        Sections: {cite.sections_retrieved.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ')}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                                  <a
-                                    href={cite.download_url || `/api/admin/judgments/${cite.judgment_id}/download`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    download={cite.filename || "judgment.pdf"}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#261900] text-white hover:bg-brand-600 transition-all shadow-xs hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
-                                    title={`Download ${cite.filename} from Google Drive`}
-                                  >
-                                    <span className="material-symbols-outlined text-[15px]">download</span>
-                                    <span>Download PDF</span>
-                                  </a>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {message.latencyMs != null && (
-                            <p className="mt-3 text-xs text-ash-500">
-                              Retrieved in {(message.latencyMs / 1000).toFixed(1)}s
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      <ResultsPanel message={message} />
                     </div>
                   </div>
                 </div>

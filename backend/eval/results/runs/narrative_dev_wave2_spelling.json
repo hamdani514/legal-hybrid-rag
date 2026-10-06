@@ -1,0 +1,3358 @@
+{
+  "label": "wave2: spelling normalisation",
+  "run_at": "2026-10-04T17:40:50",
+  "corpus_judgments": 11,
+  "dataset": "eval\\datasets\\narrative_dev.jsonl",
+  "dataset_sha256": "2f1e4d64671685ae",
+  "entry_point": "app.retrieval.pipeline_v2.retrieve_v2",
+  "top_k": 10,
+  "config": {
+    "JUDGE_TIMEOUT": 6.0,
+    "JUDGE_TOP_N": 10,
+    "NARRATIVE_FACETS": true,
+    "NARRATIVE_MAX_CONFIDENCE": "medium",
+    "QUERY_ANALYZER_USE_LLM": true,
+    "RERANKER_BACKEND": "torch",
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "RERANK_CANDIDATES": 40,
+    "RERANK_ENABLED": true,
+    "USE_BM25": true,
+    "USE_CARDS": true,
+    "USE_EXACT_MATCH": true,
+    "USE_FUSION": true,
+    "USE_LLM_JUDGE": false,
+    "USE_LLM_PARSER": true,
+    "USE_QUERY_ANALYZER": false,
+    "USE_V2_PIPELINE": true,
+    "V2_AGREEMENT_MIN": 3,
+    "V2_CARD_POOL": 50,
+    "V2_CHUNK_POOL": 200,
+    "V2_CONFIDENT_RELEVANCE": 0.25,
+    "V2_FINAL_ORDER": "fusion",
+    "V2_RELEVANCE_THRESHOLD": 0.02,
+    "V2_RERANK_INCLUDE_CARD": false,
+    "V2_RERANK_JUDGMENTS": 10,
+    "V2_RERANK_PASSAGES": 3
+  },
+  "code_state": {
+    "app/config.py": {
+      "sha256": "fc75f3b6ed0d",
+      "mtime": "2026-10-04T10:06:27"
+    },
+    "app/retrieval/pipeline_v2.py": {
+      "sha256": "a10387eea55e",
+      "mtime": "2026-10-04T17:36:39"
+    },
+    "app/retrieval/query_analyzer.py": {
+      "sha256": "20fc4772440e",
+      "mtime": "2026-10-03T23:48:58"
+    },
+    "app/retrieval/exact_match.py": {
+      "sha256": "6c9f2a8e69df",
+      "mtime": "2026-10-03T23:50:45"
+    },
+    "app/retrieval/lexical.py": {
+      "sha256": "5af830ed9d23",
+      "mtime": "2026-10-03T23:53:00"
+    },
+    "app/retrieval/fusion.py": {
+      "sha256": "591614003512",
+      "mtime": "2026-10-03T23:51:17"
+    },
+    "app/retrieval/dense_cards.py": {
+      "sha256": "685f68288b0f",
+      "mtime": "2026-10-04T10:09:22"
+    },
+    "app/retrieval/dense_chunks.py": {
+      "sha256": "35dbd17849ec",
+      "mtime": "2026-10-03T23:53:36"
+    },
+    "app/retrieval/reranker.py": {
+      "sha256": "f02fb786cd9d",
+      "mtime": "2026-10-03T23:53:00"
+    },
+    "app/retrieval/categories.py": {
+      "sha256": "9be262c661f2",
+      "mtime": "2026-10-03T12:24:41"
+    },
+    "app/retrieval/judge.py": {
+      "sha256": "424e29340b18",
+      "mtime": "2026-10-03T11:26:15"
+    },
+    "app/retrieval/contracts.py": {
+      "sha256": "505107977a3b",
+      "mtime": "2026-10-04T10:06:27"
+    }
+  },
+  "code_changed_during_run": false,
+  "llm_calls": {
+    "made": 0,
+    "blocked": 0,
+    "budget": 0
+  },
+  "metrics": {
+    "n_rows": 74,
+    "n_positive": 34,
+    "n_negative": 40,
+    "findability_synthetic": {
+      "judgments": 7,
+      "at_least_1": {
+        "k": 7,
+        "n": 7,
+        "value": 1.0,
+        "ci95": [
+          0.646,
+          1.0
+        ]
+      },
+      "at_least_2": {
+        "k": 7,
+        "n": 7,
+        "value": 1.0,
+        "ci95": [
+          0.646,
+          1.0
+        ]
+      },
+      "majority": {
+        "k": 5,
+        "n": 7,
+        "value": 0.7142857142857143,
+        "ci95": [
+          0.359,
+          0.918
+        ]
+      },
+      "all": {
+        "k": 5,
+        "n": 7,
+        "value": 0.7142857142857143,
+        "ci95": [
+          0.359,
+          0.918
+        ]
+      },
+      "judgments_with_fewer_than_2_descriptions": [],
+      "per_judgment": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": {
+          "descriptions": 4,
+          "found_first": 4,
+          "missed": []
+        },
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": {
+          "descriptions": 4,
+          "found_first": 2,
+          "missed": [
+            "nar-3eff8217-layperson",
+            "nar-3eff8217-layperson_other_side"
+          ]
+        },
+        "5a14105d-8a45-413c-8c93-26d6301cf028": {
+          "descriptions": 2,
+          "found_first": 2,
+          "missed": []
+        },
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a": {
+          "descriptions": 4,
+          "found_first": 4,
+          "missed": []
+        },
+        "adaeb488-96ae-474e-8570-76fd85648f9d": {
+          "descriptions": 4,
+          "found_first": 2,
+          "missed": [
+            "nar-adaeb488-layperson",
+            "nar-adaeb488-layperson_other_side"
+          ]
+        },
+        "d40e2887-6f06-4840-8665-d1da6933f415": {
+          "descriptions": 4,
+          "found_first": 4,
+          "missed": []
+        },
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": {
+          "descriptions": 3,
+          "found_first": 3,
+          "missed": []
+        }
+      }
+    },
+    "findability_all": {
+      "judgments": 7,
+      "at_least_1": {
+        "k": 7,
+        "n": 7,
+        "value": 1.0,
+        "ci95": [
+          0.646,
+          1.0
+        ]
+      },
+      "at_least_2": {
+        "k": 7,
+        "n": 7,
+        "value": 1.0,
+        "ci95": [
+          0.646,
+          1.0
+        ]
+      },
+      "majority": {
+        "k": 7,
+        "n": 7,
+        "value": 1.0,
+        "ci95": [
+          0.646,
+          1.0
+        ]
+      },
+      "all": {
+        "k": 5,
+        "n": 7,
+        "value": 0.7142857142857143,
+        "ci95": [
+          0.359,
+          0.918
+        ]
+      },
+      "judgments_with_fewer_than_2_descriptions": [],
+      "per_judgment": {
+        "3628e429-82b2-489e-81ad-9cad8ae36894": {
+          "descriptions": 5,
+          "found_first": 5,
+          "missed": []
+        },
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de": {
+          "descriptions": 7,
+          "found_first": 5,
+          "missed": [
+            "nar-3eff8217-layperson",
+            "nar-3eff8217-layperson_other_side"
+          ]
+        },
+        "5a14105d-8a45-413c-8c93-26d6301cf028": {
+          "descriptions": 2,
+          "found_first": 2,
+          "missed": []
+        },
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a": {
+          "descriptions": 4,
+          "found_first": 4,
+          "missed": []
+        },
+        "adaeb488-96ae-474e-8570-76fd85648f9d": {
+          "descriptions": 5,
+          "found_first": 3,
+          "missed": [
+            "nar-adaeb488-layperson",
+            "nar-adaeb488-layperson_other_side"
+          ]
+        },
+        "d40e2887-6f06-4840-8665-d1da6933f415": {
+          "descriptions": 6,
+          "found_first": 6,
+          "missed": []
+        },
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8": {
+          "descriptions": 5,
+          "found_first": 5,
+          "missed": []
+        }
+      }
+    },
+    "p_at_1": {
+      "k": 30,
+      "n": 34,
+      "value": 0.8823529411764706,
+      "ci95": [
+        0.734,
+        0.953
+      ]
+    },
+    "p_at_1_window": {
+      "k": 32,
+      "n": 34,
+      "value": 0.9411764705882353,
+      "ci95": [
+        0.809,
+        0.984
+      ]
+    },
+    "recall_at_5": {
+      "k": 30,
+      "n": 34,
+      "value": 0.8823529411764706,
+      "ci95": [
+        0.734,
+        0.953
+      ]
+    },
+    "recall_at_5_window": {
+      "k": 34,
+      "n": 34,
+      "value": 1.0,
+      "ci95": [
+        0.898,
+        1.0
+      ]
+    },
+    "mrr_window": 0.9656862745098038,
+    "false_refusal": {
+      "k": 4,
+      "n": 34,
+      "value": 0.11764705882352941,
+      "ci95": [
+        0.047,
+        0.266
+      ]
+    },
+    "wrong_top_shown": {
+      "k": 0,
+      "n": 34,
+      "value": 0.0,
+      "ci95": [
+        0.0,
+        0.102
+      ]
+    },
+    "by_perspective": {
+      "appellant_lawyer": {
+        "n_pos": 5,
+        "n_neg": 0,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": null,
+        "leaks_high": null
+      },
+      "appellant_party": {
+        "n_pos": 3,
+        "n_neg": 0,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": null,
+        "leaks_high": null
+      },
+      "lawyer": {
+        "n_pos": 0,
+        "n_neg": 13,
+        "p_at_1": null,
+        "recall_at_5": null,
+        "recall_at_5_window": null,
+        "refused_pos": null,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "layperson": {
+        "n_pos": 7,
+        "n_neg": 8,
+        "p_at_1": 0.7142857142857143,
+        "recall_at_5": 0.7142857142857143,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.2857142857142857,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "layperson_other_side": {
+        "n_pos": 7,
+        "n_neg": 1,
+        "p_at_1": 0.7142857142857143,
+        "recall_at_5": 0.7142857142857143,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.2857142857142857,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "opposing_party": {
+        "n_pos": 8,
+        "n_neg": 0,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": null,
+        "leaks_high": null
+      },
+      "party": {
+        "n_pos": 0,
+        "n_neg": 16,
+        "p_at_1": null,
+        "recall_at_5": null,
+        "recall_at_5_window": null,
+        "refused_pos": null,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "respondent_lawyer": {
+        "n_pos": 1,
+        "n_neg": 0,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": null,
+        "leaks_high": null
+      },
+      "third_person": {
+        "n_pos": 3,
+        "n_neg": 2,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": 0,
+        "leaks_high": 0
+      }
+    },
+    "by_detail": {
+      "detailed": {
+        "n_pos": 17,
+        "n_neg": 31,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "loose": {
+        "n_pos": 17,
+        "n_neg": 9,
+        "p_at_1": 0.7647058823529411,
+        "recall_at_5": 0.7647058823529411,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.23529411764705882,
+        "leaks": 0,
+        "leaks_high": 0
+      }
+    },
+    "by_origin": {
+      "hand_written": {
+        "n_pos": 9,
+        "n_neg": 6,
+        "p_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.0,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "narrative_negative": {
+        "n_pos": 0,
+        "n_neg": 34,
+        "p_at_1": null,
+        "recall_at_5": null,
+        "recall_at_5_window": null,
+        "refused_pos": null,
+        "leaks": 0,
+        "leaks_high": 0
+      },
+      "synthetic_narrative": {
+        "n_pos": 25,
+        "n_neg": 0,
+        "p_at_1": 0.84,
+        "recall_at_5": 0.84,
+        "recall_at_5_window": 1.0,
+        "refused_pos": 0.16,
+        "leaks": null,
+        "leaks_high": null
+      }
+    },
+    "out_of_archive": {
+      "n": 40,
+      "leaks": {
+        "k": 0,
+        "n": 40,
+        "value": 0.0,
+        "ci95": [
+          0.0,
+          0.088
+        ]
+      },
+      "leaks_high": 0,
+      "refusal_rate": {
+        "k": 40,
+        "n": 40,
+        "value": 1.0,
+        "ci95": [
+          0.912,
+          1.0
+        ]
+      },
+      "far_domain_failures": [],
+      "near_domain_candidates": [],
+      "by_domain": {
+        "far": {
+          "n": 11,
+          "leaks": 0,
+          "leaks_high": 0
+        },
+        "near": {
+          "n": 29,
+          "leaks": 0,
+          "leaks_high": 0
+        }
+      }
+    },
+    "confidence_labels": {
+      "correct_top": {
+        "medium": 29,
+        "high": 1
+      },
+      "wrong_top": {},
+      "leaked_top": {}
+    },
+    "party_pinning": {
+      "rows": [
+        "hw-party-02"
+      ],
+      "pinned": []
+    },
+    "latency_ms": {
+      "p50": 1829.0,
+      "p95": 2372.4,
+      "max": 2574.8
+    }
+  },
+  "hand_written_summary": {
+    "detailed_right_first": "6/6",
+    "loose_right_first": "3/3",
+    "out_of_archive_leaked": "0/5",
+    "out_of_archive_shown_high": 0,
+    "party_misfire_pinned": "0/1"
+  },
+  "changes_vs_narrative_baseline_v0": null,
+  "rows": [
+    {
+      "id": "hw-detailed-01",
+      "query": "My client is a widow. Her husband gave her agricultural land as dower at the time of their nikah in 1967 and she has been in possession and collecting rent from the tenants ever since. After he died his relatives got inheritance mutations entered in their names in the revenue record. We filed a suit for declaration and correction of the record. The other side argues the suit is time-barred and should have gone to the Family Court. The High Court decreed our suit.",
+      "origin": "hand_written",
+      "perspective": "respondent_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0387
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2298.2,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-detailed-02",
+      "query": "We are the heirs of the deceased. His wife claims land was given to her in lieu of dower through the nikah nama and she sued decades later to correct the revenue entries. We say her claim is barred by limitation and the nikah nama is not genuine. The High Court ruled in her favour and we appealed to the Supreme Court.",
+      "origin": "hand_written",
+      "perspective": "appellant_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.6454
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2574.8,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-detailed-05",
+      "query": "I worked as a clerk in the post office pension branch. A shortage in pension payments was found and I was charged even though another clerk admitted he was responsible, repaid the money and was convicted. I was punished with a reduction in my pay scale and recovery of money. The Federal Service Tribunal dismissed my appeal without considering the inquiry evidence.",
+      "origin": "hand_written",
+      "perspective": "appellant_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.4941
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1656.0,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-detailed-07",
+      "query": "I was hired locally on contract at a Pakistani embassy abroad and my services were terminated. The Federal Service Tribunal reinstated me, but the government appealed saying a locally recruited contract employee is not a civil servant.",
+      "origin": "hand_written",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "shown": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.4568
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2129.4,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-detailed-08",
+      "query": "My family members and I jointly owned land under a family settlement. Some of the co-owners sold part of my share and a mutation was sanctioned in 1984. I filed a civil suit in 1998 for declaration and possession but the courts held my suit was time-barred.",
+      "origin": "hand_written",
+      "perspective": "appellant_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "shown": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "confidence": [
+        "medium",
+        "related"
+      ],
+      "scores": [
+        0.0255,
+        0.4492
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "49c42cc9-1123-4fc3-a387-67a738820871"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1458.7,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-detailed-09",
+      "query": "I am a police officer. My juniors were promoted to sub-inspector before me because they completed the lower school course earlier. I claimed proforma promotion from the date my juniors were promoted and the service tribunal accepted my claim, but the police department appealed against it.",
+      "origin": "hand_written",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "shown": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "medium",
+        "related"
+      ],
+      "scores": [
+        0.034,
+        0.3332
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2016.8,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-loose-01",
+      "query": "A woman says land was given to her by her husband when they married and his family later took it in the government records after he died. Is she too late to go to court?",
+      "origin": "hand_written",
+      "perspective": "third_person",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.1446
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2089.9,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-loose-02",
+      "query": "A government employee was punished for money that went missing in his office even though a colleague confessed. Can the tribunal ignore the evidence?",
+      "origin": "hand_written",
+      "perspective": "third_person",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.1165
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": false,
+      "message": null,
+      "latency_ms": 1962.1,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-loose-05",
+      "query": "Are people hired locally by our embassies abroad on contract treated as government servants?",
+      "origin": "hand_written",
+      "perspective": "third_person",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "shown": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "high"
+      ],
+      "scores": [
+        0.9336
+      ],
+      "top_label": "high",
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": false,
+      "message": null,
+      "latency_ms": 1851.3,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "hw-ooa-01",
+      "query": "My client purchased a residential plot in Lahore through a registered sale deed. The seller's brother later filed a suit for pre-emption claiming a superior right as a co-sharer and alleged the price in the deed was inflated. The trial court decreed the pre-emption suit and the High Court upheld it.",
+      "origin": "hand_written",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1479.0,
+      "domain": "near",
+      "topic": "land",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "hw-ooa-02",
+      "query": "My client's husband divorced her and refused to pay maintenance for her and their two minor children. She filed a suit in the Family Court for maintenance and recovery of dowry articles. The Family Court decreed the suit but the appellate court reduced the maintenance amount.",
+      "origin": "hand_written",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1433.2,
+      "domain": "near",
+      "topic": "family",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "hw-ooa-04",
+      "query": "A candidate for the Senate was disqualified because he held dual nationality at the time of filing his nomination papers. He says he renounced his foreign nationality before the polls. The High Court upheld his disqualification.",
+      "origin": "hand_written",
+      "perspective": "third_person",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2002.4,
+      "domain": "near",
+      "topic": "election",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "hw-ooa-05",
+      "query": "My client was arrested for murder after an FIR was lodged by the deceased's brother. There is no eyewitness and the recovery of the pistol is doubtful. The sessions court refused bail and the High Court also refused it.",
+      "origin": "hand_written",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1488.8,
+      "domain": "far",
+      "topic": "bail",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "hw-ooa-07",
+      "query": "The tax department reopened my company's income tax assessment for 2015 after five years, saying income was concealed. We say the reopening is time-barred and there was no definite information. The appellate tribunal upheld the reassessment.",
+      "origin": "hand_written",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1977.0,
+      "domain": "far",
+      "topic": "tax",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "hw-party-02",
+      "query": "The Federation of Pakistan through the Ministry refused to pay my client's pension after he retired from a corporation, saying he was never a civil servant. The tribunal agreed with the Ministry and dismissed his appeal.",
+      "origin": "hand_written",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1406.1,
+      "domain": "near",
+      "topic": "party_misfire",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-acq-1",
+      "query": "The provincial government acquired my clients' orchards for a motorway and paid compensation at the average price of the last year. We say the land is next to a city and was being sold for residential plots at five times that rate. The referee court enhanced the compensation, but the High Court reduced it again on the government's appeal.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2156.5,
+      "domain": "near",
+      "topic": "land acquisition compensation",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-acr-1",
+      "query": "I am a section officer in a provincial secretariat. The selection board deferred my promotion twice because of two adverse annual reports that were never communicated to me. Officers below me were promoted. My representation was not decided. The service tribunal held that promotion is not a vested right and dismissed my appeal.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1463.7,
+      "domain": "near",
+      "topic": "promotion denied over adverse reports",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-admission-1",
+      "query": "My daughter applied for admission to a public medical college on a seat reserved for a backward district. The admission committee gave the seat to a student whose domicile we believe was obtained falsely. Her marks were higher than the selected candidate. The High Court dismissed our petition saying the admission session had already started.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2103.8,
+      "domain": "near",
+      "topic": "medical college admission",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-bail-2",
+      "query": "My brother was caught by police who say they found a bag of hashish in his car. He says it was not his car and the police made up the story because of a fight with an officer. He has been in jail for a year and the trial has not started. The courts keep refusing to release him.",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1544.2,
+      "domain": "near",
+      "topic": "bail in narcotics case",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-cheque-1",
+      "query": "I lent my friend money for his shop and he gave me a cheque. When I took it to the bank it bounced. I complained to the police and they arrested him, but now he says the cheque was only a guarantee and he never owed me anything. The magistrate let him off. What can I do?",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1452.3,
+      "domain": "near",
+      "topic": "cheque dishonour",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-cheque-2",
+      "query": "My client sued on three dishonoured cheques under the summary procedure for recovery of money. The defendant applied for leave to defend saying the cheques were signed blank as security for a partnership that never started. The trial court refused leave because he did not deposit the amount, decreed the suit, and the High Court upheld the decree.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1558.5,
+      "domain": "near",
+      "topic": "summary suit on a dishonoured cheque",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-custody-1",
+      "query": "After my wife died, her mother took our five-year-old son and refuses to return him. I applied to the Guardian Judge for custody. The grandmother says I have remarried and my new wife will not look after the boy. The Guardian Judge gave custody to the grandmother with weekly visits for me, and my appeal was dismissed.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1540.9,
+      "domain": "near",
+      "topic": "custody of minor",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-disq-1",
+      "query": "A member of the provincial assembly did not declare an apartment in Dubai and a bank account in his nomination papers. His opponent sought a declaration that he is not honest and should be disqualified for life. The returned member says the property belongs to his wife and was disclosed in her tax return. The High Court disqualified him.",
+      "origin": "narrative_negative",
+      "perspective": "third_person",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1496.5,
+      "domain": "near",
+      "topic": "disqualification for concealing assets",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-cake",
+      "query": "I run a small home business in Leeds making custom wedding cakes and post my designs online. Another baker copied my most popular designs exactly, even using my photos in her adverts, and customers think she is me. She says you cannot own a cake design. Can I stop her?",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1478.2,
+      "domain": "far",
+      "topic": "copied designs on social media",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-fifa",
+      "query": "I am a professional footballer. My club in Portugal stopped paying my salary for four months, so I terminated my contract and signed with a club in Spain. My old club claims I left without just cause and wants compensation. The players' status chamber ruled against me and banned me for four months.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2056.6,
+      "domain": "far",
+      "topic": "football transfer",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-luggage",
+      "query": "I flew from Dubai to Toronto with a connection in London and my suitcase never arrived. The airline offered me a small fixed amount, far less than what my clothes, laptop and gifts were worth, saying international rules limit what they must pay. Can I claim the full value?",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1473.6,
+      "domain": "far",
+      "topic": "airline lost luggage",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-malpractice",
+      "query": "My mother had a routine knee replacement in a private hospital in Sydney and developed a serious infection because, we believe, the surgical instruments were not properly sterilised. She lost the leg. The hospital says infection is a known risk she accepted in the consent form. The state court dismissed our negligence claim for lack of expert evidence.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2135.0,
+      "domain": "far",
+      "topic": "medical negligence abroad",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-patent",
+      "query": "My client owns a United States patent on a method of unlocking a phone by swiping a pattern. A large manufacturer sells phones using a similar gesture. The jury found infringement and awarded damages, but the judge set the verdict aside holding the patent invalid as obvious in light of earlier devices.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2061.3,
+      "domain": "far",
+      "topic": "smartphone patent",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-pension-split",
+      "query": "My husband and I divorced in British Columbia after twenty years. The family court divided our house equally but refused to divide his workplace pension, saying I had signed a prenuptial agreement. I say I signed it the night before the wedding without a lawyer. The appeal court upheld the agreement.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2532.6,
+      "domain": "far",
+      "topic": "foreign divorce property division",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-tree",
+      "query": "The roots of my neighbour's huge maple tree have cracked my driveway and the foundation of my garage here in Ontario. He refuses to cut it down or pay for the repairs and says the tree was there before my house was built. My insurance will not cover it. What are my options?",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2055.9,
+      "domain": "far",
+      "topic": "neighbour tree damage",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-uk-deposit",
+      "query": "I rented a flat in Manchester for two years. When I moved out the landlord kept my whole deposit, saying I damaged the carpets and walls, and he never put the deposit in a government protection scheme. The county court awarded me the deposit back but refused the penalty of three times the deposit.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2063.8,
+      "domain": "far",
+      "topic": "UK tenancy deposit",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-far-us-overtime",
+      "query": "I worked as an assistant manager at a fast-food chain in Texas for three years, often sixty hours a week. They classified me as exempt so I never got overtime, although I mostly cooked and cleaned like the crew. The federal district court granted summary judgment for the company and I want to appeal.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1463.4,
+      "domain": "far",
+      "topic": "US overtime pay",
+      "verify_at_scale": false,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-fir-1",
+      "query": "Some men broke into my shop, beat my son and took cash, and everyone in the street saw it. The local police station refused to write a report because one of them is related to a politician. I went to the sessions judge who told the police to register the case, but the High Court cancelled that order.",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2111.0,
+      "domain": "near",
+      "topic": "registration of FIR (justice of peace)",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-khula-1",
+      "query": "I cannot live with my husband any more because he beats me and keeps me away from my parents. I asked the court to end the marriage. He says he will only agree if I give back the gold and the money he gave at the wedding. The judge ended the marriage but ordered me to return everything. Is that fair?",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2166.2,
+      "domain": "near",
+      "topic": "khula",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-khula-2",
+      "query": "The wife filed for dissolution of marriage on the basis of khula alleging cruelty and non-payment of maintenance. My client, the husband, says she left the home on her own and is being influenced by her family. The Family Court dissolved the marriage at the pre-trial stage after reconciliation failed, without recording evidence, and the High Court refused to interfere.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2187.7,
+      "domain": "near",
+      "topic": "khula",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-labour-1",
+      "query": "I worked as a machine operator in a cement factory for fourteen years and was a union office-bearer. The management dismissed me for allegedly slowing down work, without any proper inquiry. The labour court ordered reinstatement with back benefits, but the labour appellate tribunal set that aside saying I had been given a show-cause notice.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1504.8,
+      "domain": "near",
+      "topic": "industrial worker dismissed",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-localgov-1",
+      "query": "I filed nomination papers for chairman of a union council in the local government elections. The returning officer rejected them because the electricity company said I owed unpaid bills. I had paid the bill two days earlier and showed the receipt. The appellate authority upheld the rejection and the High Court said the election process could not be interrupted.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1535.2,
+      "domain": "near",
+      "topic": "local government nomination rejected",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-maint-1",
+      "query": "I was married for six years and have two daughters. My husband threw me out of the house and stopped all support. I went to the Family Court for maintenance for myself and the children and for return of my dowry articles, jewellery and furniture. The Family Court granted everything, but on appeal the district judge cut the children's maintenance in half and said the jewellery was not proved.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1552.0,
+      "domain": "near",
+      "topic": "maintenance and dowry",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-maint-2",
+      "query": "My client is a father who was ordered to pay maintenance to his minor son at an amount he cannot afford on a clerk's salary. The mother hid that she remarried and the child lives with his grandparents. The Family Court refused to reduce the amount and the High Court dismissed his writ petition saying it would not reassess evidence.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1529.7,
+      "domain": "near",
+      "topic": "maintenance arrears",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-murder-2",
+      "query": "My son was killed by his wife's brothers because they disapproved of the marriage. Later the killers' family pressured my other relatives to forgive them and a compromise deed was filed. I never agreed. The trial court accepted the compromise and acquitted them, and the High Court refused to apply the law that prevents compromise in such killings.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1504.8,
+      "domain": "near",
+      "topic": "compromise in murder case",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-nab-2",
+      "query": "I was arrested by the accountability bureau in a case about a housing society. Under pressure in custody I agreed to a plea bargain and paid a large amount, which disqualified me from my government job. I later applied to withdraw the plea bargain saying it was not voluntary. The court refused and my department dismissed me from service.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1552.1,
+      "domain": "near",
+      "topic": "NAB plea bargain",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-pension-1",
+      "query": "My husband was a government teacher who died in service. The accounts office refused to give me the family pension and the benevolent fund because his parents also applied and claimed I was divorced before his death. I have the marriage certificate and no divorce was ever registered. The department kept the case pending for years and the tribunal dismissed my appeal as time-barred.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2259.2,
+      "domain": "near",
+      "topic": "family pension",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-promo-1",
+      "query": "My client was transferred from the education department to the revenue department as an assistant on his own request. The revenue department placed him at the bottom of the seniority list from the date of transfer, ignoring his earlier service. He says his posts were equivalent. The tribunal agreed with the department and dismissed his appeal.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2157.8,
+      "domain": "near",
+      "topic": "seniority after inter-department transfer",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-rent-1",
+      "query": "My client has run a shop in a Karachi market as a tenant for thirty years. The new owner filed an ejectment application saying he needs the shop in good faith for his son's business and that rent was not paid for four months. We deposited the rent in court after the landlord refused the money order. The Rent Controller and the appellate court ordered eviction.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1546.1,
+      "domain": "near",
+      "topic": "rent ejectment",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-rent-2",
+      "query": "I own a small house and the family living in it stopped paying me two years ago. They now say they bought the house from my late father through a paper I have never seen, so they are not tenants at all. The rent court told them to pay or leave but they keep appealing. How do I get my house back?",
+      "origin": "narrative_negative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1542.6,
+      "domain": "near",
+      "topic": "rent ejectment",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-retire-1",
+      "query": "I was an assistant professor of chemistry at a public university. A committee accused me of copying parts of my research paper from another author and the syndicate compulsorily retired me. I say the committee never gave me the report or a chance to cross-examine anyone. The provincial service tribunal said it had no jurisdiction over university teachers and the High Court dismissed my petition.",
+      "origin": "narrative_negative",
+      "perspective": "party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2191.3,
+      "domain": "near",
+      "topic": "compulsory retirement of a lecturer",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-retire-2",
+      "query": "My father taught at a government school for twenty-two years. They sent him home early on retirement, saying he had been absent for months, but he was in hospital after a heart attack and had sent the papers. The department ignored his doctors and the higher authority agreed with them. We want his job back or full pension.",
+      "origin": "narrative_negative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1731.3,
+      "domain": "near",
+      "topic": "compulsory retirement",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-senate-1",
+      "query": "My client won a Senate seat from the province on a technocrat seat. A rival candidate complained that he still held British citizenship when he filed his nomination papers. We produced the renunciation certificate, which is dated after the nomination but before polling. The Election Commission de-notified him and the High Court dismissed his writ petition.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1529.5,
+      "domain": "near",
+      "topic": "Senate disqualification (dual nationality)",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "n-tender-1",
+      "query": "My client was the lowest bidder for a road construction contract tendered by a district government. The contract was awarded to a higher bidder after the evaluation committee changed the experience criteria. The grievance committee dismissed our complaint and the High Court held that the work had already started and refused to cancel the contract.",
+      "origin": "narrative_negative",
+      "perspective": "lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": false,
+      "expect": null,
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1504.4,
+      "domain": "near",
+      "topic": "public procurement",
+      "verify_at_scale": true,
+      "leaked": false,
+      "leak_high": false,
+      "candidate": false,
+      "failure": false
+    },
+    {
+      "id": "nar-3628e429-appellant_lawyer",
+      "query": "As counsel representing the department, I challenged the service tribunal's verdict that favored an assistant sub-inspector regarding backdated promotions. Our position is that the tribunal ignored official service records. The contesting officers joined the department years before the respondent and cleared all mandatory promotional courses and exams well ahead of him, establishing clear seniority. During the proceedings, opposing counsel acknowledged that his client was not actually senior to the other officers. Fortunately, the apex court agreed with our stance, overturning the flawed tribunal decision and ruling entirely in our favor.",
+      "origin": "synthetic_narrative",
+      "perspective": "appellant_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "shown": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0003
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2372.4,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3628e429-layperson",
+      "query": "My relative worked hard in the police department for years and wanted his promotions backdated to match when others got them. The service tribunal agreed with us and gave him the relief. But the high-up police officers went to the top court against this decision, arguing that the other men joined much earlier and finished their training courses way before him. In the end, the Supreme Court threw out our case and ruled in favor of the police department.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "shown": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0009
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1806.7,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3628e429-layperson_other_side",
+      "query": "I entered the police service long before the other officer and finished every promotional course and exam way ahead of him. He managed to get an order from the service tribunal claiming he should get promoted from our dates, which made no sense since we were clearly senior. The department appealed that unfair decision to the Supreme Court, and the court finally set things straight by canceling the tribunal's order.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "shown": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0001
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1705.5,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3628e429-opposing_party",
+      "query": "We defended the service tribunal's decision that acknowledged our rightful place in the departmental hierarchy and granted us promotional benefits from the dates our juniors advanced. The police administration challenged this relief, arguing that the other officers entered service earlier and completed their mandatory courses sooner. While our legal representative admitted certain facts regarding service timelines during the hearings, we maintain that our career progression was unfairly delayed. Sadly, the apex court accepted the department's arguments, ruling against us and canceling the tribunal's favorable order.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3628e429-82b2-489e-81ad-9cad8ae36894",
+      "shown": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0003
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2328.8,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3eff8217-appellant_lawyer",
+      "query": "As counsel for the appellant, I argued before the Supreme Court that my client's rights were severely prejudiced by the Peshawar High Court's decision to accept the respondent's civil revision and decree her suit. The respondent had originally filed a belated civil claim seeking ownership of extensive agricultural lands based on an alleged dower arrangement from her marriage decades ago, instead of approaching the appropriate family forum. Furthermore, the claim was clearly barred by limitation under the law. The lower courts had correctly dismissed her suit after full scrutiny of the evidence, yet the High Court improperly reversed those well-reasoned findings. We urged the apex court to correct this miscarriage of justice, but unfortunately, the appeal was dismissed.",
+      "origin": "synthetic_narrative",
+      "perspective": "appellant_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "confidence": [
+        "medium",
+        "related"
+      ],
+      "scores": [
+        0.7895,
+        0.587
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2370.3,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3eff8217-layperson",
+      "query": "My family gave me this land as my marriage gift decades ago, and I have been collecting rent from the farmers working on it ever since. But because of a mistake in the government papers, my husband's relatives tried to steal my property after he passed away. I had to go to court and fight for years through countless delays and reversed decisions. Finally, the High Court and then the highest court listened to my tenants and looked at the old marriage papers, confirming that the land is rightfully mine.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2174.2,
+      "rank_shown": 0,
+      "rank_window": 1,
+      "hit1": false,
+      "hit1_window": true,
+      "r5_shown": false,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3eff8217-layperson_other_side",
+      "query": "Our family holds the legitimate inheritance mutation for these agricultural lands according to the official revenue records maintained over the years. The opposing party brought up a very old marriage claim out of nowhere, long after the limitation period had expired, trying to strip us of our ancestral property. The lower courts initially agreed with our stance that her civil suit was not maintainable and filed far too late.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "49c42cc9-1123-4fc3-a387-67a738820871"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1568.7,
+      "rank_shown": 0,
+      "rank_window": 2,
+      "hit1": false,
+      "hit1_window": false,
+      "r5_shown": false,
+      "r5_window": true
+    },
+    {
+      "id": "nar-3eff8217-opposing_party",
+      "query": "We defended the Peshawar High Court's judgment upholding our rightful ownership of the contested land. My late husband transferred this property to me at the time of our marriage in 1967 as my dower, and I remained in peaceful possession through tenants. Because I observed strict seclusion, I did not realize that the revenue officials had failed to update the land registers properly. When the appellant's family tried to take advantage of these erroneous records and grab my property, I filed a declaration suit. Although the litigation dragged on through multiple remands and conflicting decisions, the High Court rightly recognized my ownership based on the ancient marriage deed, and the Supreme Court thankfully threw out their appeal.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+      "shown": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "confidence": [
+        "medium",
+        "related",
+        "related"
+      ],
+      "scores": [
+        0.3191,
+        0.6994,
+        0.3644
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "4083a42e-318d-4a7a-b832-e4aa9d036f2b"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2190.7,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-5a14105d-layperson",
+      "query": "We worked hard during the elections, but the other side stole the mandate through massive rigging at dozens of polling stations where our workers were kicked out and fake votes were stamped. We went to court asking them to check the thumb impressions and recount the huge pile of rejected ballots, but the tribunal threw our case out. Even the highest court in the country refused to listen to our grievances and dismissed our appeal, saying we did not bring enough proof, leaving us completely heartbroken over the stolen mandate.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "5a14105d-8a45-413c-8c93-26d6301cf028",
+      "shown": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0087
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1588.8,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-5a14105d-layperson_other_side",
+      "query": "Our candidate won the election fairly with a solid margin of votes, but the losing opponent could not digest defeat and dragged us through the courts with fake claims of rigging. They made up stories about polling stations and demanded unnecessary recounts and fingerprint checks. The election tribunal looked at their claims and dismissed their petition because they had zero proof. We are relieved that the highest court also dismissed their appeal and upheld our rightful victory.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "5a14105d-8a45-413c-8c93-26d6301cf028",
+      "shown": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.2046
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1565.2,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-a0908c67-appellant_lawyer",
+      "query": "As counsel for the appellant corporation, my instructions are to challenge the concurrent findings of the lower forums which went against us. The plaintiffs instituted a claim for declaration and possession relying on a disputed property transfer document, yet they failed to implead the vendors or produce any proof that money actually changed hands. Meanwhile, our municipal body has continuously managed the site and received rental income from the commercial tenants occupying the land for years. We urged the Supreme Court to examine these grave legal flaws and also addressed intervention applications filed by outsiders who remained silent for over half a century before suddenly claiming rights over the contested real estate.",
+      "origin": "synthetic_narrative",
+      "perspective": "appellant_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+      "shown": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.4063
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1689.9,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-a0908c67-layperson",
+      "query": "My family purchased this piece of real estate through proper paperwork, yet the town administration illegally occupied the shops and kept collecting rent from tenants. We went to court and won three successive rounds against the administration because they had no proof of ownership. Then, they and another outsider tried to drag the matter out in the Supreme Court with very old, unverified claims, but the court disposed of their late applications.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+      "shown": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.329
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2109.9,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-a0908c67-layperson_other_side",
+      "query": "Our municipal committee has owned this land for generations, and we built commercial shops there and collected rent from tenants all along. These buyers suddenly popped up with a suspicious transfer entry without even naming the people they supposedly bought it from, and somehow managed to convince the lower judges. We took our historic proof to the highest court to show that the property was always ours and that other claimants also had valid old auction rights.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+      "shown": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0636
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2078.1,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-a0908c67-opposing_party",
+      "query": "We bought our property legitimately through a proper land transfer record and filed a civil suit when the municipal authorities unlawfully claimed it and interfered with our rights. The trial court, the appellate forum, and the high court all examined our ownership documents and gave concurrent judgments in our favor, ruling that the corporation could not establish any valid title. When the corporation and a third party tried to introduce fresh documents and belated claims at the Supreme Court level after remaining inactive for decades, we defended our bonafide purchase. Ultimately, the Supreme Court disposed of the proceedings, leaving our foundational success intact while rejecting the belated applications brought against us.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+      "shown": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de"
+      ],
+      "confidence": [
+        "medium",
+        "related"
+      ],
+      "scores": [
+        0.4781,
+        0.5784
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2134.0,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-adaeb488-appellant_lawyer",
+      "query": "As counsel for the petitioner, I urged before the bench that my client's rights in the joint estate were illegally compromised when the other co-sharers transferred portions exceeding their lawful shares. We approached the revenue hierarchy promptly in 1994 after discovering the unauthorized mutation of 1984, and later instituted a civil action when administrative remedies proved ineffective. The High Court incorrectly threw out our revision by treating the matter as time-barred and barred under procedural rules. We contended that multiple proceedings and pending litigation regarding adjacent plots justified our approach. Unfortunately, the Supreme Court disagreed with our limitation computation and dismissed our appeal, deciding that the primary declaration was filed too late.",
+      "origin": "synthetic_narrative",
+      "perspective": "appellant_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "shown": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.1272
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2326.6,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-adaeb488-layperson",
+      "query": "My family and I have been fighting for our rightful share in a piece of land for a very long time. We went to revenue officials and later to the courts because our relatives sold off property that belonged to our share. The lower courts and now the highest court turned us away, saying we waited too long to file our case. The judges decided that because we took more than six years to challenge the official paper transferring the land, our entire claim is out of time and cannot be entertained.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2109.5,
+      "rank_shown": 0,
+      "rank_window": 1,
+      "hit1": false,
+      "hit1_window": true,
+      "r5_shown": false,
+      "r5_window": true
+    },
+    {
+      "id": "nar-adaeb488-layperson_other_side",
+      "query": "Our relatives tried to grab land that was legally transferred to us years ago. They started unnecessary court battles and kept dragging us to different offices long after the official paperwork had already been completed. We always maintained that they had no right to wake up a decade later and challenge a settled transfer. Thankfully, the courts agreed with us throughout, and the highest court finally put an end to their endless litigation by ruling that they waited far too long to bring their claims.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "shown": [],
+      "confidence": [],
+      "scores": [],
+      "top_label": null,
+      "window_top": [
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c"
+      ],
+      "abstained": true,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": null,
+      "top_n_lists": null,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2285.0,
+      "rank_shown": 0,
+      "rank_window": 3,
+      "hit1": false,
+      "hit1_window": false,
+      "r5_shown": false,
+      "r5_window": true
+    },
+    {
+      "id": "nar-adaeb488-opposing_party",
+      "query": "We opposed the appellant's attempts to reopen a decades-old property dispute. We pointed out to the courts that the mutation they complained about occurred way back in the nineteen-eighties, yet they waited well over a decade to file their civil suit. The lower appellate forum correctly threw out their case, and we urged the apex court to maintain that logic. The Supreme Court has upheld our position, ruling that their primary ownership suit was brought far too late under Article 120 of the Limitation Act, meaning their entire legal challenge stood extinguished by efflux of time.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "adaeb488-96ae-474e-8570-76fd85648f9d",
+      "shown": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.1631
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "adaeb488-96ae-474e-8570-76fd85648f9d",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a14105d-8a45-413c-8c93-26d6301cf028"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1670.8,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-d40e2887-appellant_lawyer",
+      "query": "My client, a dedicated postal employee, faced unjust departmental penalties including salary recovery and a reduction in rank following alleged irregularities in pension disbursements. Although we challenged both the initial penalty and the modified appellate order before the Service Tribunal, the Tribunal completely ignored the departmental appellate decision and failed to evaluate the actual inquiry evidence. Crucially, the Tribunal overlooked the formal confession and written statements of the primary culprit, Muhammad Amin Khan, who took full responsibility for the embezzlement and was subsequently convicted by a criminal court. The Supreme Court accepted our contentions, set aside the flawed Tribunal judgment, and remanded the case back for a comprehensive rehearing and proper evaluation of the record.",
+      "origin": "synthetic_narrative",
+      "perspective": "appellant_lawyer",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.4948
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2434.7,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-d40e2887-layperson",
+      "query": "My family member was unfairly blamed and punished with pay cuts and massive money recoveries for a fraud he had nothing to do with. The real thief admitted in writing that he alone took the money and was even jailed for it by a court. Yet, the service tribunal threw out his appeal without even looking at the confession or the inquiry papers properly. Thankfully, the highest court listened to us, cancelled that unfair tribunal decision, and ordered them to rehear the entire case from the beginning.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0026
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7",
+        "5a14105d-8a45-413c-8c93-26d6301cf028",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1583.5,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-d40e2887-layperson_other_side",
+      "query": "We had to take strict disciplinary action against the employee because government funds went missing on his watch, and proper receipts were never maintained. Even though his penalty was somewhat reduced on appeal, the service tribunal agreed that his carelessness allowed the wrongdoing to happen. We just wanted accountability for the lost public money.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.2217
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1477.9,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-d40e2887-opposing_party",
+      "query": "We defended the departmental action taken against the postal clerk because our inquiries revealed serious negligence on his part regarding massive shortages in pension fund disbursements during his tenure. The department initially imposed increment stoppages and recovery, which were later modified on departmental appeal to a reduction in rank while maintaining the recovery order. When the employee challenged these penalties before the Federal Service Tribunal, the Tribunal rightly upheld the disciplinary action, finding that his careless handling of government funds facilitated the irregularities. However, the Supreme Court has now set aside that Tribunal decision and sent the case back for a fresh review, requiring the Tribunal to re-examine the evidence and the co-accused's statements.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "d40e2887-6f06-4840-8665-d1da6933f415",
+      "shown": [
+        "d40e2887-6f06-4840-8665-d1da6933f415"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.3883
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "49c42cc9-1123-4fc3-a387-67a738820871",
+        "5a06e4ef-7951-4be4-bc58-5c8eec0ab8f7"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2401.4,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-fa86ba1f-layperson",
+      "query": "I worked for many years at an embassy overseas before my job was ended. I went to the service tribunal because I felt treated unfairly, and the tribunal agreed with me and ordered in my favor. But now the government has gone to the highest court, arguing that because I was hired locally on a contract while abroad, I am not a regular government worker and the tribunal had no right to hear my case at all. The Supreme Court agreed with the government and threw out my victory.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "shown": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.0275
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "a0908c67-0650-4a60-bf70-ebbc6887c16a"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 3,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1621.4,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-fa86ba1f-layperson_other_side",
+      "query": "We appealed against the tribunal's orders because staff members recruited locally at our missions abroad are governed by separate rules and do not qualify as regular civil servants. The tribunal wrongly entertained their claims, so we asked the Supreme Court to correct this mistake. The apex court accepted our appeal and ruled that such contract workers cannot approach the service tribunal.",
+      "origin": "synthetic_narrative",
+      "perspective": "layperson_other_side",
+      "detail": "loose",
+      "split": "dev",
+      "positive": true,
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "shown": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.4973
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "3628e429-82b2-489e-81ad-9cad8ae36894",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "49c42cc9-1123-4fc3-a387-67a738820871"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 1556.9,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    },
+    {
+      "id": "nar-fa86ba1f-opposing_party",
+      "query": "Having served for a long duration against approved posts attached to our country's diplomatic missions abroad, my colleagues and I contested our dismissals before the Federal Service Tribunal after our departmental appeals were turned down. We maintained that our long-standing service rendered us regular government employees with full rights under the civil establishment code. The tribunal agreed with our position and set aside our terminations. Now, the government has dragged us to the Supreme Court, claiming we are merely contract workers hired under foreign mission rules and therefore have no right to approach the service tribunal for justice.",
+      "origin": "synthetic_narrative",
+      "perspective": "opposing_party",
+      "detail": "detailed",
+      "split": "dev",
+      "positive": true,
+      "expect": "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+      "shown": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8"
+      ],
+      "confidence": [
+        "medium"
+      ],
+      "scores": [
+        0.1679
+      ],
+      "top_label": "medium",
+      "window_top": [
+        "fa86ba1f-0f41-4c11-bad8-f004dd3a7af8",
+        "2df8aea1-9ea7-45cf-aa1c-893a951d018c",
+        "d40e2887-6f06-4840-8665-d1da6933f415",
+        "3eff8217-9d3f-48e3-84b8-8b152069e5de",
+        "3628e429-82b2-489e-81ad-9cad8ae36894"
+      ],
+      "abstained": false,
+      "pinned_any": false,
+      "top_pinned": false,
+      "top_n_first": 4,
+      "top_n_lists": 4,
+      "is_narrative": true,
+      "message": null,
+      "latency_ms": 2313.4,
+      "rank_shown": 1,
+      "rank_window": 1,
+      "hit1": true,
+      "hit1_window": true,
+      "r5_shown": true,
+      "r5_window": true
+    }
+  ]
+}
