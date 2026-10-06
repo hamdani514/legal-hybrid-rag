@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import apiFetch, { TOKEN_KEY } from '../../lib/api';
+import CopyButton from './CopyButton';
 import {
   ANSWER_STATUS,
   answerStatusOf,
   fitSection,
   isEmptyAnswer,
+  judgmentShareText,
   meaningfulSections,
   prettyCaseName,
   prettyOutcome,
   prettySections,
+  responseShareText,
 } from '../lib/answerFormat';
 
 /**
@@ -509,8 +512,17 @@ const JudgmentBlock = ({ cite, index, total, query }) => {
 
       {renderAnalysis()}
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <DownloadButton cite={cite} />
+        {/* Copies what is on screen: an on-demand analysis lives in this
+            component's state, so the text is built here rather than from the
+            stored message. */}
+        <CopyButton
+          text={() => judgmentShareText(cite, ready ? answer : cite.llm_answer, query)}
+          label="Copy"
+          copiedLabel="Copied"
+          title="Copy this case and its analysis to share"
+        />
       </div>
     </div>
   );
@@ -568,6 +580,15 @@ const ResultsPanel = ({ message }) => {
             {message.text ||
               'No relevant case is available in our data centre for this query.'}
           </p>
+        </div>
+        <div className="mt-2 flex justify-end">
+          <CopyButton
+            text={
+              message.text ||
+              'No relevant case is available in our data centre for this query.'
+            }
+            title="Copy this reply"
+          />
         </div>
       </div>
     );
@@ -627,6 +648,16 @@ const ResultsPanel = ({ message }) => {
             </span>
             {comparing ? 'Comparing…' : 'Compare judgments'}
           </button>
+
+          {/* Copies every judgment in this answer in one go. Only the analyses
+              already drafted are included; one fetched on demand is copied
+              from its own card. */}
+          <CopyButton
+            text={() => responseShareText(message)}
+            label={`Copy all ${citations.length}`}
+            copiedLabel="Copied"
+            title="Copy every judgment in this answer"
+          />
 
           {compareError && (
             <span className="font-prose text-xs text-error">{compareError}</span>

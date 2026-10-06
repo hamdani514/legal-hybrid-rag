@@ -133,3 +133,53 @@ export const prettyCaseName = (filename, fallback = '') => {
 /** Section labels come back as HEADER_CORAM; show them as "header coram". */
 export const prettySections = (sections = []) =>
   sections.map((s) => s.replace(/_/g, ' ').toLowerCase()).join(', ');
+
+/** Confidence labels, shared by the badge and the copied text. */
+export const CONFIDENCE_LABEL = {
+  high: 'Strong match',
+  medium: 'Possible match — verify',
+  related: 'Related case',
+};
+
+/**
+ * One judgment as plain text, for sharing outside the app.
+ *
+ * Mirrors what the result card shows on screen - the case, how confident the
+ * system is, the analysis under its headings, and the fit with the user's own
+ * situation - so what is pasted into an email matches what was read here. The
+ * verification line is deliberate: a pasted extract loses the badge, and a
+ * "possible match" must not travel as though it were settled law.
+ */
+export const judgmentShareText = (cite, answer, query) => {
+  if (!cite) return '';
+  const name = prettyCaseName(cite.filename, (cite.judgment_id || '').slice(0, 8));
+  const label = CONFIDENCE_LABEL[cite.confidence] || '';
+  const out = [label ? `${name} — ${label}` : name];
+
+  if (query) out.push('', `Question asked: ${query.trim()}`);
+
+  for (const section of answer ? meaningfulSections(answer) : []) {
+    out.push('', section.heading || '', section.body);
+  }
+  const fit = answer ? fitSection(answer) : null;
+  if (fit) out.push('', FIT_HEADING, fit.body);
+
+  if (cite.filename) out.push('', `Source judgment: ${cite.filename}`);
+  out.push(
+    'Retrieved with Verdict AI from reported judgments of the Supreme Court of Pakistan.',
+    'Verify against the original judgment before relying on it.',
+  );
+  return out.filter((line, i) => line !== '' || out[i - 1] !== '').join('\n').trim();
+};
+
+/** Every judgment in one response as plain text, for sharing the whole answer. */
+export const responseShareText = (message, answers = {}) => {
+  const cites = message?.citations || [];
+  if (!cites.length) return (message?.text || '').trim();
+  const query = message.query || '';
+  const header = query ? [`Question asked: ${query.trim()}`, ''] : [];
+  const blocks = cites.map((c) =>
+    judgmentShareText({ ...c }, answers[c.judgment_id] ?? c.llm_answer, '')
+  );
+  return [...header, blocks.join('\n\n----------------------------------------\n\n')].join('\n').trim();
+};

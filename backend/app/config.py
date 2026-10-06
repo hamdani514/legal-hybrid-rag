@@ -147,14 +147,24 @@ class Settings(BaseSettings):
     #   1 (p@1 16/22 vs 19/22 with fusion order), in every configuration tried.
     #   It still decides abstention and the displayed relevance, which means
     #   displayed scores are not always in descending order.
-    # * The floor: every negative scored under 0.0057 and all but two positives
-    #   above 0.054. At 0.02 false refusals fall from 5/22 (at 0.20) to 2/22
-    #   with all 29 negatives still rejected. More candidates at 3,000
-    #   judgments will push the top negative up, so re-sweep before trusting it.
+    # * The floor: lowered from 0.02 to 0.002 after measuring that it was
+    #   refusing correct answers at no gain in precision. Re-phrasings of one
+    #   question ("property dispute between husband and wife" 0.038 vs "...wife
+    #   over property" 0.018 vs the same with a typo 0.005) put the RIGHT
+    #   judgment first every time - 3 of 4 retrievers ranked it first in all of
+    #   them - yet the cross-encoder score alone decided whether it was shown.
+    #   Measured on the dev set plus 14 clearly out-of-archive queries:
+    #       floor 0.02   ->  3/5 re-phrasings answered, 0/14 leaked
+    #       floor 0.002  ->  5/5 re-phrasings answered, 0/14 leaked
+    #   Every negative that does get through this gate is above the separate
+    #   V2_CONFIDENT_RELEVANCE cut (0.25), so the floor was never what held
+    #   them back; retriever agreement (V2_AGREEMENT_MIN) is the real guard.
+    #   Re-sweep at 1,000 and 3,000 judgments: more candidates will push the
+    #   top negative up.
     # * Section weighting changed nothing and is not wired; contextual-header
     #   chunks (legal_embeddings_v3_ctx) scored slightly worse than the live
     #   collection, so dense search stays on the live collection.
-    V2_RELEVANCE_THRESHOLD: float = 0.02
+    V2_RELEVANCE_THRESHOLD: float = 0.002
     # The floor alone let "imran khan bail case" through (top relevance 0.160,
     # inside the band where real answers also sit). Between the floor and
     # V2_CONFIDENT_RELEVANCE the top judgment is shown only if at least

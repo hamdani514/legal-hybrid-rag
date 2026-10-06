@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.chat import router as chat_router
 from app.api.embedding_routes import router as embedding_router
 from app.api.routes.query import router as query_router
 from app.api.security import (
@@ -36,6 +37,7 @@ from app.api.security import (
     check_security_config,
     embedding_router_guard,
     query_router_guard,
+    require_user,
     require_user_download,
 )
 from app.database import connect_db, close_db, db
@@ -186,6 +188,8 @@ async def health():
 # ----------------------------
 app.include_router(admin_router, prefix="", dependencies=[Depends(admin_router_guard)])
 app.include_router(auth_router, prefix="")  # public by design: see app/api/auth.py
+# Chat history belongs to one signed-in user; every route filters on that user.
+app.include_router(chat_router, prefix="", dependencies=[Depends(require_user)])
 app.include_router(embedding_router, prefix="", dependencies=[Depends(embedding_router_guard)])
 app.include_router(
     query_router, prefix="/query", tags=["Query"], dependencies=[Depends(query_router_guard)]
