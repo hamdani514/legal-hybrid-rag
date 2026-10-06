@@ -1,2 +1,0 @@
-2026-10-02 23:50:38.046 | INFO     | __main__:_amain:116 - Bulk ingest TRIAGE ONLY (read-only): db=legal_rag input=C:\Projects\legal-hybrid-rag\backend\uploads ocr_workers=6 llm_concurrency=3 embed=False drive=False pilot=None
-2026-10-02 23:50:38.062 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 10 PDFs in C:\Projects\legal-hybrid-rag\backend\uploads (6 workers)

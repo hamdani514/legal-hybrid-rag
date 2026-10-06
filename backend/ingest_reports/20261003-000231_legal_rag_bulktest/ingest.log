@@ -1,6 +1,0 @@
-2026-10-03 00:02:31.232 | INFO     | __main__:_amain:129 - Bulk ingest INGEST: db=legal_rag_bulktest input=C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot ocr_workers=5 llm_concurrency=3 embed=False drive=False pilot=None
-2026-10-03 00:02:31.234 | INFO     | app.ingestion.bulk.triage:triage:132 - Triage: 8 PDFs in C:\Users\Muhammad Wafa Haider\AppData\Local\Temp\claude\C--Projects-legal-hybrid-rag\233cff91-6b14-4cac-b062-9e7c55ac25c1\scratchpad\pilot (5 workers)
-2026-10-03 00:02:39.782 | INFO     | app.ingestion.bulk.pipeline:run:150 - Processing 1 files: 0 scanned, OCR workers 5, LLM concurrency 3
-2026-10-03 00:02:39.789 | INFO     | app.ingestion.extractor:extract:246 - [c837c33c-70f3-4e1f-9489-85b5b4d2a003] Existing extracted text found, skipping extraction
-2026-10-03 00:02:39.842 | INFO     | app.ingestion.parser:parse_sections:2200 - [c837c33c-70f3-4e1f-9489-85b5b4d2a003] Using cached parsed result
-2026-10-03 00:02:39.851 | INFO     | app.ingestion.bulk.pipeline:_build_tree:357 - [c837c33c-70f3-4e1f-9489-85b5b4d2a003] Tree already built by an earlier run; finalised record
