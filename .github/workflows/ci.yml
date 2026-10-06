@@ -35,21 +35,42 @@ jobs:
         run: |
           docker build -t legal-hybrid-rag .
 
-      # 4. Run container (basic test)
-      - name: Run container test
+      # 4. Run the container and PROVE it is alive.
+      #    This used to be `docker run -d; sleep 10; docker logs; docker stop`,
+      #    which passes even when the app crashes on startup: printing logs does
+      #    not fail a step, and `docker stop` succeeds on an already-dead
+      #    container. That is how a .dockerignore rule excluding two modules
+      #    parser.py imports stayed green here while every Render deploy failed.
+      # 4a. The image must contain every module the app imports. This needs no
+      #     database and cannot be flaky: it is exactly the check that would
+      #     have caught the missing classifier modules on the first push.
+      - name: Image contains every module the app imports
         run: |
-          docker run -d -p 8000:8000 --name test-container legal-hybrid-rag
-          sleep 10
+          docker run --rm legal-hybrid-rag \
+            python -c "import main; print('app imports OK')"
 
-      # 5. Check container logs (debugging)
-      - name: Check container logs
+      # 4b. It must then actually serve. --network host so the MongoDB service
+      #     container is reachable at localhost, the same way the job sees it.
+      - name: Container starts and answers /health
         run: |
+          docker run -d --name test-container --network host \
+            -e MONGO_URL="mongodb://localhost:27017" legal-hybrid-rag
+          for i in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Running}}' test-container)" != "true" ]; then
+              echo "::error::The container exited during startup."
+              docker logs test-container
+              exit 1
+            fi
+            if curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+              echo "Serving /health after ~$((i * 2))s."
+              docker stop test-container
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::/health did not answer within 60s."
           docker logs test-container
-
-      # 6. Stop container
-      - name: Stop container
-        run: |
-          docker stop test-container
+          exit 1
 
   deploy:
     needs: build-and-test

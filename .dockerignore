@@ -18,8 +18,10 @@ backend/llm_pure_classifier.py
 backend/purge_embeddings_and_trees.py
 backend/run_classifier.py
 backend/test_and_verify.py
-backend/app/ingestion/llm_pure_classifier.py
-backend/app/ingestion/llm_section_classifier.py
+# NOTE: app/ingestion/llm_pure_classifier.py and llm_section_classifier.py were
+# listed here. They are NOT optional: app/ingestion/parser.py imports both at
+# module load, so excluding them made the image raise ModuleNotFoundError on
+# startup and every Render deploy failed. Do not re-add them.
 scratch/
 backend/scratch/
 chroma_db/

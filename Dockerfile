@@ -15,4 +15,8 @@ COPY backend/ ./backend/
 COPY --from=frontend-builder /app/frontend/dist ./backend/static
 
 WORKDIR /app/backend
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render (and most hosts) assign the port through $PORT and fail the deploy
+# with "no open ports detected" if the app binds a different one. Shell form so
+# the variable is expanded; 8000 keeps local `docker run -p 8000:8000` working.
+ENV PORT=8000
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
