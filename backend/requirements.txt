@@ -16,7 +16,7 @@ pdfplumber
 pdf2image
 pytesseract
 easyocr
-opencv-python
+opencv-python-headless
 Pillow
 
 numpy
@@ -28,6 +28,13 @@ sentence-transformers
 accelerate
 
 faiss-cpu
+# The live vector store. It was missing from this file while being imported at
+# module load by app/vectorstore/chroma_store.py, so the Docker image crashed on
+# startup with ModuleNotFoundError. Pinned to the 1.x line: the code uses the
+# PersistentClient API, which 0.x did not have.
+chromadb>=1.0,<2
+# Used by the bulk ingestion workers to size the OCR pool to free RAM.
+psutil
 
 langchain
 langchain-community

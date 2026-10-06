@@ -8,6 +8,22 @@ RUN npm run build
 FROM python:3.10-slim
 WORKDIR /app
 
+# System packages the ingestion stack needs. Without these the image builds
+# cleanly and then dies on the first import:
+#   libgl1 / libglib2.0-0 / libxcb1  OpenCV's shared libraries. The full
+#       opencv-python wheel links against X11; requirements.txt now installs
+#       opencv-python-headless instead, and these stay as insurance because a
+#       transitive dependency (easyocr) can still pull the GUI wheel in.
+#   tesseract-ocr   the OCR binary pytesseract calls through PATH
+#   poppler-utils   pdftoppm/pdftocairo, used by pdf2image
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+        libxcb1 \
+        tesseract-ocr \
+        poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
