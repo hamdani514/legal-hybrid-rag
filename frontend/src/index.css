@@ -9,6 +9,14 @@
 }
 
 :root {
+  /* Motion curves, shared by every animation so the whole site eases alike.
+     expo  — the workhorse: fast out of the gate, long glide to rest.
+     back  — a 2% overshoot, for things that should feel physical.
+     soft  — gentler, for large surfaces where overshoot reads as wobble. */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-back: cubic-bezier(0.22, 1.18, 0.36, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -85,30 +93,100 @@ body {
   overflow-x: clip;
 }
 
-/* Scroll-triggered reveal (driven by the shared <Reveal> component) */
+/* Scroll-triggered reveal (driven by the shared <Reveal> component).
+   Elements do not merely slide in: they come INTO FOCUS. The blur resolving
+   to zero alongside a small rise and scale reads as depth of field, which is
+   what separates a considered entrance from a sliding div. Only opacity,
+   transform and filter animate, so the compositor does all the work. */
 .reveal {
   opacity: 0;
+  will-change: opacity, transform, filter;
   transition:
-    opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 820ms var(--ease-expo),
+    transform 820ms var(--ease-back),
+    filter 620ms var(--ease-soft),
+    clip-path 900ms var(--ease-expo);
+  transition-delay: var(--reveal-delay, 0ms);
 }
 
-.reveal[data-reveal='up']    { transform: translate3d(0, 24px, 0); }
-.reveal[data-reveal='left']  { transform: translate3d(-28px, 0, 0); }
-.reveal[data-reveal='right'] { transform: translate3d(28px, 0, 0); }
-.reveal[data-reveal='scale'] { transform: scale(0.965); }
-.reveal[data-reveal='fade']  { transform: none; }
+/* The default: rise, settle, and sharpen. */
+.reveal[data-reveal='up'] {
+  transform: translate3d(0, 30px, 0) scale(0.985);
+  filter: blur(7px);
+}
+
+/* A longer, heavier entrance for a section's lead element. */
+.reveal[data-reveal='rise'] {
+  transform: translate3d(0, 52px, 0) scale(0.97);
+  filter: blur(11px);
+}
+
+.reveal[data-reveal='left'] {
+  transform: translate3d(-36px, 0, 0) scale(0.99);
+  filter: blur(6px);
+}
+
+.reveal[data-reveal='right'] {
+  transform: translate3d(36px, 0, 0) scale(0.99);
+  filter: blur(6px);
+}
+
+/* Grows into place — for cards, figures and anything in a grid. */
+.reveal[data-reveal='scale'] {
+  transform: scale(0.93);
+  filter: blur(9px);
+}
+
+/* Cards that should feel like objects: a touch of perspective as they land. */
+.reveal[data-reveal='tilt'] {
+  transform: perspective(1200px) rotateX(7deg) translate3d(0, 34px, 0);
+  transform-origin: 50% 100%;
+  filter: blur(8px);
+}
+
+/* Text wiped upward from behind its own baseline — for headlines. */
+.reveal[data-reveal='mask'] {
+  clip-path: inset(105% 0 0 0);
+  transform: translate3d(0, 14px, 0);
+  filter: none;
+}
+
+.reveal[data-reveal='fade'] {
+  transform: none;
+  filter: blur(5px);
+}
 
 .reveal.is-visible {
   opacity: 1;
   transform: none;
+  filter: none;
+  clip-path: inset(0 0 0 0);
+  /* Release the compositor hint once the element has arrived. */
+  will-change: auto;
 }
 
-/* Shorter travel on small screens — lighter work, less layout noise */
+/* Children of a staggered group inherit their position in the queue, so a
+   grid cascades instead of appearing as one block. */
+.reveal-group > * {
+  --reveal-delay: calc(var(--i, 0) * var(--stagger, 90ms));
+}
+
+/* Shorter travel and no blur on small screens: less work for weaker GPUs,
+   and large blurs look like a rendering fault on a phone. */
 @media (max-width: 767px) {
-  .reveal[data-reveal='up']    { transform: translate3d(0, 14px, 0); }
+  .reveal[data-reveal='up'],
+  .reveal[data-reveal='rise'],
   .reveal[data-reveal='left'],
-  .reveal[data-reveal='right'] { transform: translate3d(0, 14px, 0); }
+  .reveal[data-reveal='right'],
+  .reveal[data-reveal='tilt'] {
+    transform: translate3d(0, 18px, 0);
+    filter: blur(4px);
+  }
+
+  .reveal[data-reveal='scale'] {
+    transform: scale(0.97);
+    filter: blur(4px);
+  }
 }
 
 /* On-load entrance for above-the-fold content */
@@ -185,9 +263,13 @@ body {
     transition-duration: 0.01ms !important;
   }
 
+  /* Nothing may be left blurred or clipped when motion is turned off. */
   .reveal {
     opacity: 1 !important;
     transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    transition-delay: 0ms !important;
   }
 
   .lift:hover {
@@ -265,13 +347,15 @@ body {
 /* Card lift, used on every feature and pricing panel. */
 .lift-card {
   transition:
-    transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 340ms ease;
+    transform 420ms var(--ease-back),
+    box-shadow 420ms var(--ease-expo),
+    border-color 300ms ease;
 }
 @media (hover: hover) {
+  /* Rising AND growing a hair reads as moving toward the reader, where a
+     bare translate reads as sliding up a wall. */
   .lift-card:hover {
-    transform: translateY(-6px);
+    transform: translateY(-7px) scale(1.012);
   }
 }
 

@@ -47,7 +47,7 @@ const CapabilityGrid = () => {
 
         <div className="mt-14 grid grid-cols-1 gap-5 md:mt-20 lg:grid-cols-[1.2fr_1fr]">
           {/* ── Lead capability ─────────────────────────────────────── */}
-          <Reveal className="lift-card flex flex-col justify-between rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-10">
+          <Reveal variant="rise" className="lift-card flex flex-col justify-between rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-10">
             <div>
               <span
                 aria-hidden="true"
@@ -104,7 +104,8 @@ const CapabilityGrid = () => {
               <Reveal
                 as="li"
                 key={title}
-                delay={index * 80}
+                variant="left"
+                delay={index * 110}
                 className="lift-card group flex items-start gap-4 rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
               >
                 <span

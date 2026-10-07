@@ -4,6 +4,10 @@ import Reveal from '../Reveal';
  * The standard section opener: a pill eyebrow with an icon, a large Outfit
  * headline where one phrase carries the brand gradient, and a lede.
  *
+ * The three arrive in sequence — pill, then the headline wiped up from its
+ * baseline, then the lede — so a section reads as composed rather than as
+ * three elements that happened to fade at once.
+ *
  * `accent` is the phrase inside `title` to gradient — pass the title as
  * `['Built for the way ', 'research runs']` and the second half gradients.
  */
@@ -25,7 +29,7 @@ const SectionOpener = ({
       className={`flex flex-col ${centered ? 'items-center text-center' : 'items-start text-left'} ${className}`.trim()}
     >
       {eyebrow && (
-        <Reveal variant="fade">
+        <Reveal variant="scale">
           <span
             className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-ui text-[12.5px] font-semibold ${
               dark
@@ -43,7 +47,8 @@ const SectionOpener = ({
 
       <Reveal
         as="h2"
-        delay={80}
+        variant="mask"
+        delay={120}
         className={`mt-6 font-display text-[clamp(2rem,4.8vw,3.25rem)] font-bold leading-[1.1] tracking-[-0.03em] text-balance ${
           dark ? 'text-white' : 'text-ash-900'
         }`}
@@ -60,7 +65,7 @@ const SectionOpener = ({
       {lede && (
         <Reveal
           as="p"
-          delay={160}
+          delay={260}
           className={`mt-5 max-w-[46rem] font-prose text-[1.0625rem] leading-[1.75] sm:text-lg ${
             dark ? 'text-brand-100/85' : 'text-ash-600'
           }`}

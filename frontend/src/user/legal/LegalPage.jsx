@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
+import Reveal from '../components/Reveal';
 import { LEGAL_DOCUMENTS } from './legalDocuments';
 
 const SIBLINGS = [
@@ -194,9 +195,12 @@ const LegalPage = () => {
           {/* The document */}
           <article className="min-w-0">
             {doc.sections.map((section, index) => (
-              <section
+              <Reveal
+                as="section"
                 key={section.id}
                 id={section.id}
+                variant="up"
+                threshold={0.08}
                 // Clear the sticky header when jumped to from the rail.
                 className="scroll-mt-28 border-ash-200 pt-10 first:pt-0 [&:not(:first-child)]:border-t"
               >
@@ -222,7 +226,7 @@ const LegalPage = () => {
                     </p>
                   ))}
                 </div>
-              </section>
+              </Reveal>
             ))}
 
             {/* Questions about the document itself */}

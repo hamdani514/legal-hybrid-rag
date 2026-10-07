@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import apiFetch, { TOKEN_KEY } from '../../lib/api';
 import CopyButton from './CopyButton';
+import FilterDialog, { EMPTY_FILTERS, activeFilterCount, matchesFilters } from './ResultsFilter';
 import {
   ANSWER_STATUS,
   answerStatusOf,
+  caseSummaryLines,
   fitSection,
   isEmptyAnswer,
   judgmentShareText,
@@ -376,8 +378,32 @@ const useAnalysis = (cite, query) => {
 };
 
 /** One judgment: what it is, what it held, and how to read it in full. */
+/**
+ * The three-line summary: who the parties were, what the legal problem was,
+ * and how it ended. Built from the case card, so it opens instantly and spends
+ * no Gemini quota — it summarises facts already retrieved, not new analysis.
+ */
+const ThreeLineSummary = ({ lines }) => (
+  <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
+    <ul className="flex flex-col gap-2">
+      {lines.map((line) => (
+        <li key={line.label} className="flex gap-2.5">
+          <span className="w-[86px] shrink-0 pt-[1px] font-ui text-[10px] font-bold uppercase tracking-wider text-brand-600">
+            {line.label}
+          </span>
+          <span className="flex-1 font-prose text-[13px] leading-relaxed text-ash-800">
+            {line.text}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 const JudgmentBlock = ({ cite, index, total, query }) => {
   const { status, answer, loading, notice, waiting, analyse } = useAnalysis(cite, query);
+  const [showSummary, setShowSummary] = useState(false);
+  const summaryLines = caseSummaryLines(cite.card);
   const ready = status === ANSWER_STATUS.READY && answer;
   const sections = ready ? meaningfulSections(answer) : [];
   const nothingToSay = ready && isEmptyAnswer(answer);
@@ -510,6 +536,24 @@ const JudgmentBlock = ({ cite, index, total, query }) => {
         <p className="mt-1.5 font-prose text-xs italic text-ash-500">Why: {cite.reason}</p>
       )}
 
+      {/* Works whether one case came back or many. */}
+      {summaryLines && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowSummary((v) => !v)}
+            aria-expanded={showSummary}
+            className="inline-flex items-center gap-1.5 rounded-full border border-ash-300 bg-white px-3.5 py-1.5 font-ui text-[12px] font-semibold text-ash-700 transition-all hover:border-brand-300 hover:text-brand-700"
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              {showSummary ? 'expand_less' : 'summarize'}
+            </span>
+            {showSummary ? 'Hide summary' : 'Summary'}
+          </button>
+          {showSummary && <ThreeLineSummary lines={summaryLines} />}
+        </div>
+      )}
+
       {renderAnalysis()}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -536,6 +580,13 @@ const ResultsPanel = ({ message }) => {
 
   const citations = message.citations || [];
   const many = citations.length > 1;
+
+  // Filtering narrows what is DISPLAYED only. Compare deliberately still works
+  // on the full result set, so narrowing the list cannot silently change what
+  // a comparison covers.
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const visible = many ? citations.filter((c) => matchesFilters(c, filters)) : citations;
 
   const runCompare = async () => {
     if (compare) {
@@ -614,18 +665,68 @@ const ResultsPanel = ({ message }) => {
         </p>
       )}
 
-      {citations.map((cite, index) => (
+      {/* A filter is in force: say so above the list, since the control that
+          set it is at the bottom and may be scrolled out of view. */}
+      {many && activeFilterCount(filters) > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2.5 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-2.5">
+          <span className="material-symbols-outlined text-[17px] text-brand-500">filter_list</span>
+          <span className="font-prose text-[13px] text-ash-700">
+            Filtered: showing <strong>{visible.length}</strong> of {citations.length} judgments
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="ml-auto rounded-full border border-ash-300 bg-white px-3 py-1 font-ui text-[11px] font-bold text-ash-600 transition-colors hover:border-brand-300 hover:text-brand-700"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {many && visible.length === 0 && (
+        <div className="rounded-2xl border border-ash-200 bg-ash-50 px-5 py-4 font-prose text-sm text-ash-600">
+          No retrieved judgment matches these filters.{' '}
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="font-semibold text-brand-600 underline-offset-2 hover:underline"
+          >
+            Clear the filters
+          </button>{' '}
+          to see all {citations.length}.
+        </div>
+      )}
+
+      {visible.map((cite, index) => (
         <JudgmentBlock
           key={cite.judgment_id}
           cite={cite}
           index={index}
-          total={citations.length}
+          total={visible.length}
           query={message.query}
         />
       ))}
 
       {many && (
         <div className="mt-7 flex flex-wrap items-center gap-2.5 border-t border-ash-200 pt-5">
+          <button
+            type="button"
+            onClick={() => setShowFilter(true)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 font-ui text-[13px] font-semibold transition-all ${
+              activeFilterCount(filters)
+                ? 'border-brand-300 bg-brand-50 text-brand-700'
+                : 'border-ash-300 bg-white text-ash-700 hover:border-brand-300 hover:text-brand-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">filter_list</span>
+            Filter
+            {activeFilterCount(filters) > 0 && (
+              <span className="ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1 font-ui text-[10px] font-bold text-white">
+                {activeFilterCount(filters)}
+              </span>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => setShowAll(true)}
@@ -669,6 +770,16 @@ const ResultsPanel = ({ message }) => {
         <p className="mt-3 text-xs text-ash-500">
           Retrieved in {(message.latencyMs / 1000).toFixed(1)}s
         </p>
+      )}
+
+      {showFilter && (
+        <FilterDialog
+          cases={citations}
+          filters={filters}
+          onApply={setFilters}
+          onClose={() => setShowFilter(false)}
+          Modal={Modal}
+        />
       )}
 
       {showAll && (

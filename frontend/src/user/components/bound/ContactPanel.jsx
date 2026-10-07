@@ -33,7 +33,7 @@ const ContactPanel = () => {
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 lg:grid-cols-[1fr_23rem] lg:gap-12">
         {/* ── The enquiry form ───────────────────────────────────────── */}
         <div>
-          <Reveal variant="fade">
+          <Reveal variant="scale">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-brand-700">
               <span className="material-symbols-outlined text-[15px]" aria-hidden="true">
                 mail
@@ -44,7 +44,8 @@ const ContactPanel = () => {
 
           <Reveal
             as="h2"
-            delay={80}
+            variant="mask"
+            delay={120}
             id="contact-panel-title"
             className="mt-6 font-display text-[clamp(1.75rem,4vw,2.5rem)] font-bold leading-[1.12] tracking-[-0.028em] text-ash-900"
           >
@@ -53,7 +54,7 @@ const ContactPanel = () => {
 
           <Reveal
             as="p"
-            delay={150}
+            delay={250}
             className="mt-4 max-w-[40rem] font-prose text-[1.0625rem] leading-[1.75] text-ash-600"
           >
             Every enquiry reaches a person, not a queue. Include an appeal number if your question
@@ -69,7 +70,7 @@ const ContactPanel = () => {
         <aside className="self-start lg:sticky lg:top-28">
           {/* A plate at the head of the column, so the sidebar opens with
               something other than a stack of three identical cards. */}
-          <Reveal variant="fade" className="group relative mb-8">
+          <Reveal variant="right" delay={120} className="group relative mb-8">
             <MediaFrame
               name="volume"
               ratio="4 / 3"

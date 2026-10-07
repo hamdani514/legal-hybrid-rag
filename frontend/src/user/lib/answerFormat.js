@@ -183,3 +183,60 @@ export const responseShareText = (message, answers = {}) => {
   );
   return [...header, blocks.join('\n\n----------------------------------------\n\n')].join('\n').trim();
 };
+
+/** "22.02.2017" (DD.MM.YYYY) -> a sortable year, or '' when absent/odd. */
+export const caseYear = (card) => {
+  const m = /(?:^|\D)(\d{4})(?:\D|$)/.exec(String(card?.decision_date || ''));
+  return m ? m[1] : '';
+};
+
+/** The judges on a card, always as an array of names. */
+export const caseJudges = (card) => {
+  const bench = card?.bench;
+  if (Array.isArray(bench)) return bench.filter(Boolean).map(String);
+  if (typeof bench === 'string' && bench.trim()) return [bench.trim()];
+  return [];
+};
+
+/** First sentence of a block of prose, trimmed to a readable length. */
+const firstSentence = (text, limit = 200) => {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!flat) return '';
+  const end = flat.search(/(?<!\b(?:No|Mr|Mrs|Ms|Dr|Hon|vs?)\.)\.\s+[A-Z]/);
+  const one = end > 0 ? flat.slice(0, end + 1) : flat;
+  return one.length <= limit ? one : `${one.slice(0, limit).replace(/\s+\S*$/, '')}…`;
+};
+
+/**
+ * A case in exactly three lines: who, what and how it ended.
+ *
+ * Built from the case card, so pressing Summary costs nothing and answers
+ * instantly - the Gemini free tier is already the ceiling on how many
+ * questions can be answered per minute, and a summary of something the user
+ * can already see must not compete with that.
+ *
+ * Returns null when the card has nothing worth showing, so the caller can hide
+ * the button rather than render three empty lines.
+ */
+export const caseSummaryLines = (card) => {
+  if (!card) return null;
+  const parties =
+    card.appellant && card.respondent
+      ? `${card.appellant} v. ${card.respondent}`
+      : card.appellant || card.respondent || '';
+
+  const subject = card.subject ? `${card.subject}: ` : '';
+  const problem = firstSentence(card.headnote) || '';
+
+  const outcome = prettyOutcome(card.outcome);
+  const holding = firstSentence(card.holding);
+  const decision = [outcome && `${outcome}.`, holding].filter(Boolean).join(' ');
+
+  const lines = [
+    parties && { label: 'Parties', text: parties },
+    problem && { label: 'Legal problem', text: `${subject}${problem}` },
+    decision && { label: 'Decision', text: decision },
+  ].filter(Boolean);
+
+  return lines.length ? lines : null;
+};

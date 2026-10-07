@@ -108,8 +108,10 @@ NO_RESULTS_MESSAGE = (
 
 # The case-card fields a result carries, so an un-analysed result still says
 # what the case is about (the frontend's "on demand" view).
+# "bench" is the list of judges; the results list filters by judge name, and
+# nothing else in the UI can supply it.
 CARD_FIELDS = ("case_display", "subject", "headnote", "holding", "outcome",
-               "appellant", "respondent", "decision_date", "card_status")
+               "appellant", "respondent", "decision_date", "bench", "card_status")
 
 
 # ── Caches ──────────────────────────────────────────────────────────────────

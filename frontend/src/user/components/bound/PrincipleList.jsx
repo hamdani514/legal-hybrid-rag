@@ -59,6 +59,7 @@ const PrincipleList = () => {
             <Reveal
               as="li"
               key={title}
+              variant="tilt"
               delay={index * 70}
               className="lift-card group flex flex-col rounded-3xl border border-ash-200 bg-white p-7 shadow-soft hover:border-brand-200 hover:shadow-card"
             >

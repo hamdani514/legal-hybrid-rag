@@ -149,7 +149,7 @@ const FaqGroups = () => {
               className="grid grid-cols-1 gap-6 lg:grid-cols-[15rem_1fr] lg:gap-12"
             >
               {/* Group heading, sticky in the margin at desktop width. */}
-              <Reveal className="self-start lg:sticky lg:top-28">
+              <Reveal variant="left" className="self-start lg:sticky lg:top-28">
                 <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-brand-700">
                   <span aria-hidden="true" className="font-bold tabular-nums">
                     {String(groupIndex + 1).padStart(2, '0')}
@@ -165,7 +165,7 @@ const FaqGroups = () => {
                 {items.map((item, i) => {
                   const key = `${groupIndex}-${i}`;
                   return (
-                    <Reveal key={item.q} delay={i * 60}>
+                    <Reveal key={item.q} variant="up" delay={i * 85}>
                       <Question
                         q={item.q}
                         a={item.a}
