@@ -60,6 +60,8 @@ pytest-asyncio
 
 openai
 ollama
+# Card payments (Stripe Checkout + webhooks); see app/api/payments.py
+stripe
 google-genai
 tiktoken
 google-api-python-client

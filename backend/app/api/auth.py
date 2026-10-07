@@ -23,10 +23,12 @@ import random
 import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status, File, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from pydantic import BaseModel, EmailStr, Field
 from loguru import logger
+
+from app.services.google_drive_service import google_drive_service
 
 from app.api.security import (
     TokenError,
@@ -80,6 +82,20 @@ class ResetPasswordRequest(BaseModel):
 class DeactivateAccountRequest(BaseModel):
     email: str
     password: str
+
+
+class DeleteAccountRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    username: Optional[str] = None
+    phone_no: Optional[str] = None
+    org: Optional[str] = None
+    dob: Optional[str] = None
+    gender: Optional[str] = None
 
 
 # -------------------------------------------------------------
@@ -446,8 +462,8 @@ async def reactivate_account(token: str):
         return {"message": "Account is already active. You can now log in."}
 
     # Restore user to Active status
-    plan = user.get("plan", "Standard")
-    plan_color = "bg-[#E9C176] text-[#261900]" if plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
+    plan = user.get("plan") or "Free"
+    plan_color = PLAN_COLORS.get(plan, PLAN_COLORS["Free"])
 
     await db.database.users.update_one(
         {"_id": user["_id"]},
@@ -629,9 +645,15 @@ async def submit_contact_form(body: ContactFormRequest):
 # Sign-in, signup and Google sign-in (token-issuing)
 # =============================================================
 
+# The three plans: Free (default), Standard (paid, $10/month through Stripe)
+# and Premium (on request). "Standard" is the PAID tier, so signing up must
+# never grant it - a new account starts on Free and is upgraded only by
+# app/api/payments.py once Stripe confirms the charge.
 PLAN_COLORS = {
+    "Premium": "bg-[#E9C176] text-[#261900]",
     "Pro": "bg-[#E9C176] text-[#261900]",
-    "Standard": "bg-[#E7E8EA] text-[#44474D]",
+    "Standard": "bg-[#CFE6FF] text-[#0B3B6F]",
+    "Free": "bg-[#E7E8EA] text-[#44474D]",
 }
 DEACTIVATED_DETAIL = "Your account has been deactivated. Do you want to reactivate your account?"
 
@@ -697,6 +719,7 @@ def _user_view(user: dict) -> dict:
         "name": user.get("name"),
         "email": user.get("email"),
         "plan": user.get("plan"),
+        "avatar_url": user.get("avatar_url"),
         "message": "Login successful",
     }
 
@@ -845,8 +868,8 @@ async def signup(body: SignupRequest):
         "name": body.name,
         "email": email,
         "org": body.org,
-        "plan": "Standard",
-        "planColor": PLAN_COLORS["Standard"],
+        "plan": "Free",
+        "planColor": PLAN_COLORS["Free"],
         "status": "Active",
         "statusColor": "bg-[#22C55E]",
         "dob": body.dob,
@@ -958,8 +981,8 @@ async def google_login(body: GoogleLoginRequest):
             "name": name,
             "email": email,
             "org": "",
-            "plan": "Standard",
-            "planColor": PLAN_COLORS["Standard"],
+            "plan": "Free",
+            "planColor": PLAN_COLORS["Free"],
             "status": "Active",
             "statusColor": "bg-[#22C55E]",
             "dob": "",
@@ -984,3 +1007,321 @@ async def google_login(body: GoogleLoginRequest):
 @router.get("/me")
 async def me(principal: TokenPayload = Depends(require_user)):
     return {"principal": principal, "auth_required": auth_required()}
+
+
+# -------------------------------------------------------------
+# GET /api/auth/profile - current user profile & subscription history
+# -------------------------------------------------------------
+@router.get("/profile")
+async def get_user_profile(request: Request, user_id: Optional[str] = None):
+    _require_db()
+    principal = _principal_or_none(request)
+    sub = principal.get("sub") if principal else None
+
+    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
+    if not query_id:
+        raise HTTPException(status_code=401, detail="Please sign in to view your profile.")
+
+    user = await db.database.users.find_one({
+        "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
+    })
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    # Format subscription history
+    history = user.get("subscription_history")
+    created_val = user.get("created_at")
+    created_iso = created_val.isoformat() if hasattr(created_val, "isoformat") else str(created_val or "2026-01-01T00:00:00Z")
+    plan_act_val = user.get("plan_activated_at")
+    plan_act_iso = plan_act_val.isoformat() if hasattr(plan_act_val, "isoformat") else None
+    current_plan = user.get("plan") or "Free"
+
+    if not history or not isinstance(history, list) or len(history) == 0:
+        history = []
+        if current_plan.lower() in ("standard", "pro", "advocate", "paid"):
+            start_date = plan_act_iso or created_iso
+            history.append({
+                "id": f"sub_hist_{user.get('id', 'u')}_0",
+                "plan": "Free",
+                "tier_name": "Free Tier",
+                "amount": "$0.00",
+                "status": "Completed",
+                "started_at": created_iso,
+                "ended_at": start_date,
+                "payment_method": "Complimentary",
+                "reference": "REF-FREE-INIT",
+            })
+            history.append({
+                "id": f"sub_hist_{user.get('id', 'u')}_1",
+                "plan": current_plan,
+                "tier_name": f"{current_plan} Plan",
+                "amount": "$10.00 / month",
+                "status": "Active",
+                "started_at": start_date,
+                "ended_at": None,
+                "payment_method": "Stripe Card",
+                "reference": user.get("stripe_subscription_id") or "SUB-STRIPE-ACTIVE",
+            })
+        else:
+            history.append({
+                "id": f"sub_hist_{user.get('id', 'u')}_0",
+                "plan": "Free",
+                "tier_name": "Free Tier",
+                "amount": "$0.00",
+                "status": "Active",
+                "started_at": created_iso,
+                "ended_at": None,
+                "payment_method": "Complimentary",
+                "reference": "REF-FREE-INIT",
+            })
+
+    plan_cancels_val = user.get("plan_cancels_at")
+    plan_cancels_iso = plan_cancels_val.isoformat() if hasattr(plan_cancels_val, "isoformat") else (str(plan_cancels_val) if plan_cancels_val else None)
+
+    return {
+        "id": user.get("id"),
+        "name": user.get("name") or "",
+        "username": user.get("username") or "",
+        "email": user.get("email") or "",
+        "dob": user.get("dob") or "",
+        "gender": user.get("gender") or "Male",
+        "phone_no": user.get("phone_no") or "",
+        "org": user.get("org") or "",
+        "status": user.get("status") or "Active",
+        "plan": current_plan,
+        "planColor": user.get("planColor") or "bg-[#22C55E]",
+        "created_at": created_iso,
+        "plan_activated_at": plan_act_iso,
+        "plan_cancels_at": plan_cancels_iso,
+        "avatar_url": user.get("avatar_url"),
+        "avatar_file_id": user.get("avatar_file_id"),
+        "auth_provider": user.get("auth_provider") or "local",
+        "stripe_customer_id": user.get("stripe_customer_id"),
+        "subscription_history": history,
+    }
+
+
+# -------------------------------------------------------------
+# PUT /api/auth/profile - update user profile details
+# -------------------------------------------------------------
+@router.put("/profile")
+async def update_user_profile(body: UpdateProfileRequest, request: Request, user_id: Optional[str] = None):
+    _require_db()
+    principal = _principal_or_none(request)
+    sub = principal.get("sub") if principal else None
+
+    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
+    if not query_id:
+        raise HTTPException(status_code=401, detail="Please sign in to update your profile.")
+
+    user = await db.database.users.find_one({
+        "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
+    })
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    update_fields = {}
+    if body.name is not None and body.name.strip():
+        update_fields["name"] = body.name.strip()
+    if body.username is not None and body.username.strip():
+        new_uname = body.username.strip()
+        if new_uname != user.get("username"):
+            conflict = await db.database.users.find_one({"username": new_uname, "_id": {"$ne": user["_id"]}})
+            if conflict:
+                raise HTTPException(status_code=409, detail="Username is already taken.")
+            update_fields["username"] = new_uname
+    if body.phone_no is not None:
+        update_fields["phone_no"] = body.phone_no.strip()
+    if body.org is not None:
+        update_fields["org"] = body.org.strip()
+    if body.dob is not None and body.dob.strip():
+        update_fields["dob"] = body.dob.strip()
+    if body.gender is not None and body.gender.strip():
+        update_fields["gender"] = body.gender.strip()
+
+    if update_fields:
+        await db.database.users.update_one({"_id": user["_id"]}, {"$set": update_fields})
+        user.update(update_fields)
+
+    return {
+        "message": "Profile updated successfully.",
+        "user": _user_view(user),
+    }
+
+
+# -------------------------------------------------------------
+# POST /api/auth/delete-account - permanently delete account
+# -------------------------------------------------------------
+@router.post("/delete-account")
+async def delete_account(body: DeleteAccountRequest, request: Request):
+    _require_db()
+    clean_email = body.email.lower().strip()
+    password = body.password.strip()
+
+    if not clean_email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    user = await db.database.users.find_one({"email": clean_email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    user_pass = user.get("password")
+    if not user_pass:
+        if password != "CONFIRM":
+            raise HTTPException(
+                status_code=400,
+                detail='This account was created with Google. Type "CONFIRM" as password to delete.',
+            )
+        if auth_required():
+            principal = _principal_or_none(request)
+            if not principal or principal["sub"] not in _user_subs(user):
+                raise HTTPException(status_code=401, detail="Please sign in to delete this account.")
+    else:
+        ok, _ = verify_password(password, user_pass)
+        if not ok:
+            raise HTTPException(status_code=403, detail="Incorrect password.")
+
+    user_id = user.get("id")
+    await db.database.users.delete_one({"_id": user["_id"]})
+    try:
+        await db.database.chat_sessions.delete_many({"user_key": {"$in": [user_id, clean_email]}})
+    except Exception as e:
+        logger.warning(f"Failed to clear chat sessions for {user_id}: {e}")
+
+    logger.info(f"User {user_id} ({clean_email}) deleted their account permanently.")
+    return {"message": "Account has been permanently deleted."}
+
+
+# -------------------------------------------------------------
+# POST /api/auth/profile/avatar - upload profile picture to Google Drive
+# -------------------------------------------------------------
+@router.post("/profile/avatar")
+async def upload_profile_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    user_id: Optional[str] = None,
+):
+    _require_db()
+    principal = _principal_or_none(request)
+    sub = principal.get("sub") if principal else None
+
+    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
+    if not query_id:
+        raise HTTPException(status_code=401, detail="Please sign in to upload a profile picture.")
+
+    user = await db.database.users.find_one({
+        "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
+    })
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    valid_mimes = ("image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif")
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in valid_mimes:
+        raise HTTPException(status_code=400, detail="Only image files (PNG, JPG, WEBP, GIF) are allowed.")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Profile picture must be under 10MB.")
+
+    # Remove previous avatar from Google Drive to avoid storage clutter
+    old_file_id = user.get("avatar_file_id")
+    if old_file_id:
+        try:
+            await google_drive_service.delete_avatar(old_file_id)
+            logger.info(f"Deleted old avatar {old_file_id} from Drive for user {user.get('id')}")
+        except Exception as e:
+            logger.warning(f"Failed deleting previous avatar {old_file_id}: {e}")
+
+    # Upload new avatar to Google Drive inside 'Verdict AI Users' folder
+    res = await google_drive_service.upload_avatar(
+        content_bytes=content,
+        original_filename=file.filename or "profile.png",
+        mime_type=file.content_type or "image/png",
+        user_id=str(user.get("id") or "user"),
+    )
+
+    new_file_id = res["file_id"]
+    avatar_url = f"/api/auth/avatar/{new_file_id}"
+
+    await db.database.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"avatar_url": avatar_url, "avatar_file_id": new_file_id}}
+    )
+    user["avatar_url"] = avatar_url
+    user["avatar_file_id"] = new_file_id
+
+    return {
+        "message": "Profile picture successfully uploaded.",
+        "avatar_url": avatar_url,
+        "avatar_file_id": new_file_id,
+        "user": _user_view(user),
+    }
+
+
+# -------------------------------------------------------------
+# DELETE /api/auth/profile/avatar - remove profile picture from Google Drive
+# -------------------------------------------------------------
+@router.delete("/profile/avatar")
+async def delete_profile_avatar(request: Request, user_id: Optional[str] = None):
+    _require_db()
+    principal = _principal_or_none(request)
+    sub = principal.get("sub") if principal else None
+
+    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
+    if not query_id:
+        raise HTTPException(status_code=401, detail="Please sign in to modify your profile picture.")
+
+    user = await db.database.users.find_one({
+        "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
+    })
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    old_file_id = user.get("avatar_file_id")
+    if old_file_id:
+        try:
+            await google_drive_service.delete_avatar(old_file_id)
+            logger.info(f"Deleted avatar {old_file_id} from Drive for user {user.get('id')}")
+        except Exception as e:
+            logger.warning(f"Error deleting avatar {old_file_id}: {e}")
+
+    await db.database.users.update_one(
+        {"_id": user["_id"]},
+        {"$unset": {"avatar_url": "", "avatar_file_id": ""}}
+    )
+    user["avatar_url"] = None
+    user["avatar_file_id"] = None
+
+    return {
+        "message": "Profile picture successfully removed.",
+        "avatar_url": None,
+        "user": _user_view(user),
+    }
+
+
+# -------------------------------------------------------------
+# GET /api/auth/avatar/{file_id} - stream avatar from Google Drive
+# -------------------------------------------------------------
+@router.get("/avatar/{file_id}")
+async def get_avatar_image(file_id: str):
+    """Streams the user profile picture from Google Drive or local cache."""
+    try:
+        stream, filename, mime_type = await google_drive_service.download_avatar_stream(file_id)
+        return StreamingResponse(
+            stream,
+            media_type=mime_type or "image/png",
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Content-Disposition": f'inline; filename="{filename}"',
+            },
+        )
+    except Exception as e:
+        logger.warning(f"Could not load avatar for file_id {file_id}: {e}")
+        from pathlib import Path
+        fallback_path = Path(__file__).resolve().parents[3] / "frontend" / "public" / "assets" / "user.png"
+        if fallback_path.exists():
+            return FileResponse(str(fallback_path), media_type="image/png")
+        raise HTTPException(status_code=404, detail="Avatar image not found.")

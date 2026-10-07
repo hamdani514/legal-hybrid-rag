@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { relativeTime } from '../lib/chatHistory';
 
 /*
@@ -22,6 +23,7 @@ const Sidebar = ({
   activeTab,
   setActiveTab,
 }) => {
+  const navigate = useNavigate();
   const [menuFor, setMenuFor] = useState('');
   const [renamingId, setRenamingId] = useState('');
   const [draft, setDraft] = useState('');
@@ -209,7 +211,13 @@ const Sidebar = ({
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(isActive ? 'case' : item.id)}
+              onClick={() => {
+                if (item.id === 'settings') {
+                  navigate('/settings');
+                } else {
+                  setActiveTab(isActive ? 'case' : item.id);
+                }
+              }}
               className={`flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left transition-all duration-200 ${
                 isActive ? 'bg-white font-medium text-ash-900 shadow-soft' : 'text-ash-600 hover:bg-ash-100'
               }`}

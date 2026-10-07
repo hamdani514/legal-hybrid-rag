@@ -84,6 +84,17 @@ export const MEDIA = {
     tone: 'light',
     alt: 'A gavel and its block resting on the open pages of a bound volume.',
   },
+
+  /** Default profile avatar */
+  user: {
+    src: `${BASE}/user.png`,
+    w: 512,
+    h: 512,
+    ratio: 1,
+    focus: '50% 50%',
+    tone: 'light',
+    alt: 'User profile avatar',
+  },
 };
 
 /**

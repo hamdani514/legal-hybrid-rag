@@ -1294,7 +1294,9 @@ async def update_user_plan(user_id: str, body: UserPlanUpdate):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
     
-    allowed_plans = {"Standard", "Pro"}
+    # "Standard" is written by the Stripe webhook when a subscription starts
+    # (app/api/payments.py); the panel must not reject the plan it finds.
+    allowed_plans = {"Free", "Standard", "Premium"}
     if body.plan not in allowed_plans:
         raise HTTPException(status_code=400, detail=f"Plan must be one of: {', '.join(allowed_plans)}")
 

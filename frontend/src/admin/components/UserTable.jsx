@@ -153,12 +153,13 @@ const UserTable = ({
                       value={user.plan}
                       onChange={(e) => handlePlanChange(user.id, e.target.value)}
                       className={`appearance-none cursor-pointer px-3 py-1 font-prose font-bold text-[10px] leading-3 tracking-[1px] uppercase rounded-full outline-none border-0 transition-all ${
-                        user.plan === 'Pro' ? 'bg-brand-100 text-brand-800' : 'bg-[#E5E7EB] text-[#4B5563]'
+                        user.plan === 'Premium' ? 'bg-brand-100 text-brand-800' : user.plan === 'Standard' ? 'bg-[#CFE6FF] text-[#0B3B6F]' : 'bg-[#E5E7EB] text-[#4B5563]'
                       }`}
                       style={{ backgroundImage: 'none' }}
                     >
+                      <option value="Free">FREE</option>
                       <option value="Standard">STANDARD</option>
-                      <option value="Pro">PRO</option>
+                      <option value="Premium">PREMIUM</option>
                     </select>
                   </td>
 

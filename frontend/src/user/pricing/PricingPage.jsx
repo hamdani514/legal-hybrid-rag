@@ -59,7 +59,7 @@ const PricingPage = () => {
           secondaryCta={{ to: '/contact', label: 'Chamber bulk onboarding', icon: 'corporate_fare' }}
           highlights={[
             { icon: 'school', label: 'Free for verified students' },
-            { icon: 'balance', label: 'Rs 2,400 / mo advocate' },
+            { icon: 'balance', label: '$10 / mo standard' },
             { icon: 'groups', label: 'Pooled seats for chambers' },
           ]}
         />

@@ -251,6 +251,18 @@ class Settings(BaseSettings):
     CASE_CARD_CALL_PAUSE_S: float = 1.0
     CASE_CARD_MAX_LLM_CALLS: int = 4000
 
+    # ── Payments (Stripe, test mode) ─────────────────────────────────────
+    # Credentials live in backend/.env. STRIPE_PRICE_ID is the recurring price
+    # Checkout bills; change it there to change what the Standard plan costs,
+    # without touching code. PAID_PLAN is the value written onto the user once
+    # Stripe confirms payment.
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    STRIPE_PRICE_ID: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    PAID_PLAN: str = "Standard"
+    FREE_PLAN: str = "Free"
+
     # ── Admin uploads (several PDFs at once from the Cases page) ─────────
     # Uploads are queued: this many judgments are extracted/OCR'd and parsed at
     # the same time; the index stage (vectors, card, keyword index) runs one

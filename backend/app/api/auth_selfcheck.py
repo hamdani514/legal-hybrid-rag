@@ -144,12 +144,16 @@ async def run() -> None:
         # ================= signup stores a hash ==============================
         r = await c.post("/api/auth/signup", json={
             "username": "Ayesha", "name": "Ayesha Khan", "email": "ayesha@gmail.com", "org": "",
-            "plan": "Pro", "password": "Strong#Pass9", "dob": "1990-01-01"})
+            "plan": "Standard", "password": "Strong#Pass9", "dob": "1990-01-01"})
         check("signup succeeds", r.status_code == 200, f"{r.status_code} {r.text[:120]}")
         check("signup response omits password", "password" not in r.json())
         sdoc = await users.find_one({"email": "ayesha@gmail.com"})
         check("signup stores bcrypt hash", sdoc and security.is_bcrypt_hash(sdoc["password"]))
-        check("signup cannot self-assign Pro", sdoc and sdoc["plan"] == "Standard", sdoc and sdoc["plan"])
+        # Standard is the PAID tier now ($10/month via Stripe), so a signup
+        # that asks for a paid plan must still land on Free - the only thing
+        # that may grant Standard is a confirmed Stripe payment.
+        check("signup cannot self-assign a paid plan; it lands on Free",
+              sdoc and sdoc["plan"] == "Free", sdoc and sdoc["plan"])
         r = await c.post("/api/auth/login", json={"email": "ayesha@gmail.com", "password": "Strong#Pass9"})
         check("new signup logs in", r.status_code == 200, f"{r.status_code}")
 

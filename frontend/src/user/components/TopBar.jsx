@@ -1,10 +1,36 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import DeactivateModal from './DeactivateModal';
 
 const TopBar = ({ onLogout, userEmail }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const menuRef = useRef(null);
+  const navigate = useNavigate();
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser') || 'null');
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      try {
+        setCurrentUser(JSON.parse(localStorage.getItem('currentUser') || 'null'));
+      } catch {
+        setCurrentUser(null);
+      }
+    };
+    window.addEventListener('storage', handleProfileUpdate);
+    window.addEventListener('user-profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('storage', handleProfileUpdate);
+      window.removeEventListener('user-profile-updated', handleProfileUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -27,68 +53,126 @@ const TopBar = ({ onLogout, userEmail }) => {
           >
             Research
           </a>
-          <a
+          <Link
             className="text-ash-600 font-prose text-sm hover:text-ash-900 transition-colors pt-0.5"
-            href="#"
-            onClick={(e) => e.preventDefault()}
+            to="/"
           >
-            Archives
-          </a>
-          <a
+            Home
+          </Link>
+          <Link
             className="text-ash-600 font-prose text-sm hover:text-ash-900 transition-colors pt-0.5"
-            href="#"
-            onClick={(e) => e.preventDefault()}
+            to="/pricing"
           >
-            Precedents
-          </a>
+            Plans
+          </Link>
         </div>
-        <div className="flex items-center gap-6 relative" ref={menuRef}>
+
+        <div className="flex items-center gap-5 relative" ref={menuRef}>
+          {/* Settings shortcut button */}
           <button
-            onClick={() => setDeactivateModalOpen(true)}
-            title="Account Security & Deactivation"
-            className="text-ash-900 opacity-80 hover:opacity-100 transition-all focus:outline-none flex items-center"
+            onClick={() => navigate('/settings')}
+            title="Account Settings & Subscriptions"
+            className="text-ash-600 hover:text-ash-900 transition-all focus:outline-none flex items-center p-1.5 rounded-lg hover:bg-ash-100"
           >
-            <span className="material-symbols-outlined">settings</span>
+            <span className="material-symbols-outlined text-[22px]">settings</span>
           </button>
+
+          {/* User profile avatar logo */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="text-ash-900 opacity-80 hover:opacity-100 transition-all focus:outline-none flex items-center"
+            className="focus:outline-none flex items-center transition-all hover:ring-2 hover:ring-brand-400/40 rounded-full group"
+            title="User Profile Menu"
           >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              account_circle
-            </span>
+            <div className="relative">
+              <img
+                src={currentUser?.avatar_url || '/assets/user.png'}
+                alt="User Profile"
+                onError={(e) => { e.currentTarget.src = '/assets/user.png'; }}
+                className="w-9 h-9 rounded-full object-cover border-2 border-brand-400/80 shadow-sm transition-transform duration-200 group-hover:scale-105 bg-white"
+              />
+              <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </div>
           </button>
 
           {/* User profile dropdown */}
           {menuOpen && (
-            <div className="absolute right-0 top-10 w-64 bg-white/95 backdrop-blur-md rounded-xl border border-ash-200 shadow-xl p-4 flex flex-col gap-3 z-50 animate-[fadeIn_0.2s_ease-out]">
-              <div className="flex flex-col">
-                <span className="font-prose text-xs font-semibold text-ash-600 uppercase tracking-wider">
-                  User Session
-                </span>
-                <span className="font-prose text-sm text-ash-900 font-medium truncate mt-1">
-                  {userEmail || 'Anonymous Legal Counsel'}
-                </span>
+            <div className="absolute right-0 top-12 w-72 bg-white/95 backdrop-blur-xl rounded-2xl border border-ash-200 shadow-2xl p-3 flex flex-col gap-1 z-50 animate-[fadeIn_0.15s_ease-out]">
+              <div className="flex items-center gap-3 p-2.5 rounded-xl bg-ash-50/80 border border-ash-100 mb-1">
+                <img
+                  src={currentUser?.avatar_url || '/assets/user.png'}
+                  alt="User"
+                  onError={(e) => { e.currentTarget.src = '/assets/user.png'; }}
+                  className="w-10 h-10 rounded-full border border-ash-200 object-cover shadow-inner bg-white"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-ui text-[13px] font-bold text-ash-900">
+                    {currentUser?.name || currentUser?.username || 'Legal Counsel'}
+                  </p>
+                  <p className="truncate font-ui text-[11px] text-ash-500">
+                    {userEmail || currentUser?.email || 'Authenticated User'}
+                  </p>
+                  <span className="mt-1 inline-block rounded-full bg-brand-100 px-2 py-0.2 font-ui text-[10px] font-bold uppercase tracking-wider text-brand-800">
+                    {currentUser?.plan || 'Free'} Plan
+                  </span>
+                </div>
               </div>
-              <hr className="border-ash-200" />
+
+              <div className="my-1 border-t border-ash-100" />
+
               <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigate('/settings');
+                }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 text-left font-ui text-[13px] font-medium text-ash-700 transition-colors hover:bg-ash-100 hover:text-ash-900"
+              >
+                <span className="material-symbols-outlined text-[19px] text-ash-500">settings</span>
+                <span>Account Settings</span>
+              </button>
+
+              <Link
+                to="/terms"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 font-ui text-[13px] font-medium text-ash-700 transition-colors hover:bg-ash-100 hover:text-ash-900"
+              >
+                <span className="material-symbols-outlined text-[19px] text-ash-500">gavel</span>
+                <span>Terms & Conditions</span>
+              </Link>
+
+              <Link
+                to="/privacy"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 font-ui text-[13px] font-medium text-ash-700 transition-colors hover:bg-ash-100 hover:text-ash-900"
+              >
+                <span className="material-symbols-outlined text-[19px] text-ash-500">privacy_tip</span>
+                <span>Privacy Policy</span>
+              </Link>
+
+              <div className="my-1 border-t border-ash-100" />
+
+              <button
+                type="button"
                 onClick={() => {
                   setMenuOpen(false);
                   setDeactivateModalOpen(true);
                 }}
-                className="w-full rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-center font-ui text-[12px] font-semibold text-rose-700 transition-colors duration-250 hover:bg-rose-100 flex items-center justify-center gap-1.5"
+                className="flex items-center gap-3 rounded-xl px-3 py-2 text-left font-ui text-[12.5px] font-medium text-rose-600 transition-colors hover:bg-rose-50"
               >
-                <span className="material-symbols-outlined text-[15px]">power_settings_new</span>
-                Deactivate Account
+                <span className="material-symbols-outlined text-[18px] text-rose-500">power_settings_new</span>
+                <span>Deactivate Account</span>
               </button>
+
               <button
-                onClick={onLogout}
-                className="w-full rounded-xl bg-ash-900 py-2.5 text-center font-ui text-[12px] font-semibold text-white transition-colors duration-250 hover:bg-black"
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogout();
+                }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 text-left font-ui text-[12.5px] font-semibold text-ash-900 transition-colors hover:bg-ash-900 hover:text-white"
               >
-                Sign Out
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+                <span>Sign Out</span>
               </button>
             </div>
           )}

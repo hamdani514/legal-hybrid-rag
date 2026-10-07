@@ -1,5 +1,6 @@
 import io
 import os
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
@@ -12,6 +13,8 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 UPLOADS_DIR = BACKEND_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+USERS_DIR = UPLOADS_DIR / "users"
+USERS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class GoogleDriveService:
@@ -377,6 +380,194 @@ class GoogleDriveService:
         except Exception as e:
             logger.warning(f"Error deleting file '{filename}' by name from Google Drive: {e}")
             return False
+
+    def _get_or_create_users_folder(self) -> Optional[str]:
+        """Gets or creates the 'Verdict AI Users' folder in Google Drive."""
+        service = self.get_service()
+        if not service:
+            return None
+
+        folder_name = "Verdict AI Users"
+        try:
+            query = f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and trashed=false"
+            results = service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
+            files = results.get("files", [])
+
+            if files:
+                fid = files[0]["id"]
+                logger.info(f"Found existing Google Drive folder '{folder_name}' (id: {fid})")
+                return fid
+
+            # Create folder
+            file_metadata = {
+                "name": folder_name,
+                "mimeType": "application/vnd.google-apps.folder",
+            }
+            folder = service.files().create(body=file_metadata, fields="id").execute()
+            fid = folder.get("id")
+            logger.info(f"Created new Google Drive users folder '{folder_name}' (id: {fid})")
+            return fid
+        except Exception as e:
+            logger.error(f"Error checking/creating Drive users folder: {e}")
+            return None
+
+    async def upload_avatar(
+        self,
+        content_bytes: bytes,
+        original_filename: str,
+        mime_type: str = "image/png",
+        user_id: str = "user",
+    ) -> Dict[str, Any]:
+        """
+        Uploads a user profile picture to Google Drive inside 'Verdict AI Users' folder.
+        Saves locally as well in uploads/users for high performance and fallback.
+        """
+        ext = Path(original_filename).suffix or ".png"
+        unique_token = secrets.token_hex(6)
+        safe_filename = f"avatar_{user_id}_{unique_token}{ext}"
+        local_path = USERS_DIR / safe_filename
+        local_path.write_bytes(content_bytes)
+        file_size = len(content_bytes)
+
+        service = self.get_service()
+        if not service:
+            logger.warning(f"Google Drive not connected. Using local storage for avatar {safe_filename}")
+            return {
+                "file_id": f"local_{safe_filename}",
+                "file_name": safe_filename,
+                "mime_type": mime_type,
+                "size": file_size,
+                "status": "local",
+            }
+
+        try:
+            from googleapiclient.http import MediaIoBaseUpload
+
+            folder_id = self._get_or_create_users_folder()
+            file_metadata: Dict[str, Any] = {
+                "name": safe_filename,
+                "description": f"Verdict AI User Avatar for {user_id}",
+                "mimeType": mime_type,
+            }
+            if folder_id:
+                file_metadata["parents"] = [folder_id]
+
+            media = MediaIoBaseUpload(
+                io.BytesIO(content_bytes),
+                mimetype=mime_type,
+                resumable=False,
+            )
+
+            drive_file = (
+                service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id, name, mimeType, size",
+                )
+                .execute()
+            )
+            file_id = drive_file.get("id")
+            logger.info(f"✅ User avatar uploaded to Google Drive (file_id: {file_id}, name: {safe_filename})")
+            return {
+                "file_id": file_id,
+                "file_name": safe_filename,
+                "mime_type": mime_type,
+                "size": file_size,
+                "status": "uploaded",
+            }
+        except Exception as e:
+            logger.error(f"❌ Failed to upload avatar to Google Drive: {e}. Falling back to local copy.")
+            return {
+                "file_id": f"local_{safe_filename}",
+                "file_name": safe_filename,
+                "mime_type": mime_type,
+                "size": file_size,
+                "status": "local_fallback",
+            }
+
+    async def download_avatar_stream(
+        self,
+        file_id: str,
+        fallback_filename: str = "avatar.png",
+    ) -> Tuple[io.BytesIO, str, str]:
+        """
+        Retrieves user avatar image stream from Google Drive or local storage.
+        Returns: (stream, filename, mime_type)
+        """
+        # 1. Local storage check
+        if file_id.startswith("local_"):
+            local_fname = file_id.replace("local_", "")
+            local_file = USERS_DIR / local_fname
+            if local_file.exists():
+                data = local_file.read_bytes()
+                mime = "image/png" if local_file.suffix.lower() == ".png" else "image/jpeg"
+                return io.BytesIO(data), local_fname, mime
+
+        # Check if cached locally in users dir
+        for f in USERS_DIR.glob(f"*{file_id}*"):
+            if f.exists():
+                data = f.read_bytes()
+                mime = "image/png" if f.suffix.lower() == ".png" else "image/jpeg"
+                return io.BytesIO(data), f.name, mime
+
+        service = self.get_service()
+        if not service:
+            # Check any file matching in USERS_DIR
+            files = list(USERS_DIR.glob("*"))
+            if files:
+                data = files[0].read_bytes()
+                return io.BytesIO(data), files[0].name, "image/png"
+            raise FileNotFoundError(f"Avatar file not found for ID: {file_id}")
+
+        try:
+            from googleapiclient.http import MediaIoBaseDownload
+
+            file_meta = service.files().get(fileId=file_id, fields="name, mimeType").execute()
+            filename = file_meta.get("name", fallback_filename)
+            mime_type = file_meta.get("mimeType", "image/png")
+
+            request = service.files().get_media(fileId=file_id)
+            stream = io.BytesIO()
+            downloader = MediaIoBaseDownload(stream, request, chunksize=1024 * 512)
+
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            stream.seek(0)
+
+            # Cache locally in USERS_DIR
+            try:
+                (USERS_DIR / filename).write_bytes(stream.getvalue())
+                stream.seek(0)
+            except Exception:
+                pass
+
+            return stream, filename, mime_type
+        except Exception as e:
+            logger.error(f"Failed to download avatar {file_id} from Drive: {e}")
+            raise
+
+    async def delete_avatar(self, file_id: str) -> bool:
+        """Deletes user avatar from Google Drive and removes local cache."""
+        if not file_id:
+            return False
+
+        # Remove local file cache if present
+        try:
+            clean_name = file_id.replace("local_", "")
+            for f in USERS_DIR.glob(f"*{clean_name}*"):
+                if f.exists():
+                    f.unlink()
+                    logger.info(f"Removed local avatar cache: {f.name}")
+        except Exception as e:
+            logger.warning(f"Error removing local avatar cache for {file_id}: {e}")
+
+        # Remove from Google Drive
+        if not file_id.startswith("local_"):
+            return await self.delete_file(file_id)
+        return True
 
 
 google_drive_service = GoogleDriveService()

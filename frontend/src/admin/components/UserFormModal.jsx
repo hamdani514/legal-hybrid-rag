@@ -143,8 +143,9 @@ const UserFormModal = ({
               onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
               className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827] bg-white cursor-pointer"
             >
+              <option value="Free">Free</option>
               <option value="Standard">Standard</option>
-              <option value="Pro">Pro</option>
+              <option value="Premium">Premium</option>
             </select>
           </div>
 

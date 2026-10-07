@@ -1,13 +1,15 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
 import CardBubbles from './CardBubbles';
+import { startCheckout } from '../../lib/payments';
 
 const PLANS = [
   {
-    name: 'Student',
+    name: 'Free',
     price: 'Free',
-    cadence: 'for verified students',
+    cadence: 'no card required',
     summary: 'Enough to carry a moot, a seminar paper or a dissertation chapter.',
     features: [
       '25 research sessions each month',
@@ -15,13 +17,13 @@ const PLANS = [
       'Division-level navigation',
       'Export with citation',
     ],
-    cta: 'Verify enrolment',
+    cta: 'Create account',
     to: '/signup',
     emphasis: false,
   },
   {
-    name: 'Advocate',
-    price: 'Rs 2,400',
+    name: 'Standard',
+    price: '$10',
     cadence: 'per month',
     summary: 'For practitioners researching against a filing deadline.',
     features: [
@@ -34,14 +36,15 @@ const PLANS = [
     cta: 'Get started',
     to: '/signup',
     emphasis: true,
+    checkout: true,
   },
   {
-    name: 'Chambers',
+    name: 'Premium',
     price: 'On request',
     cadence: 'per seat, billed annually',
     summary: 'Shared archives and seat management for a firm or set of chambers.',
     features: [
-      'Everything in Advocate',
+      'Everything in Standard',
       'Shared research trails',
       'Private document ingestion',
       'Named account contact',
@@ -59,6 +62,27 @@ const PLANS = [
  * - Hover on Right: Right card slides/tilts outward, others stay in place.
  */
 const PlansSection = () => {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [payError, setPayError] = useState('');
+
+  // The paid plan leaves for Stripe's hosted page; everything else is a link.
+  const onSubscribe = async () => {
+    if (busy) return;
+    setPayError('');
+    setBusy(true);
+    const result = await startCheckout();
+    if (!result.ok) {
+      setBusy(false);
+      if (result.reason === 'signin') {
+        navigate('/login', { state: { next: '/pricing' } });
+        return;
+      }
+      setPayError(result.message);
+    }
+    // On success the browser is already on its way to Stripe.
+  };
+
   return (
     <section aria-labelledby="plans-title" className="w-full px-5 py-20 sm:px-8 md:py-28 overflow-x-hidden">
       <div className="mx-auto max-w-[1200px]">
@@ -74,7 +98,7 @@ const PlansSection = () => {
         {/* Pricing Cards */}
         <div className="pricing-deck relative mx-auto mt-14 max-w-[1140px] md:mt-20 lg:py-10">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-3 items-stretch">
-            {PLANS.map(({ name, price, cadence, summary, features, cta, to, emphasis }, index) => {
+            {PLANS.map(({ name, price, cadence, summary, features, cta, to, emphasis, checkout }, index) => {
               const cardPositionClass =
                 index === 0
                   ? 'pricing-card-left'
@@ -157,21 +181,45 @@ const PlansSection = () => {
                     </ul>
                   </div>
 
-                  <Link
-                    to={to}
-                    className={`relative z-[2] mt-9 inline-flex items-center justify-center rounded-full px-6 py-3.5 font-ui text-[14.5px] font-bold transition-all duration-300 ${
-                      emphasis
-                        ? 'bg-white text-brand-800 hover:-translate-y-0.5 hover:shadow-card-lg'
-                        : 'border border-ash-300 text-ash-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
-                    }`}
-                  >
-                    {cta}
-                  </Link>
+                  {checkout ? (
+                    <button
+                      type="button"
+                      onClick={onSubscribe}
+                      disabled={busy}
+                      className={`relative z-[2] mt-9 inline-flex items-center justify-center rounded-full px-6 py-3.5 font-ui text-[14.5px] font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70 ${
+                        emphasis
+                          ? 'bg-white text-brand-800 hover:-translate-y-0.5 hover:shadow-card-lg'
+                          : 'border border-ash-300 text-ash-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
+                      }`}
+                    >
+                      {busy ? 'Opening secure checkout…' : cta}
+                    </button>
+                  ) : (
+                    <Link
+                      to={to}
+                      className={`relative z-[2] mt-9 inline-flex items-center justify-center rounded-full px-6 py-3.5 font-ui text-[14.5px] font-bold transition-all duration-300 ${
+                        emphasis
+                          ? 'bg-white text-brand-800 hover:-translate-y-0.5 hover:shadow-card-lg'
+                          : 'border border-ash-300 text-ash-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
+                      }`}
+                    >
+                      {cta}
+                    </Link>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
+
+        {payError && (
+          <p
+            role="alert"
+            className="mx-auto mt-8 max-w-[40rem] rounded-2xl border border-amber-400/40 bg-amber-400/10 px-5 py-3 text-center font-prose text-[13.5px] leading-6 text-ash-800"
+          >
+            {payError}
+          </p>
+        )}
 
         <Reveal
           as="p"
@@ -179,8 +227,8 @@ const PlansSection = () => {
           delay={200}
           className="mx-auto mt-9 max-w-[40rem] text-center font-prose text-[13px] leading-6 text-ash-500"
         >
-          Prices in Pakistani rupees, exclusive of applicable tax. Student verification is by
-          institutional email.
+          Billed in US dollars, exclusive of applicable tax. Premium is arranged with us
+          directly.
         </Reveal>
       </div>
     </section>
