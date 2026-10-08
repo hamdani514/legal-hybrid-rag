@@ -118,12 +118,10 @@ const SettingsPage = () => {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: profile.name,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          name: profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.name,
           username: profile.username,
-          phone_no: profile.phone_no,
-          org: profile.org,
-          dob: profile.dob,
-          gender: profile.gender,
         }),
       });
 
@@ -513,38 +511,38 @@ const SettingsPage = () => {
 
               <form onSubmit={handleProfileSubmit} className="flex flex-col gap-6 font-prose text-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Full Name */}
+                  {/* First Name */}
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
-                      Full Name
+                      First Name
                     </label>
                     <input
                       type="text"
                       required
-                      value={profile.name}
-                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                      placeholder="e.g. Barrister Ayesha Khan"
+                      value={profile.first_name || (profile.name ? profile.name.split(' ')[0] : '')}
+                      onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                      placeholder="e.g. Marcus"
                       className="px-4 py-3 rounded-xl border border-ash-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-ash-900 bg-ash-50/50 focus:bg-white"
                     />
                   </div>
 
-                  {/* Username */}
+                  {/* Last Name */}
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
-                      Username
+                      Last Name
                     </label>
                     <input
                       type="text"
                       required
-                      value={profile.username}
-                      onChange={(e) => setProfile({ ...profile, username: e.target.value })}
-                      placeholder="e.g. ayesha_khan"
+                      value={profile.last_name || (profile.name ? profile.name.split(' ').slice(1).join(' ') : '')}
+                      onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                      placeholder="e.g. Sterling"
                       className="px-4 py-3 rounded-xl border border-ash-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-ash-900 bg-ash-50/50 focus:bg-white"
                     />
                   </div>
 
                   {/* Email ID (Read-only for security) */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 md:col-span-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
                         Email Address
@@ -559,47 +557,6 @@ const SettingsPage = () => {
                       readOnly
                       value={profile.email}
                       className="px-4 py-3 rounded-xl border border-ash-200 bg-ash-100 text-ash-600 cursor-not-allowed outline-none select-all"
-                    />
-                  </div>
-
-                  {/* Organization / Chamber */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
-                      Chamber / Law Firm / Court
-                    </label>
-                    <input
-                      type="text"
-                      value={profile.org}
-                      onChange={(e) => setProfile({ ...profile, org: e.target.value })}
-                      placeholder="e.g. Supreme Court Bar Association"
-                      className="px-4 py-3 rounded-xl border border-ash-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-ash-900 bg-ash-50/50 focus:bg-white"
-                    />
-                  </div>
-
-                  {/* Phone Number */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
-                      Contact Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={profile.phone_no}
-                      onChange={(e) => setProfile({ ...profile, phone_no: e.target.value })}
-                      placeholder="e.g. +92 300 1234567"
-                      className="px-4 py-3 rounded-xl border border-ash-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-ash-900 bg-ash-50/50 focus:bg-white"
-                    />
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
-                      Date of Birth
-                    </label>
-                    <input
-                      type="date"
-                      value={profile.dob}
-                      onChange={(e) => setProfile({ ...profile, dob: e.target.value })}
-                      className="px-4 py-3 rounded-xl border border-ash-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-ash-900 bg-ash-50/50 focus:bg-white"
                     />
                   </div>
                 </div>

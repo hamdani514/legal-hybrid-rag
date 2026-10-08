@@ -68,24 +68,36 @@ export async function apiFetch(url, options = {}) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(url, { ...options, headers });
-
-  if (response.status === 401 && token) {
-    clearToken({ admin });
-    if (!admin) {
-      try {
-        localStorage.removeItem('currentUser');
-      } catch {
-        /* ignore */
-      }
-    }
-    const target = admin ? '/admin-login' : '/login';
-    if (typeof window !== 'undefined' && window.location.pathname !== target) {
-      window.location.assign(target);
-    }
+  if (typeof window !== 'undefined') {
+    window.__activeApiCount = (window.__activeApiCount || 0) + 1;
+    window.dispatchEvent(new Event('api-activity-started'));
   }
 
-  return response;
+  try {
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401 && token) {
+      clearToken({ admin });
+      if (!admin) {
+        try {
+          localStorage.removeItem('currentUser');
+        } catch {
+          /* ignore */
+        }
+      }
+      const target = admin ? '/admin-login' : '/login?expired=true';
+      if (typeof window !== 'undefined' && window.location.pathname !== target) {
+        window.location.assign(target);
+      }
+    }
+
+    return response;
+  } finally {
+    if (typeof window !== 'undefined') {
+      window.__activeApiCount = Math.max(0, (window.__activeApiCount || 1) - 1);
+      window.dispatchEvent(new Event('api-activity-ended'));
+    }
+  }
 }
 
 export default apiFetch;

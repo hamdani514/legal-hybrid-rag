@@ -1,9 +1,9 @@
 /**
  * SessionTimeoutModal
  *
- * Pop-up screen displayed 10 seconds before auto-logout.
- * Displays a live circular countdown timer from 10 to 0 seconds.
- * Gives the user the choice to stay logged in (extends session by 1 minute)
+ * Pop-up screen displayed 1 minute (60 seconds) before auto-logout.
+ * Displays a live circular countdown timer from 60 to 0 seconds.
+ * Gives the user the choice to stay logged in (extends session by 24 hours)
  * or immediately sign out.
  */
 const SessionTimeoutModal = ({
@@ -16,8 +16,8 @@ const SessionTimeoutModal = ({
 
   const radius = 46;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (Math.max(0, countdown) / 10) * circumference;
-  const isUrgent = countdown <= 5;
+  const strokeDashoffset = circumference - (Math.max(0, countdown) / 60) * circumference;
+  const isUrgent = countdown <= 15;
 
   return (
     <div
@@ -36,7 +36,7 @@ const SessionTimeoutModal = ({
           Security Auto-Logout
         </div>
 
-        {/* Circular Countdown Progress Ring */}
+        {/* Circular Countdown Progress Ring (60 Seconds) */}
         <div className="relative w-32 h-32 flex items-center justify-center my-3">
           <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 108 108">
             {/* Background Track */}
@@ -87,7 +87,7 @@ const SessionTimeoutModal = ({
         </h3>
 
         <p className="font-body text-sm text-[#44474D] leading-relaxed mb-6 max-w-sm">
-          You have been logged in for 1 minute. For your security, you will be
+          You are approaching the session limit. For your security, you will be
           automatically signed out in <strong className="text-[#0D1C32]">{countdown}s</strong> unless you choose to stay.
         </p>
 
@@ -99,7 +99,7 @@ const SessionTimeoutModal = ({
             className="w-full py-3.5 px-6 rounded-xl bg-[#0D1C32] text-[#E9C176] font-body text-sm font-bold hover:bg-black active:scale-[0.98] transition-all duration-150 shadow-md flex items-center justify-center gap-2 hover:shadow-lg"
           >
             <span className="material-symbols-outlined text-[19px]">lock_open</span>
-            Stay Logged In (+1 Min)
+            Stay Logged In (+24 Hours)
           </button>
 
           <button

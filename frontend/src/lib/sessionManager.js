@@ -1,17 +1,33 @@
 /**
  * Session Timeout Manager
  * 
- * Enforces security policy backed by both frontend and backend:
- * - 1 minute total session duration from login/extension.
- * - 10-second warning countdown before auto logout.
+ * Enforces security & activity policy backed by both frontend and backend:
+ * - 24 hours total session duration from login/extension.
+ * - 1 minute (60 seconds) warning countdown before auto logout.
  * - Warning timer is displayed in a dedicated popup screen.
- * - Validates JWT expiry so even if the browser/tab is closed and reopened
- *   after 1 minute, the session is expired and purged immediately.
+ * - Server Processing & Inactivity Protection:
+ *   If user is actively scrolling, interacting, or if a backend query / API
+ *   request is in-flight, the warning popup is suppressed and session is deferred
+ *   until server response is complete and user has viewed the result.
+ * - Closed-Tab Support:
+ *   Validates JWT server exp & local expiry on tab reopen, purging if >24h elapsed.
  */
 
-export const SESSION_TIMEOUT_SECONDS = 60; // 1 minute
-export const WARNING_SECONDS = 10;          // 10 seconds before logout
+export const SESSION_TIMEOUT_SECONDS = 24 * 60 * 60; // 24 hours (86,400s)
+export const WARNING_SECONDS = 60;                   // 1 minute before logout (60s)
 export const SESSION_EXPIRES_KEY = 'sessionExpiresAt';
+export const LAST_ACTIVITY_KEY = 'sessionLastActiveAt';
+
+/**
+ * Check if the server is currently processing a query or API call.
+ */
+export const isServerProcessing = () => {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    (window.__activeApiCount && window.__activeApiCount > 0) ||
+    window.__queryProcessing
+  );
+};
 
 /**
  * Decode JWT expiration time (in ms) from token without external dependencies.
@@ -64,7 +80,38 @@ export const isAnySessionActive = () => {
 };
 
 /**
- * Initialize or start the 1-minute session timer.
+ * Record user activity (scrolling, clicking, typing) to keep session fresh.
+ * Throttled to once every 15 seconds to avoid performance overhead.
+ */
+let lastActivityRecorded = 0;
+export const recordUserActivity = () => {
+  const now = Date.now();
+  if (now - lastActivityRecorded < 15000) return;
+  lastActivityRecorded = now;
+
+  try {
+    if (!isAnySessionActive()) return;
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+    
+    // If less than 2 minutes remain and user is actively interacting, defer expiration
+    const raw = localStorage.getItem(SESSION_EXPIRES_KEY);
+    if (raw) {
+      const expiresAt = Number(raw);
+      if (expiresAt && expiresAt - now < 120000) {
+        const deferred = now + 120000;
+        localStorage.setItem(SESSION_EXPIRES_KEY, String(deferred));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('session-timer-updated', { detail: { expiresAt: deferred } }));
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
+/**
+ * Initialize or start the 24-hour session timer.
  * Synchronizes with the backend JWT token's actual exp claim if present.
  */
 export const initSessionTimeout = (explicitToken = null) => {
@@ -73,10 +120,11 @@ export const initSessionTimeout = (explicitToken = null) => {
     const jwtExp = getJwtExpiryMs(token);
     const fallbackExp = Date.now() + SESSION_TIMEOUT_SECONDS * 1000;
     
-    // Honor the earlier of the server JWT expiry or the 1-minute timeout
+    // Honor the earlier of the server JWT expiry or the 24-hour timeout
     const expiresAt = jwtExp && jwtExp > Date.now() ? Math.min(jwtExp, fallbackExp) : fallbackExp;
 
     localStorage.setItem(SESSION_EXPIRES_KEY, String(expiresAt));
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('session-timer-updated', { detail: { expiresAt } }));
     }
@@ -87,8 +135,8 @@ export const initSessionTimeout = (explicitToken = null) => {
 };
 
 /**
- * Extend the active session by another 1 minute.
- * If logged in with the backend, requests a fresh 1-minute JWT from /api/auth/refresh.
+ * Extend the active session by another 24 hours.
+ * Calls /api/auth/refresh to retrieve a fresh 24-hour JWT from the backend.
  */
 export const extendSessionTimeout = async () => {
   const token = localStorage.getItem('authToken');
@@ -121,6 +169,7 @@ export const extendSessionTimeout = async () => {
 export const clearSessionTimeout = () => {
   try {
     localStorage.removeItem(SESSION_EXPIRES_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('session-timer-cleared'));
     }
@@ -193,7 +242,7 @@ export const performLogout = ({ expired = false, navigate = null } = {}) => {
 
 /**
  * Check if the active session has expired (either past local timeout or past JWT exp).
- * If expired, immediately purges localStorage and redirects to login.
+ * If expired and server is NOT currently processing a query, purges localStorage and redirects to login.
  * Returns true if valid active session, false if no session or expired.
  */
 export const validateSessionOrPurge = ({ navigate = null } = {}) => {
@@ -203,13 +252,18 @@ export const validateSessionOrPurge = ({ navigate = null } = {}) => {
   const adminActive = isAdminLoggedIn();
   if (!userActive && !adminActive) return false;
 
+  // If server is actively processing a query, do not purge yet
+  if (isServerProcessing()) {
+    return true;
+  }
+
   const now = Date.now();
   const token = localStorage.getItem('authToken') || localStorage.getItem('adminAuthToken');
   const jwtExp = getJwtExpiryMs(token);
   const rawExpires = localStorage.getItem(SESSION_EXPIRES_KEY);
   const localExpires = rawExpires ? Number(rawExpires) : null;
 
-  // If JWT expired on backend or local 1-minute timeout expired:
+  // If JWT expired on backend or local 24-hour timeout expired:
   const isServerExpired = jwtExp !== null && jwtExp <= now;
   const isLocalExpired = localExpires !== null && localExpires <= now;
 
@@ -222,8 +276,14 @@ export const validateSessionOrPurge = ({ navigate = null } = {}) => {
 };
 
 // Immediate evaluation when the module is loaded in the browser.
-// This guarantees that if a user closed their tab and reopens it after 1 minute,
-// stale credentials in localStorage are purged before any component renders!
 if (typeof window !== 'undefined') {
   validateSessionOrPurge();
+
+  // Attach global activity listeners for scrolling, clicking, and typing
+  const onActivity = () => recordUserActivity();
+  window.addEventListener('wheel', onActivity, { passive: true });
+  window.addEventListener('scroll', onActivity, { passive: true });
+  window.addEventListener('keydown', onActivity, { passive: true });
+  window.addEventListener('mousedown', onActivity, { passive: true });
+  window.addEventListener('touchstart', onActivity, { passive: true });
 }

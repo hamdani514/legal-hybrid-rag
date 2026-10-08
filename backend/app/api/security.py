@@ -174,7 +174,7 @@ def create_access_token(sub: str, role: Role, expires_minutes: Optional[int] = N
         raise ValueError("token subject must be non-empty")
     if role not in ("user", "admin"):
         raise ValueError(f"invalid role {role!r}")
-    minutes = int(expires_minutes or getattr(settings, "JWT_EXPIRE_MINUTES", 1) or 1)
+    minutes = int(expires_minutes or getattr(settings, "JWT_EXPIRE_MINUTES", 1440) or 1440)
     now = int(time.time())
     claims = {"sub": str(sub), "role": role, "iat": now, "exp": now + minutes * 60}
     return jwt.encode(claims, _secret(), algorithm=ALGORITHM)

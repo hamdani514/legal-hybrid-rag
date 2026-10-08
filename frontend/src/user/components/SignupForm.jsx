@@ -5,16 +5,11 @@ import { apiFetch } from '../../lib/api';
 
 const SignupForm = () => {
   const [formData, setFormData] = useState({
-    username: '',
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    org: '',
-    plan: 'Standard',
     password: '',
-    confirmPassword: '',
-    dob: '',
-    gender: 'Male',
-    phone_no: ''
+    confirmPassword: ''
   });
 
   const [errorMsg, setErrorMsg] = useState('');
@@ -22,34 +17,8 @@ const SignupForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [usernameUniqueStatus, setUsernameUniqueStatus] = useState('idle');
   const [emailUniqueStatus, setEmailUniqueStatus] = useState('idle');
   const navigate = useNavigate();
-
-  // Username availability check
-  useEffect(() => {
-    if (!formData.username.trim()) {
-      setUsernameUniqueStatus('idle');
-      return;
-    }
-    setUsernameUniqueStatus('checking');
-    const delayDebounce = setTimeout(async () => {
-      try {
-        const res = await apiFetch(`/api/admin/users/check-username?username=${encodeURIComponent(formData.username.trim())}`);
-        if (res.ok) {
-          const data = await res.json();
-          setUsernameUniqueStatus(data.available ? 'available' : 'taken');
-        } else {
-          setUsernameUniqueStatus('idle');
-        }
-      } catch (err) {
-        console.error('Error checking username:', err);
-        setUsernameUniqueStatus('idle');
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounce);
-  }, [formData.username]);
 
   // Email availability check
   useEffect(() => {
@@ -84,16 +53,13 @@ const SignupForm = () => {
     setLoading(true);
 
     if (
-      !formData.username.trim() ||
-      !formData.name.trim() ||
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
       !formData.email.trim() ||
-      !formData.org.trim() ||
       !formData.password ||
-      !formData.confirmPassword ||
-      !formData.dob ||
-      !formData.phone_no.trim()
+      !formData.confirmPassword
     ) {
-      setErrorMsg('All fields are required.');
+      setErrorMsg('All 5 fields are required.');
       setLoading(false);
       return;
     }
@@ -106,39 +72,13 @@ const SignupForm = () => {
 
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
     if (!pwRegex.test(formData.password)) {
-      setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
+      setErrorMsg('Password must be at least 8 characters long, contain at least one capital letter, one special character, and one number.');
       setLoading(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setErrorMsg('Password and Confirm Password do not match.');
-      setLoading(false);
-      return;
-    }
-
-    const dobDate = new Date(formData.dob);
-    if (isNaN(dobDate.getTime())) {
-      setErrorMsg('Please select a valid Date of Birth.');
-      setLoading(false);
-      return;
-    }
-
-    const regDate = new Date();
-    let age = regDate.getFullYear() - dobDate.getFullYear();
-    const monthDiff = regDate.getMonth() - dobDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && regDate.getDate() < dobDate.getDate())) {
-      age--;
-    }
-
-    if (age < 16) {
-      setErrorMsg('User must be older than 16 years from the registration date.');
-      setLoading(false);
-      return;
-    }
-
-    if (usernameUniqueStatus === 'taken') {
-      setErrorMsg('Username is already taken.');
       setLoading(false);
       return;
     }
@@ -151,20 +91,12 @@ const SignupForm = () => {
 
     try {
       const payload = {
-        username: formData.username,
-        name: formData.name,
-        email: formData.email,
-        org: formData.org,
-        plan: formData.plan,
-        password: formData.password,
-        dob: formData.dob,
-        gender: formData.gender,
-        phone_no: formData.phone_no,
-        created_at: regDate.toISOString()
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password
       };
 
-      // /api/auth/signup stores a bcrypt hash (the old /api/admin/users
-      // stored the password in plain text and is now admin-only).
       const res = await apiFetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +128,7 @@ const SignupForm = () => {
           Create Account
         </h2>
         <p className="font-body text-base leading-6 text-[#44474D]">
-          Enter your credentials to join the workspace.
+          Enter your details to create a new workspace account.
         </p>
       </div>
 
@@ -216,18 +148,18 @@ const SignupForm = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
-        {/* Full Name & Username */}
+        {/* First Name & Last Name */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-[6px]">
             <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Full Name
+              First Name
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Marcus Sterling"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Marcus"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
               className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
               style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
             />
@@ -235,69 +167,43 @@ const SignupForm = () => {
 
           <div className="flex flex-col gap-[6px]">
             <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Username
+              Last Name
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. marcus_s"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              placeholder="e.g. Sterling"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
               className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
               style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
             />
-            {usernameUniqueStatus === 'checking' && (
-              <span className="text-[10px] text-blue-500 font-body">Checking availability...</span>
-            )}
-            {usernameUniqueStatus === 'available' && (
-              <span className="text-[10px] text-green-600 font-body">✓ Username is available</span>
-            )}
-            {usernameUniqueStatus === 'taken' && (
-              <span className="text-[10px] text-red-500 font-body">✗ Username is already taken</span>
-            )}
           </div>
         </div>
 
-        {/* Email & Phone Number */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-[6px]">
-            <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Email (Gmail Only)
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="e.g. user@gmail.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
-              style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
-            />
-            {emailUniqueStatus === 'checking' && (
-              <span className="text-[10px] text-blue-500 font-body">Checking availability...</span>
-            )}
-            {emailUniqueStatus === 'available' && (
-              <span className="text-[10px] text-green-600 font-body">✓ Email is available</span>
-            )}
-            {emailUniqueStatus === 'taken' && (
-              <span className="text-[10px] text-red-500 font-body">✗ Email is already registered</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-[6px]">
-            <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Phone Number
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. +92 300 1234567"
-              value={formData.phone_no}
-              onChange={(e) => setFormData({ ...formData, phone_no: e.target.value })}
-              className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
-              style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
-            />
-          </div>
+        {/* Email Address */}
+        <div className="flex flex-col gap-[6px]">
+          <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
+            Email Address (Gmail Only)
+          </label>
+          <input
+            type="email"
+            required
+            placeholder="e.g. user@gmail.com"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
+            style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
+          />
+          {emailUniqueStatus === 'checking' && (
+            <span className="text-[10px] text-blue-500 font-body">Checking availability...</span>
+          )}
+          {emailUniqueStatus === 'available' && (
+            <span className="text-[10px] text-green-600 font-body">✓ Email is available</span>
+          )}
+          {emailUniqueStatus === 'taken' && (
+            <span className="text-[10px] text-red-500 font-body">✗ Email is already registered</span>
+          )}
         </div>
 
         {/* Password & Confirm Password */}
@@ -355,55 +261,6 @@ const SignupForm = () => {
           </div>
         </div>
 
-        {/* Organization */}
-        <div className="flex flex-col gap-[6px]">
-          <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-            Organization
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="e.g. Sterling & Associates"
-            value={formData.org}
-            onChange={(e) => setFormData({ ...formData, org: e.target.value })}
-            className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
-            style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
-          />
-        </div>
-
-        {/* Gender & DOB */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-[6px]">
-            <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Gender
-            </label>
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] outline-none transition-all focus:ring-1 focus:ring-[#E9C176] cursor-pointer"
-              style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
-            >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-[6px]">
-            <label className="font-body text-xs leading-4 tracking-[1.2px] uppercase text-[#44474D]">
-              Date of Birth
-            </label>
-            <input
-              type="date"
-              required
-              value={formData.dob}
-              onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-              className="w-full bg-white px-4 py-[11px] font-body text-sm leading-[17px] text-[#191C1E] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
-              style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
-            />
-          </div>
-        </div>
-
         {/* Actions */}
         <div className="flex flex-col gap-4 pt-4">
           <button
@@ -439,3 +296,4 @@ const SignupForm = () => {
 };
 
 export default SignupForm;
+

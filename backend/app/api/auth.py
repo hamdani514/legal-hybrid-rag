@@ -91,11 +91,9 @@ class DeleteAccountRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     name: Optional[str] = None
-    username: Optional[str] = None
-    phone_no: Optional[str] = None
-    org: Optional[str] = None
-    dob: Optional[str] = None
-    gender: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
 
 
 # -------------------------------------------------------------
@@ -669,16 +667,11 @@ class AdminLoginBody(BaseModel):
 
 
 class SignupRequest(BaseModel):
-    # Mirrors admin.py's UserCreate so SignupForm sends the same payload.
-    username: str
     email: str
-    name: str
-    org: str = ""
-    plan: Optional[str] = None  # ignored: self-signup is always Standard
     password: str
-    dob: str
-    gender: str = "Male"
-    phone_no: str = ""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: Optional[str] = None
     created_at: Optional[str] = None
 
 
@@ -713,10 +706,15 @@ def _user_subs(user: dict) -> set:
 
 def _user_view(user: dict) -> dict:
     """Exactly the object LoginForm stored as currentUser before tokens existed."""
+    name = user.get("name") or ""
+    parts = name.split()
+    first_name = user.get("first_name") or (parts[0] if parts else "")
+    last_name = user.get("last_name") or (" ".join(parts[1:]) if len(parts) > 1 else "")
     return {
         "id": user.get("id"),
-        "username": user.get("username"),
-        "name": user.get("name"),
+        "name": user.get("name") or f"{first_name} {last_name}".strip(),
+        "first_name": first_name,
+        "last_name": last_name,
         "email": user.get("email"),
         "plan": user.get("plan"),
         "avatar_url": user.get("avatar_url"),
@@ -815,21 +813,22 @@ async def _next_user_id() -> str:
 @router.post("/signup")
 async def signup(body: SignupRequest):
     """
-    Same validation as POST /api/admin/users (reused from admin.py), but the
-    password is stored as a bcrypt hash, the plan is always Standard (the old
-    endpoint let a caller self-assign "Pro"), and the response never echoes
-    the password.
+    User registration with First Name, Last Name, Email, and Password.
+    Password is stored as a bcrypt hash and plan is default Free.
     """
     _require_db()
-    from app.api.admin import (  # lazy: admin.py is under concurrent edit elsewhere
+    from app.api.admin import (
         validate_age_limit,
         validate_email_domain,
         validate_human_name,
         validate_password_strength,
     )
 
-    email = body.email.strip()
-    username = body.username.strip()
+    email = body.email.strip().lower()
+    first_name = (body.first_name or "").strip()
+    last_name = (body.last_name or "").strip()
+    full_name = (body.name or f"{first_name} {last_name}".strip()).strip() or "User"
+
     try:
         validate_email_domain(email)
         validate_password_strength(body.password)
@@ -843,39 +842,22 @@ async def signup(body: SignupRequest):
             now = datetime.fromisoformat(body.created_at.replace("Z", "+00:00"))
         except ValueError:
             logger.warning(f"Unparseable signup created_at {body.created_at!r}; using server time")
-    try:
-        validate_age_limit(body.dob, now)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
-    if not await validate_human_name(username):
-        raise HTTPException(
-            status_code=400,
-            detail="Username must be a human name (non-living things, animals, etc. are not allowed).",
-        )
-
-    existing = await db.database.users.find_one(
-        {"$or": [{"username": username}, {"email": {"$in": list({email, email.lower()})}}]}
-    )
+    existing = await db.database.users.find_one({"email": email})
     if existing:
-        if existing.get("username") == username:
-            raise HTTPException(status_code=409, detail="Username is already taken.")
         raise HTTPException(status_code=409, detail="Email is already registered.")
 
     new_user = {
         "id": await _next_user_id(),
-        "username": username,
-        "name": body.name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "name": full_name,
         "email": email,
-        "org": body.org,
         "plan": "Free",
         "planColor": PLAN_COLORS["Free"],
         "status": "Active",
         "statusColor": "bg-[#22C55E]",
-        "dob": body.dob,
-        "gender": body.gender,
         "password": password_hash,
-        "phone_no": body.phone_no,
         "created_at": now,
     }
     await db.database.users.insert_one(new_user)
@@ -975,20 +957,19 @@ async def google_login(body: GoogleLoginRequest):
     user = await _find_user_by_email(email)
     if user is None:
         name = info.get("name") or email.split("@")[0]
+        given_name = info.get("given_name") or name.split()[0]
+        family_name = info.get("family_name") or (" ".join(name.split()[1:]) if len(name.split()) > 1 else "")
         user = {
             "id": await _next_user_id(),
-            "username": await _unique_username(info.get("given_name") or name),
+            "first_name": given_name,
+            "last_name": family_name,
             "name": name,
             "email": email,
-            "org": "",
             "plan": "Free",
             "planColor": PLAN_COLORS["Free"],
             "status": "Active",
             "statusColor": "bg-[#22C55E]",
-            "dob": "",
-            "gender": "",
             "password": None,  # Google-only account (deactivation accepts "CONFIRM")
-            "phone_no": "",
             "auth_provider": "google",
             "google_sub": info.get("sub"),
             "created_at": datetime.now(timezone.utc),
@@ -1010,16 +991,17 @@ async def me(principal: TokenPayload = Depends(require_user)):
 
 
 # -------------------------------------------------------------
-# POST /api/auth/refresh - renew active session by 1 minute
+# POST /api/auth/refresh - renew active session
 # -------------------------------------------------------------
 @router.post("/refresh")
 async def refresh_session(principal: TokenPayload = Depends(require_user)):
+    expires_minutes = int(getattr(settings, "JWT_EXPIRE_MINUTES", 1440) or 1440)
     new_token = create_access_token(
         sub=principal["sub"],
         role=principal["role"],
-        expires_minutes=int(getattr(settings, "JWT_EXPIRE_MINUTES", 1) or 1),
+        expires_minutes=expires_minutes,
     )
-    return {"token": new_token, "expires_in": 60}
+    return {"token": new_token, "expires_in": expires_minutes * 60}
 
 
 # -------------------------------------------------------------
@@ -1091,15 +1073,17 @@ async def get_user_profile(request: Request, user_id: Optional[str] = None):
     plan_cancels_val = user.get("plan_cancels_at")
     plan_cancels_iso = plan_cancels_val.isoformat() if hasattr(plan_cancels_val, "isoformat") else (str(plan_cancels_val) if plan_cancels_val else None)
 
+    name = user.get("name") or ""
+    parts = name.split()
+    first_name = user.get("first_name") or (parts[0] if parts else "")
+    last_name = user.get("last_name") or (" ".join(parts[1:]) if len(parts) > 1 else "")
+
     return {
         "id": user.get("id"),
-        "name": user.get("name") or "",
-        "username": user.get("username") or "",
+        "name": user.get("name") or f"{first_name} {last_name}".strip(),
+        "first_name": first_name,
+        "last_name": last_name,
         "email": user.get("email") or "",
-        "dob": user.get("dob") or "",
-        "gender": user.get("gender") or "Male",
-        "phone_no": user.get("phone_no") or "",
-        "org": user.get("org") or "",
         "status": user.get("status") or "Active",
         "plan": current_plan,
         "planColor": user.get("planColor") or "bg-[#22C55E]",
@@ -1134,23 +1118,25 @@ async def update_user_profile(body: UpdateProfileRequest, request: Request, user
         raise HTTPException(status_code=404, detail="User account not found.")
 
     update_fields = {}
+    if body.first_name is not None:
+        update_fields["first_name"] = body.first_name.strip()
+    if body.last_name is not None:
+        update_fields["last_name"] = body.last_name.strip()
+
     if body.name is not None and body.name.strip():
         update_fields["name"] = body.name.strip()
-    if body.username is not None and body.username.strip():
-        new_uname = body.username.strip()
-        if new_uname != user.get("username"):
-            conflict = await db.database.users.find_one({"username": new_uname, "_id": {"$ne": user["_id"]}})
+    elif body.first_name is not None or body.last_name is not None:
+        fn = update_fields.get("first_name", user.get("first_name", ""))
+        ln = update_fields.get("last_name", user.get("last_name", ""))
+        update_fields["name"] = f"{fn} {ln}".strip()
+
+    if body.email is not None and body.email.strip():
+        new_email = body.email.strip().lower()
+        if new_email != (user.get("email") or "").lower():
+            conflict = await db.database.users.find_one({"email": new_email, "_id": {"$ne": user["_id"]}})
             if conflict:
-                raise HTTPException(status_code=409, detail="Username is already taken.")
-            update_fields["username"] = new_uname
-    if body.phone_no is not None:
-        update_fields["phone_no"] = body.phone_no.strip()
-    if body.org is not None:
-        update_fields["org"] = body.org.strip()
-    if body.dob is not None and body.dob.strip():
-        update_fields["dob"] = body.dob.strip()
-    if body.gender is not None and body.gender.strip():
-        update_fields["gender"] = body.gender.strip()
+                raise HTTPException(status_code=409, detail="Email is already registered.")
+            update_fields["email"] = new_email
 
     if update_fields:
         await db.database.users.update_one({"_id": user["_id"]}, {"$set": update_fields})

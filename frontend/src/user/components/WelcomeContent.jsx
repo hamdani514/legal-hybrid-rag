@@ -84,6 +84,14 @@ const WelcomeContent = () => {
     }
   }, [chatHistory, isSearching]);
 
+  // Track active query processing so auto-logout popup never interrupts an ongoing response
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__queryProcessing = isSearching;
+      window.dispatchEvent(new Event('query-activity-change'));
+    }
+  }, [isSearching]);
+
   // Load the saved conversations once, and reopen the one that was last on
   // Signing in always starts on a NEW research query; the saved conversations
   // are one click away in the sidebar rather than reopening by themselves.
