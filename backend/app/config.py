@@ -216,6 +216,8 @@ class Settings(BaseSettings):
     # OFF until the integrator has wired the frontend to send tokens; turning
     # it on early would lock the current UI out of search.
     AUTH_REQUIRED: bool = False
+    SUPER_ADMIN_EMAIL: str = "admindaniyal@cst.com"
+    SUPER_ADMIN_PASSWORD: str = "Dan1yal#SuperAdmin2026!"
     JWT_EXPIRE_MINUTES: int = 1440
     USER_SEARCHES_PER_MINUTE: int = 10
     USER_ANSWERS_PER_DAY: int = 200

@@ -723,11 +723,17 @@ def _user_view(user: dict) -> dict:
 
 
 def _admin_view(admin: dict) -> dict:
-    """Exactly the object AdminLoginForm stored as currentAdmin before tokens existed."""
+    is_super = admin.get("role") == "super_admin" or admin.get("is_super_admin") is True
+    perms = admin.get("permissions") or (["cases", "users", "support", "admin_management"] if is_super else ["cases"])
+    if not is_super and "admin_management" in perms:
+        perms = [p for p in perms if p != "admin_management"]
     return {
         "adminid": admin.get("adminid"),
         "name": admin.get("name", "Admin"),
-        "role": admin.get("role", "admin"),
+        "email": admin.get("email") or admin.get("adminid"),
+        "role": "super_admin" if is_super else "admin",
+        "is_super_admin": is_super,
+        "permissions": perms,
         "message": "Login successful",
     }
 
@@ -788,12 +794,41 @@ async def login(body: LoginRequest):
 @router.post("/admin/login")
 async def admin_login(body: AdminLoginBody):
     _require_db()
-    admin = await db.database.admins.find_one({"adminid": (body.adminid or "").strip()})
-    ok, needs_upgrade = verify_password(body.password, admin.get("password") if admin else None)
-    if not admin or not ok:
+    input_adminid = (body.adminid or "").strip()
+    input_password = body.password or ""
+
+    super_email = (getattr(settings, "SUPER_ADMIN_EMAIL", "admindaniyal@cst.com") or "").strip()
+    super_pass = getattr(settings, "SUPER_ADMIN_PASSWORD", "Dan1yal#SuperAdmin2026!") or ""
+
+    # Check ENV Super Admin credentials
+    if input_adminid.lower() == super_email.lower() and input_password == super_pass:
+        super_admin_doc = {
+            "adminid": super_email,
+            "name": "Super Admin (Daniyal)",
+            "email": super_email,
+            "role": "super_admin",
+            "is_super_admin": True,
+            "permissions": ["cases", "users", "support", "admin_management"],
+        }
+        return {"token": create_access_token(super_email, "admin"), "user": _admin_view(super_admin_doc)}
+
+    # Check MongoDB admins collection for standard admins
+    admin = await db.database.admins.find_one({
+        "$or": [{"adminid": input_adminid}, {"adminid": input_adminid.lower()}, {"email": input_adminid.lower()}]
+    })
+
+    if not admin:
         raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
+
+    ok, needs_upgrade = verify_password(input_password, admin.get("password"))
+    if not ok:
+        raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
+
     if needs_upgrade:
-        await _upgrade_password(db.database.admins, admin, body.password)
+        await _upgrade_password(db.database.admins, admin, input_password)
+
+    admin["role"] = "admin"
+    admin["is_super_admin"] = False
     return {"token": create_access_token(str(admin.get("adminid")), "admin"), "user": _admin_view(admin)}
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 import hashlib
 import asyncio
 from pathlib import Path
@@ -968,28 +969,32 @@ async def admin_status():
 from pydantic import BaseModel
 
 class UserCreate(BaseModel):
-    username: str
     email: str
-    name: str
-    org: str
-    plan: str
     password: str
-    dob: str
-    gender: str = "Male"
-    phone_no: str = ""
-    created_at: str = None
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    name: Optional[str] = ""
+    username: Optional[str] = ""
+    org: Optional[str] = ""
+    plan: Optional[str] = "Standard"
+    dob: Optional[str] = ""
+    gender: Optional[str] = "Male"
+    phone_no: Optional[str] = ""
+    created_at: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
-    username: str
     email: str
-    name: str
-    org: str
-    plan: str
-    password: str = ""  # blank keeps the current password
-    dob: str
-    gender: str = "Male"
-    phone_no: str = ""
+    password: Optional[str] = ""  # blank keeps the current password
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    name: Optional[str] = ""
+    username: Optional[str] = ""
+    org: Optional[str] = ""
+    plan: Optional[str] = "Standard"
+    dob: Optional[str] = ""
+    gender: Optional[str] = "Male"
+    phone_no: Optional[str] = ""
 
 
 def validate_password_strength(password: str) -> None:
@@ -1011,6 +1016,8 @@ def validate_email_domain(email: str) -> None:
 
 
 def validate_age_limit(dob_str: str, reg_date: datetime) -> None:
+    if not dob_str:
+        return
     try:
         dob_date = datetime.strptime(dob_str, "%Y-%m-%d")
     except ValueError:
@@ -1124,8 +1131,17 @@ async def create_user(user: UserCreate):
     # 2. Validate and hash the password
     password_hash = _password_hash(user.password)
 
-    # 3. Validate DOB
-    now= datetime.now(timezone.utc)
+    # Calculate Name & Username
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+    if not full_name:
+        full_name = (user.name or "").strip() or user.email.split("@")[0]
+
+    username = (user.username or "").strip()
+    if not username:
+        username = user.email.split("@")[0]
+
+    # 3. Validate DOB if provided
+    now = datetime.now(timezone.utc)
     if user.created_at:
         try:
             client_time_str = user.created_at.replace("Z", "+00:00")
@@ -1133,28 +1149,16 @@ async def create_user(user: UserCreate):
         except Exception as e:
             logger.warning(f"Failed to parse user client created_at: {user.created_at}. Error: {e}")
     
-    try:
-        validate_age_limit(user.dob, now)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    if user.dob:
+        try:
+            validate_age_limit(user.dob, now)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
-    # 4. Validate username with Ollama
-    is_human = await validate_human_name(user.username)
-    if not is_human:
-        raise HTTPException(status_code=400, detail="Username must be a human name (non-living things, animals, etc. are not allowed).")
-        
-    # Check uniqueness
-    existing_user = await db.database.users.find_one({
-        "$or": [
-            {"username": user.username},
-            {"email": user.email}
-        ]
-    })
-    if existing_user:
-        if existing_user.get("username") == user.username:
-            raise HTTPException(status_code=409, detail="Username is already taken.")
-        else:
-            raise HTTPException(status_code=409, detail="Email is already registered.")
+    # 4. Check uniqueness of email
+    existing_email = await db.database.users.find_one({"email": user.email.strip().lower()})
+    if existing_email:
+        raise HTTPException(status_code=409, detail="Email is already registered.")
             
     # Auto-generate next user ID
     user_ids = []
@@ -1168,22 +1172,25 @@ async def create_user(user: UserCreate):
     next_num = max(user_ids) + 1 if user_ids else 1001
     user_id = f"USr-{next_num}"
     
-    plan_color = "bg-[#E9C176] text-[#261900]" if user.plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
+    plan = user.plan or "Standard"
+    plan_color = "bg-[#E9C176] text-[#261900]" if plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
     
     new_user = {
         "id": user_id,
-        "username": user.username,
-        "name": user.name,
-        "email": user.email,
-        "org": user.org,
-        "plan": user.plan,
+        "first_name": (user.first_name or "").strip(),
+        "last_name": (user.last_name or "").strip(),
+        "username": username,
+        "name": full_name,
+        "email": user.email.strip().lower(),
+        "org": (user.org or "").strip(),
+        "plan": plan,
         "planColor": plan_color,
         "status": "Active",
         "statusColor": "bg-[#22C55E]",
-        "dob": user.dob,
-        "gender": user.gender,
+        "dob": user.dob or "",
+        "gender": user.gender or "Male",
         "password": password_hash,
-        "phone_no": user.phone_no,
+        "phone_no": user.phone_no or "",
         "created_at": now
     }
     
@@ -1227,42 +1234,46 @@ async def update_user(user_id: str, user: UserUpdate):
     # 2. A new password, if one was typed (blank keeps the current one)
     password_change = _password_change(user.password)
 
-    # 3. Validate DOB based on originalregistration date
-    reg_date = existing_user.get("created_at") or datetime.now(timezone.utc)
-    try:
-        validate_age_limit(user.dob, reg_date)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
-    # 4. Validate username with Ollama
-    if user.username != existing_user.get("username"):
-        is_human = await validate_human_name(user.username)
-        if not is_human:
-            raise HTTPException(status_code=400, detail="Username must be a human name (non-living things, animals, etc. are not allowed).")
+    # 3. Validate DOB if provided
+    if user.dob:
+        reg_date = existing_user.get("created_at") or datetime.now(timezone.utc)
+        try:
+            validate_age_limit(user.dob, reg_date)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
             
-        dup = await db.database.users.find_one({"username": user.username})
-        if dup and dup.get("id") != user_id:
-            raise HTTPException(status_code=409, detail="Username is already taken.")
-            
-    if user.email != existing_user.get("email"):
-        dup = await db.database.users.find_one({"email": user.email})
+    clean_email = user.email.strip().lower()
+    if clean_email != existing_user.get("email"):
+        dup = await db.database.users.find_one({"email": clean_email})
         if dup and dup.get("id") != user_id:
             raise HTTPException(status_code=409, detail="Email is already registered.")
-            
-    plan_color = "bg-[#E9C176] text-[#261900]" if user.plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
+
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+    if not full_name:
+        full_name = (user.name or "").strip() or existing_user.get("name") or clean_email.split("@")[0]
+
+    plan = user.plan or existing_user.get("plan") or "Standard"
+    plan_color = "bg-[#E9C176] text-[#261900]" if plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
     
     update_doc = {
-        "username": user.username,
-        "name": user.name,
-        "email": user.email,
-        "org": user.org,
-        "plan": user.plan,
+        "first_name": (user.first_name or "").strip(),
+        "last_name": (user.last_name or "").strip(),
+        "name": full_name,
+        "email": clean_email,
+        "plan": plan,
         "planColor": plan_color,
-        "dob": user.dob,
-        "gender": user.gender,
-        "phone_no": user.phone_no,
         **password_change,
     }
+    if user.username:
+        update_doc["username"] = user.username
+    if user.org:
+        update_doc["org"] = user.org
+    if user.dob:
+        update_doc["dob"] = user.dob
+    if user.gender:
+        update_doc["gender"] = user.gender
+    if user.phone_no:
+        update_doc["phone_no"] = user.phone_no
 
     await db.database.users.update_one({"id": user_id}, {"$set": update_doc})
     
@@ -1538,25 +1549,26 @@ async def get_admin_profile(adminid: str):
 class AdminCreate(BaseModel):
     adminid: str
     name: str
-    email: str
-    role: str
-    dob: str
+    email: Optional[str] = ""
     password: str
+    permissions: Optional[list[str]] = ["cases"]
+    role: Optional[str] = "admin"
+    dob: Optional[str] = ""
 
 class AdminUpdate(BaseModel):
     adminid: str
     name: str
-    email: str
-    role: str
-    dob: str
+    email: Optional[str] = ""
     password: str = ""  # blank keeps the current password
+    permissions: Optional[list[str]] = ["cases"]
+    role: Optional[str] = "admin"
+    dob: Optional[str] = ""
 
 @router.get("/admins")
 async def get_admins():
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
     
-    # Check if the email field exists in any admin documents, if not set it to adminid
     await db.database.admins.update_many(
         {"email": {"$exists": False}},
         [{"$set": {"email": "$adminid"}}]
@@ -1567,7 +1579,7 @@ async def get_admins():
     
     total = len(admins)
     super_admins = sum(1 for a in admins if a.get("role") == "super_admin")
-    standard_admins = sum(1 for a in admins if a.get("role") == "admin")
+    standard_admins = sum(1 for a in admins if a.get("role") != "super_admin")
     
     return {
         "admins": admins,
@@ -1583,44 +1595,40 @@ async def create_admin(body: AdminCreate):
     
     adminid = body.adminid.strip()
     name = body.name.strip()
-    email = body.email.strip()
-    role = body.role.strip()
-    dob = body.dob.strip()
+    email = (body.email or adminid).strip()
     password = body.password
     
-    if not adminid or not name or not email or not role or not dob or not password:
-        raise HTTPException(status_code=400, detail="All fields are required.")
+    if not adminid or not name or not password:
+        raise HTTPException(status_code=400, detail="Admin ID, Full Name, and Password are required.")
         
-    # Check uniqueness of adminid
     existing_id = await db.database.admins.find_one({"adminid": adminid})
     if existing_id:
         raise HTTPException(status_code=409, detail="Admin ID is already registered.")
         
-    # Check uniqueness of email
     existing_email = await db.database.admins.find_one({"email": email})
     if existing_email:
         raise HTTPException(status_code=409, detail="Email is already registered.")
         
     password_hash = _password_hash(password)
 
-    try:
-        # Validate date format (YYYY-MM-DD)
-        datetime.strptime(dob, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Date of Birth must be in YYYY-MM-DD format.")
+    allowed_perms = {"cases", "users", "support"}
+    requested_perms = body.permissions or ["cases"]
+    perms = [p for p in requested_perms if p in allowed_perms]
+    if not perms:
+        perms = ["cases"]
         
     new_admin = {
         "adminid": adminid,
         "name": name,
         "email": email,
-        "role": role,
-        "dob": dob,
+        "role": "admin",
+        "is_super_admin": False,
+        "permissions": perms,
         "password": password_hash,
-        "gender": "Male"
     }
     
     await db.database.admins.insert_one(new_admin)
-    return {"message": "Admin created successfully."}
+    return {"message": "Standard Administrator created successfully with assigned permissions."}
 
 @router.put("/admins/{adminid_param}")
 async def update_admin(adminid_param: str, body: AdminUpdate):
@@ -1633,46 +1641,43 @@ async def update_admin(adminid_param: str, body: AdminUpdate):
         
     adminid = body.adminid.strip()
     name = body.name.strip()
-    email = body.email.strip()
-    role = body.role.strip()
-    dob = body.dob.strip()
+    email = (body.email or adminid).strip()
     password = body.password
     
-    if not adminid or not name or not email or not role or not dob:
-        raise HTTPException(status_code=400, detail="All fields except the password are required.")
+    if not adminid or not name:
+        raise HTTPException(status_code=400, detail="Admin ID and Full Name are required.")
 
-    # If adminid is changed, check uniqueness
     if adminid != adminid_param:
         dup = await db.database.admins.find_one({"adminid": adminid})
         if dup:
             raise HTTPException(status_code=409, detail="Admin ID is already registered.")
             
-    # If email is changed, check uniqueness
     if email != existing.get("email"):
         dup = await db.database.admins.find_one({"email": email})
         if dup:
             raise HTTPException(status_code=409, detail="Email is already registered.")
             
-    # A new password, if one was typed (blank keeps the current one)
     password_change = _password_change(password)
 
-    try:
-        datetime.strptime(dob, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Date of Birth must be in YYYY-MM-DD format.")
-        
+    allowed_perms = {"cases", "users", "support"}
+    requested_perms = body.permissions or existing.get("permissions") or ["cases"]
+    perms = [p for p in requested_perms if p in allowed_perms]
+    if not perms:
+        perms = ["cases"]
+
     await db.database.admins.update_one(
         {"adminid": adminid_param},
         {"$set": {
             "adminid": adminid,
             "name": name,
             "email": email,
-            "role": role,
-            "dob": dob,
+            "role": "admin",
+            "is_super_admin": False,
+            "permissions": perms,
             **password_change,
         }}
     )
-    return {"message": "Admin updated successfully."}
+    return {"message": "Admin profile updated successfully."}
 
 @router.delete("/admins/{adminid_param}")
 async def delete_admin(adminid_param: str):

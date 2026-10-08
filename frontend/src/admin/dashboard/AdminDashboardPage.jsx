@@ -44,15 +44,12 @@ const AdminDashboardPage = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [formData, setFormData] = useState({
     id: '',
-    username: '',
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    org: '',
-    plan: 'Standard',
     password: '',
-    dob: '',
-    gender: 'Male',
-    phone_no: ''
+    confirmPassword: '',
+    plan: 'Standard'
   });
 
   useEffect(() => {
@@ -85,15 +82,12 @@ const AdminDashboardPage = () => {
     setSuccessMsg('');
     setFormData({
       id: '',
-      username: '',
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
-      org: '',
-      plan: 'Standard',
       password: '',
-      dob: '',
-      gender: 'Male',
-      phone_no: ''
+      confirmPassword: '',
+      plan: 'Standard'
     });
     setModalOpen(true);
   };
@@ -102,18 +96,17 @@ const AdminDashboardPage = () => {
     setIsEditMode(true);
     setErrorMsg('');
     setSuccessMsg('');
+    const nameParts = (user.name || '').trim().split(' ');
+    const fName = user.first_name || nameParts[0] || '';
+    const lName = user.last_name || nameParts.slice(1).join(' ') || '';
     setFormData({
       id: user.id || '',
-      username: user.username || '',
-      name: user.name || '',
+      firstName: fName,
+      lastName: lName,
       email: user.email || '',
-      org: user.org || '',
-      plan: user.plan || 'Standard',
-      // The server never returns passwords; blank keeps the current one.
       password: '',
-      dob: user.dob || '',
-      gender: user.gender || 'Male',
-      phone_no: user.phone_no || ''
+      confirmPassword: '',
+      plan: user.plan || 'Standard'
     });
     setModalOpen(true);
   };
@@ -147,35 +140,34 @@ const AdminDashboardPage = () => {
     setErrorMsg('');
     setSuccessMsg('');
 
+    if (!formData.firstName.trim()) {
+      setErrorMsg('First name is required.');
+      return;
+    }
+
+    if (!formData.lastName.trim()) {
+      setErrorMsg('Last name is required.');
+      return;
+    }
+
     if (!formData.email.toLowerCase().endsWith('@gmail.com')) {
       setErrorMsg('Email must contain @gmail.com domain.');
       return;
     }
 
+    if (!isEditMode && !formData.password) {
+      setErrorMsg('Password is required.');
+      return;
+    }
+
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      setErrorMsg('Password and Confirm Password do not match.');
+      return;
+    }
+
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
-    if ((!isEditMode || formData.password) && !pwRegex.test(formData.password)) {
+    if (formData.password && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
-      return;
-    }
-
-    const dobDate = new Date(formData.dob);
-    if (isNaN(dobDate.getTime())) {
-      setErrorMsg('Please select a valid Date of Birth.');
-      return;
-    }
-
-    const originalUser = isEditMode ? users.find(u => u.id === formData.id) : null;
-    const regDateStr = originalUser?.created_at || new Date().toISOString();
-    const regDate = new Date(regDateStr);
-
-    let age = regDate.getFullYear() - dobDate.getFullYear();
-    const monthDiff = regDate.getMonth() - dobDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && regDate.getDate() < dobDate.getDate())) {
-      age--;
-    }
-
-    if (age < 16) {
-      setErrorMsg('User must be older than 16 years from the registration date.');
       return;
     }
 
@@ -183,12 +175,20 @@ const AdminDashboardPage = () => {
       const url = isEditMode ? `/api/admin/users/${formData.id}` : '/api/admin/users';
       const method = isEditMode ? 'PUT' : 'POST';
 
+      const payload = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password || '',
+        plan: formData.plan || 'Standard'
+      };
+
       const res = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -279,8 +279,6 @@ const AdminDashboardPage = () => {
         <AdminHeader
           title="Management Suite"
           subtitle="Orchestrating professional identities and permissions."
-          actionButtonText="Add User"
-          onActionClick={handleAddClick}
         />
 
         {/* Stats Section */}

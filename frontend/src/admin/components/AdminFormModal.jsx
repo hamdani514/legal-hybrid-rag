@@ -11,6 +11,9 @@ const AdminFormModal = ({
   handleSubmit,
   saving,
 }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
   if (!isOpen) return null;
 
   return (
@@ -87,42 +90,98 @@ const AdminFormModal = ({
             />
           </div>
 
-          {/* System Role */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Role</label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827] bg-white cursor-pointer"
-            >
-              <option value="admin">Administrator</option>
-              <option value="super_admin">Super Administrator</option>
-            </select>
-          </div>
+          {/* Assigned System Permissions */}
+          <div className="flex flex-col gap-2 col-span-2 bg-ash-50 p-4 rounded-xl border border-ash-200">
+            <label className="text-xs font-bold text-ash-700 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-[#0085FF]">shield</span>
+              Assigned Permissions & Capabilities
+            </label>
+            <p className="text-[11px] text-ash-500 font-prose mb-1">
+              Select which areas this administrator is authorized to access and manage:
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="flex items-center gap-2 p-2.5 rounded-lg border border-ash-200 bg-white cursor-pointer hover:border-[#0085FF] transition-all">
+                <input
+                  type="checkbox"
+                  checked={(formData.permissions || []).includes('cases')}
+                  onChange={(e) => {
+                    const current = formData.permissions || [];
+                    const next = e.target.checked
+                      ? [...current, 'cases']
+                      : current.filter((p) => p !== 'cases');
+                    setFormData({ ...formData, permissions: next });
+                  }}
+                  className="rounded text-[#0085FF] focus:ring-[#0085FF]"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-ash-900">Case Upload</span>
+                  <span className="text-[10px] text-ash-500">Ingestion pipeline</span>
+                </div>
+              </label>
 
-          {/* DOB */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Date of Birth</label>
-            <input
-              type="date"
-              required
-              value={formData.dob}
-              onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
+              <label className="flex items-center gap-2 p-2.5 rounded-lg border border-ash-200 bg-white cursor-pointer hover:border-[#0085FF] transition-all">
+                <input
+                  type="checkbox"
+                  checked={(formData.permissions || []).includes('users')}
+                  onChange={(e) => {
+                    const current = formData.permissions || [];
+                    const next = e.target.checked
+                      ? [...current, 'users']
+                      : current.filter((p) => p !== 'users');
+                    setFormData({ ...formData, permissions: next });
+                  }}
+                  className="rounded text-[#0085FF] focus:ring-[#0085FF]"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-ash-900">User Management</span>
+                  <span className="text-[10px] text-ash-500">View & manage users</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2 p-2.5 rounded-lg border border-ash-200 bg-white cursor-pointer hover:border-[#0085FF] transition-all">
+                <input
+                  type="checkbox"
+                  checked={(formData.permissions || []).includes('support')}
+                  onChange={(e) => {
+                    const current = formData.permissions || [];
+                    const next = e.target.checked
+                      ? [...current, 'support']
+                      : current.filter((p) => p !== 'support');
+                    setFormData({ ...formData, permissions: next });
+                  }}
+                  className="rounded text-[#0085FF] focus:ring-[#0085FF]"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-ash-900">Support Queries</span>
+                  <span className="text-[10px] text-ash-500">Manage help tickets</span>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Password */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Password</label>
-            <input
-              type="password"
-              required={!isEditMode}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder={isEditMode ? 'Leave blank to keep the current password' : '••••••••'}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
+            <div className="relative w-full">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required={!isEditMode}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={isEditMode ? 'Leave blank to keep current' : '••••••••'}
+                className="w-full px-4 pr-10 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ash-400 hover:text-ash-700 transition-colors flex items-center"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Confirm Password */}
@@ -130,14 +189,25 @@ const AdminFormModal = ({
             <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
               Confirm Password
             </label>
-            <input
-              type="password"
-              required={!isEditMode}
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              placeholder="••••••••"
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
+            <div className="relative w-full">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                required={!isEditMode}
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="••••••••"
+                className="w-full px-4 pr-10 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ash-400 hover:text-ash-700 transition-colors flex items-center"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Modal Actions */}

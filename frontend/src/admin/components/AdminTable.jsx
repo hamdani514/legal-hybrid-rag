@@ -91,7 +91,7 @@ const AdminTable = ({
                 Role
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Date of Birth
+                Assigned Permissions
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280] text-right">
                 Actions
@@ -101,13 +101,13 @@ const AdminTable = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
+                <td colSpan="5" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
                   Loading system administrators...
                 </td>
               </tr>
             ) : sortedAndFilteredAdmins.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
+                <td colSpan="5" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
                   No system administrators found.
                 </td>
               </tr>
@@ -139,7 +139,7 @@ const AdminTable = ({
 
                   {/* Admin ID / Email */}
                   <td className="px-8 py-6">
-                    <span className="font-prose text-sm text-[#4B5563] font-mono">{admin.adminid}</span>
+                    <span className="font-prose text-sm text-[#4B5563] font-mono">{admin.adminid || admin.email}</span>
                   </td>
 
                   {/* Role */}
@@ -147,17 +147,39 @@ const AdminTable = ({
                     <span
                       className={`inline-block px-3 py-1 font-prose font-bold text-[10px] leading-3 tracking-[1px] uppercase rounded-full ${
                         admin.role === 'super_admin'
-                          ? 'bg-brand-100 text-brand-800'
-                          : 'bg-[#E5E7EB] text-[#4B5563]'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-brand-50 text-brand-700 border border-brand-200'
                       }`}
                     >
                       {admin.role === 'super_admin' ? 'SUPER ADMIN' : 'ADMIN'}
                     </span>
                   </td>
 
-                  {/* DOB */}
+                  {/* Permissions */}
                   <td className="px-8 py-6">
-                    <span className="font-prose text-sm text-[#4B5563]">{admin.dob || 'N/A'}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {admin.role === 'super_admin' ? (
+                        <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md">
+                          FULL ACCESS
+                        </span>
+                      ) : (
+                        (admin.permissions || ['cases']).map((perm) => {
+                          const labels = {
+                            cases: 'Case Upload',
+                            users: 'User Mgmt',
+                            support: 'Support'
+                          };
+                          return (
+                            <span
+                              key={perm}
+                              className="px-2 py-0.5 text-[10px] font-semibold bg-ash-100 text-ash-700 rounded-md border border-ash-200"
+                            >
+                              {labels[perm] || perm}
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
                   </td>
 
                   {/* Actions */}

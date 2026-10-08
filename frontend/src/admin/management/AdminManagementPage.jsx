@@ -33,7 +33,7 @@ const AdminManagementPage = () => {
     name: '',
     email: '',
     role: 'admin',
-    dob: '',
+    permissions: ['cases'],
     password: '',
     confirmPassword: ''
   });
@@ -49,7 +49,7 @@ const AdminManagementPage = () => {
 
     try {
       const parsedAdmin = JSON.parse(storedAdmin);
-      if (parsedAdmin.role !== 'super_admin') {
+      if (parsedAdmin.role !== 'super_admin' && !parsedAdmin.is_super_admin) {
         navigate('/admin/dashboard');
         return;
       }
@@ -107,7 +107,7 @@ const AdminManagementPage = () => {
       name: '',
       email: '',
       role: 'admin',
-      dob: '',
+      permissions: ['cases'],
       password: '',
       confirmPassword: ''
     });
@@ -122,9 +122,8 @@ const AdminManagementPage = () => {
       adminid: admin.adminid || '',
       name: admin.name || '',
       email: admin.email || admin.adminid || '',
-      role: admin.role || 'admin',
-      dob: admin.dob || '',
-      // The server never returns passwords; blank keeps the current one.
+      role: 'admin',
+      permissions: admin.permissions || ['cases'],
       password: '',
       confirmPassword: ''
     });
@@ -174,6 +173,11 @@ const AdminManagementPage = () => {
       return;
     }
 
+    if (!formData.permissions || formData.permissions.length === 0) {
+      setErrorMsg('Please select at least one permission for this administrator.');
+      return;
+    }
+
     const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
     if ((!isEditMode || formData.password) && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
@@ -182,12 +186,6 @@ const AdminManagementPage = () => {
 
     if (formData.password !== formData.confirmPassword) {
       setErrorMsg('Password and Confirm Password do not match.');
-      return;
-    }
-
-    const dobDate = new Date(formData.dob);
-    if (isNaN(dobDate.getTime())) {
-      setErrorMsg('Please select a valid Date of Birth.');
       return;
     }
 
@@ -206,8 +204,8 @@ const AdminManagementPage = () => {
           name: formData.name,
           email: formData.email || formData.adminid,
           password: formData.password,
-          dob: formData.dob,
-          role: formData.role
+          permissions: formData.permissions,
+          role: 'admin'
         })
       });
 

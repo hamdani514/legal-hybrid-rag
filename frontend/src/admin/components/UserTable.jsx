@@ -85,19 +85,13 @@ const UserTable = ({
                 User ID
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Username
+                User Profile
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Email
+                Email Address
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Organization
-              </th>
-              <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Plan
-              </th>
-              <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280]">
-                Phone No
+                Subscription Plan
               </th>
               <th className="px-8 py-5 font-prose font-bold text-xs leading-4 tracking-[1.8px] uppercase text-[#6B7280] text-right">
                 Actions
@@ -107,13 +101,13 @@ const UserTable = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
+                <td colSpan="5" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
                   Loading registered users...
                 </td>
               </tr>
             ) : sortedAndFilteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
+                <td colSpan="5" className="px-8 py-10 text-center font-prose text-sm text-[#6B7280]">
                   No users found.
                 </td>
               </tr>
@@ -131,11 +125,15 @@ const UserTable = ({
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-[#111827] text-white flex items-center justify-center font-bold text-xs ring-1 ring-transparent group-hover:ring-[#0085FF] transition-all flex-shrink-0">
-                        {getInitials(user.name)}
+                        {getInitials(user.name || `${user.first_name || ''} ${user.last_name || ''}`)}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-display font-bold text-sm leading-5 text-[#111827]">{user.name}</span>
-                        <span className="font-prose text-xs text-ash-500">@{user.username}</span>
+                        <span className="font-display font-bold text-sm leading-5 text-[#111827]">
+                          {user.name || `${user.first_name || ''} ${user.last_name || ''}`}
+                        </span>
+                        {user.username && (
+                          <span className="font-prose text-xs text-ash-500">@{user.username}</span>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -145,15 +143,11 @@ const UserTable = ({
                   </td>
 
                   <td className="px-8 py-6">
-                    <span className="font-prose font-medium text-sm leading-5 text-[#111827]">{user.org}</span>
-                  </td>
-
-                  <td className="px-8 py-6">
                     <select
-                      value={user.plan}
+                      value={user.plan || 'Standard'}
                       onChange={(e) => handlePlanChange(user.id, e.target.value)}
                       className={`appearance-none cursor-pointer px-3 py-1 font-prose font-bold text-[10px] leading-3 tracking-[1px] uppercase rounded-full outline-none border-0 transition-all ${
-                        user.plan === 'Premium' ? 'bg-brand-100 text-brand-800' : user.plan === 'Standard' ? 'bg-[#CFE6FF] text-[#0B3B6F]' : 'bg-[#E5E7EB] text-[#4B5563]'
+                        user.plan === 'Premium' || user.plan === 'Pro' ? 'bg-brand-100 text-brand-800' : user.plan === 'Standard' ? 'bg-[#CFE6FF] text-[#0B3B6F]' : 'bg-[#E5E7EB] text-[#4B5563]'
                       }`}
                       style={{ backgroundImage: 'none' }}
                     >
@@ -161,10 +155,6 @@ const UserTable = ({
                       <option value="Standard">STANDARD</option>
                       <option value="Premium">PREMIUM</option>
                     </select>
-                  </td>
-
-                  <td className="px-8 py-6">
-                    <span className="font-prose text-sm text-[#4B5563]">{user.phone_no || 'N/A'}</span>
                   </td>
 
                   <td className="px-8 py-6 text-right">

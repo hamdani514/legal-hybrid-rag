@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const UserFormModal = ({
   isOpen,
@@ -10,11 +10,14 @@ const UserFormModal = ({
   setFormData,
   handleSubmit,
 }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl relative border border-ash-100 flex flex-col gap-6">
+      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl relative border border-ash-100 flex flex-col gap-6">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -32,7 +35,7 @@ const UserFormModal = ({
           <p className="font-prose text-xs text-ash-500 mt-1">
             {isEditMode
               ? 'Modify details for the selected user profile.'
-              : 'Create a new user profile with specific plan and validation checks.'}
+              : 'Create a new user profile with exact 5 registration fields.'}
           </p>
         </div>
 
@@ -55,39 +58,39 @@ const UserFormModal = ({
         )}
 
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6 font-prose text-sm">
-          {/* Name */}
+          {/* First Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">First Name</label>
+            <input
+              type="text"
+              required
+              value={formData.firstName || ''}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              placeholder="e.g. Marcus"
+              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+            />
+          </div>
+
+          {/* Last Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Last Name</label>
+            <input
+              type="text"
+              required
+              value={formData.lastName || ''}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              placeholder="e.g. Sterling"
+              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+            />
+          </div>
+
+          {/* Email Address */}
           <div className="flex flex-col gap-1.5 col-span-2">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Full Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Marcus Sterling"
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
-          </div>
-
-          {/* Username */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Username</label>
-            <input
-              type="text"
-              required
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              placeholder="e.g. marcus_s"
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
-          </div>
-
-          {/* Email */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Email (Gmail only)</label>
+            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Email Address (Gmail Only)</label>
             <input
               type="email"
               required
-              value={formData.email}
+              value={formData.email || ''}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="e.g. user@gmail.com"
               className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
@@ -97,82 +100,51 @@ const UserFormModal = ({
           {/* Password */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Password</label>
-            <input
-              type="text"
-              required={!isEditMode}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder={isEditMode
-                ? 'Leave blank to keep the current password'
-                : 'At least 8 chars, 1 Upper, 1 Lower, 1 Num, 1 Spec'}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
+            <div className="relative w-full">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required={!isEditMode}
+                value={formData.password || ''}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={isEditMode ? 'Leave blank to keep current' : '••••••••'}
+                className="w-full px-4 pr-10 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ash-400 hover:text-ash-700 transition-colors flex items-center"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Organization */}
+          {/* Confirm Password */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Organization</label>
-            <input
-              type="text"
-              required
-              value={formData.org}
-              onChange={(e) => setFormData({ ...formData, org: e.target.value })}
-              placeholder="e.g. Sterling & Associates"
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
-          </div>
-
-          {/* Phone */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Phone Number</label>
-            <input
-              type="text"
-              required
-              value={formData.phone_no}
-              onChange={(e) => setFormData({ ...formData, phone_no: e.target.value })}
-              placeholder="e.g. +92 300 1234567"
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
-          </div>
-
-          {/* Plan */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Plan</label>
-            <select
-              value={formData.plan}
-              onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827] bg-white cursor-pointer"
-            >
-              <option value="Free">Free</option>
-              <option value="Standard">Standard</option>
-              <option value="Premium">Premium</option>
-            </select>
-          </div>
-
-          {/* Gender */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Gender</label>
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827] bg-white cursor-pointer"
-            >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          {/* DOB */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">Date of Birth</label>
-            <input
-              type="date"
-              required
-              value={formData.dob}
-              onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-              className="px-4 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
-            />
+            <label className="text-xs font-bold text-ash-600 uppercase tracking-wider">
+              Confirm Password
+            </label>
+            <div className="relative w-full">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                required={!isEditMode}
+                value={formData.confirmPassword || ''}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="••••••••"
+                className="w-full px-4 pr-10 py-2.5 rounded-lg border border-ash-200 focus:border-[#0085FF] focus:ring-2 focus:ring-[#0085FF]/20 outline-none transition-all text-[#111827]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ash-400 hover:text-ash-700 transition-colors flex items-center"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Modal Actions */}
@@ -198,3 +170,4 @@ const UserFormModal = ({
 };
 
 export default UserFormModal;
+

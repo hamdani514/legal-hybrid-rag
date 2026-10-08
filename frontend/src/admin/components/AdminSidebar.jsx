@@ -22,6 +22,14 @@ const AdminSidebar = ({ activeRoute, currentAdmin }) => {
     navigate('/admin-login');
   };
 
+  const isSuperAdmin = currentAdmin?.role === 'super_admin' || currentAdmin?.is_super_admin;
+  const permissions = currentAdmin?.permissions || ['cases'];
+
+  const canAccessUsers = isSuperAdmin || permissions.includes('users');
+  const canAccessCases = isSuperAdmin || permissions.includes('cases');
+  const canAccessSupport = isSuperAdmin || permissions.includes('support');
+  const canAccessAdmins = isSuperAdmin; // ONLY Super Admin can manage admins
+
   return (
     <aside
       className="fixed left-0 top-0 w-72 h-screen flex flex-col bg-[#111827] z-50"
@@ -44,27 +52,29 @@ const AdminSidebar = ({ activeRoute, currentAdmin }) => {
       <nav className="flex-1 mt-4">
         <ul className="flex flex-col gap-1">
           {/* User Management */}
-          <li>
-            <Link
-              to="/admin/dashboard"
-              className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
-                activeRoute === 'dashboard'
-                  ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
-                  : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '22px', color: activeRoute === 'dashboard' ? '#0085FF' : '#9ca3af' }}
+          {canAccessUsers && (
+            <li>
+              <Link
+                to="/admin/dashboard"
+                className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
+                  activeRoute === 'dashboard'
+                    ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
+                    : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
+                }`}
               >
-                group
-              </span>
-              <span className="font-prose text-sm tracking-[0.35px]">User Management</span>
-            </Link>
-          </li>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '22px', color: activeRoute === 'dashboard' ? '#0085FF' : '#9ca3af' }}
+                >
+                  group
+                </span>
+                <span className="font-prose text-sm tracking-[0.35px]">User Management</span>
+              </Link>
+            </li>
+          )}
 
-          {/* Admin Management (Super Admin only) */}
-          {currentAdmin?.role === 'super_admin' && (
+          {/* Admin Management (Super Admin ONLY) */}
+          {canAccessAdmins && (
             <li>
               <Link
                 to="/admin/management"
@@ -86,44 +96,48 @@ const AdminSidebar = ({ activeRoute, currentAdmin }) => {
           )}
 
           {/* Cases */}
-          <li>
-            <Link
-              to="/admin/cases"
-              className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
-                activeRoute === 'cases'
-                  ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
-                  : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '18px', color: activeRoute === 'cases' ? '#0085FF' : '#9ca3af' }}
+          {canAccessCases && (
+            <li>
+              <Link
+                to="/admin/cases"
+                className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
+                  activeRoute === 'cases'
+                    ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
+                    : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
+                }`}
               >
-                gavel
-              </span>
-              <span className="font-prose text-sm tracking-[0.35px]">Cases</span>
-            </Link>
-          </li>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '18px', color: activeRoute === 'cases' ? '#0085FF' : '#9ca3af' }}
+                >
+                  gavel
+                </span>
+                <span className="font-prose text-sm tracking-[0.35px]">Cases</span>
+              </Link>
+            </li>
+          )}
 
           {/* Support */}
-          <li>
-            <Link
-              to="/admin/support"
-              className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
-                activeRoute === 'support'
-                  ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
-                  : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '17px', color: activeRoute === 'support' ? '#0085FF' : '#9ca3af' }}
+          {canAccessSupport && (
+            <li>
+              <Link
+                to="/admin/support"
+                className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
+                  activeRoute === 'support'
+                    ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
+                    : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
+                }`}
               >
-                contact_support
-              </span>
-              <span className="font-prose text-sm tracking-[0.35px]">Support</span>
-            </Link>
-          </li>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '17px', color: activeRoute === 'support' ? '#0085FF' : '#9ca3af' }}
+                >
+                  contact_support
+                </span>
+                <span className="font-prose text-sm tracking-[0.35px]">Support</span>
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
 
