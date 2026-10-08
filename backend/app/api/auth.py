@@ -1010,6 +1010,19 @@ async def me(principal: TokenPayload = Depends(require_user)):
 
 
 # -------------------------------------------------------------
+# POST /api/auth/refresh - renew active session by 1 minute
+# -------------------------------------------------------------
+@router.post("/refresh")
+async def refresh_session(principal: TokenPayload = Depends(require_user)):
+    new_token = create_access_token(
+        sub=principal["sub"],
+        role=principal["role"],
+        expires_minutes=int(getattr(settings, "JWT_EXPIRE_MINUTES", 1) or 1),
+    )
+    return {"token": new_token, "expires_in": 60}
+
+
+# -------------------------------------------------------------
 # GET /api/auth/profile - current user profile & subscription history
 # -------------------------------------------------------------
 @router.get("/profile")

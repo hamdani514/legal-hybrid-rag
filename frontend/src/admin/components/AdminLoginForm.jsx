@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { setToken } from '../../lib/api';
 
 /**
@@ -20,6 +20,9 @@ const AdminLoginForm = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const sessionExpired = searchParams.get('expired') === 'true' || Boolean(location.state?.sessionExpired);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,6 +74,26 @@ const AdminLoginForm = () => {
       <p className="mt-2.5 font-prose text-[14.5px] leading-6 text-ash-600">
         Enter your administrator credentials to manage the archive.
       </p>
+
+      {sessionExpired && !errorMsg && (
+        <div
+          role="alert"
+          className="mt-7 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 font-prose text-[13px] text-amber-800 animate-in fade-in duration-200"
+        >
+          <span
+            aria-hidden="true"
+            className="material-symbols-outlined shrink-0 text-base leading-5 text-amber-600"
+          >
+            timer_off
+          </span>
+          <div>
+            <p className="font-semibold text-amber-900">Session Timed Out</p>
+            <p className="text-amber-800/90 text-xs mt-0.5">
+              Your administrator session timed out after 1 minute of activity. Please sign in again.
+            </p>
+          </div>
+        </div>
+      )}
 
       {errorMsg && (
         <div

@@ -174,7 +174,7 @@ def create_access_token(sub: str, role: Role, expires_minutes: Optional[int] = N
         raise ValueError("token subject must be non-empty")
     if role not in ("user", "admin"):
         raise ValueError(f"invalid role {role!r}")
-    minutes = int(expires_minutes or getattr(settings, "JWT_EXPIRE_MINUTES", 720) or 720)
+    minutes = int(expires_minutes or getattr(settings, "JWT_EXPIRE_MINUTES", 1) or 1)
     now = int(time.time())
     claims = {"sub": str(sub), "role": role, "iat": now, "exp": now + minutes * 60}
     return jwt.encode(claims, _secret(), algorithm=ALGORITHM)
@@ -248,6 +248,11 @@ def _resolve(request: Request, need: Literal["any", "user", "admin"], allow_quer
             principal = decode_token(token)
         except TokenError as e:
             error = str(e)
+
+    # If an authentication token was provided but is expired or invalid,
+    # always reject with 401 so the client session is safely terminated.
+    if token and error:
+        raise _unauthorized(error)
 
     if not auth_required():
         if principal is None or (need == "admin" and principal["role"] != "admin"):

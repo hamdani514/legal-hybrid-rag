@@ -216,7 +216,7 @@ class Settings(BaseSettings):
     # OFF until the integrator has wired the frontend to send tokens; turning
     # it on early would lock the current UI out of search.
     AUTH_REQUIRED: bool = False
-    JWT_EXPIRE_MINUTES: int = 720
+    JWT_EXPIRE_MINUTES: int = 1
     USER_SEARCHES_PER_MINUTE: int = 10
     USER_ANSWERS_PER_DAY: int = 200
     # Anonymous callers are keyed by client IP, and behind the Vite dev proxy

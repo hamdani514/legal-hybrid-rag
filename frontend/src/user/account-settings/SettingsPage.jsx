@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch, clearToken } from '../../lib/api';
+import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { startCheckout, paymentStatus } from '../lib/payments';
 import DeactivateModal from '../components/DeactivateModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -46,6 +47,9 @@ const SettingsPage = () => {
   // Fetch full profile and subscription information
   useEffect(() => {
     let isMounted = true;
+    if (!validateSessionOrPurge({ navigate })) {
+      return undefined;
+    }
 
     // Fast initial fill from localStorage
     try {

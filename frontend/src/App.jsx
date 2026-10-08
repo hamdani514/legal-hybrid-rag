@@ -26,12 +26,14 @@ import AdminSupportPage from './admin/support/AdminSupportPage';
 import AdminSettingsPage from './admin/settings/AdminSettingsPage';
 import AdminManagementPage from './admin/management/AdminManagementPage';
 
+import SessionTimeoutWatcher from './user/components/auth/SessionTimeoutWatcher';
 import './App.css';
 
 function App() {
   return (
     <Router>
       <div className="App">
+        <SessionTimeoutWatcher />
         <Routes>
           {/* User Routes */}
           <Route path="/" element={<HomePage />} />

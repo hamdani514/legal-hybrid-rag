@@ -7,6 +7,7 @@ import EmptyState from './EmptyState';
 import ResultsPanel from './ResultsPanel';
 import CopyButton from './CopyButton';
 import apiFetch, { clearToken } from '../../lib/api';
+import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
 import {
   appendMessages,
@@ -39,10 +40,12 @@ const WelcomeContent = () => {
   // an effect that then sets state turns that into an endless request loop.
   // The signed-in user does not change while this screen is mounted (logging
   // out navigates away), so reading it once is also the truthful thing to do.
-  const currentUser = useMemo(
-    () => JSON.parse(localStorage.getItem('currentUser') || 'null'),
-    [],
-  );
+  const currentUser = useMemo(() => {
+    if (!validateSessionOrPurge({ navigate })) {
+      return null;
+    }
+    return JSON.parse(localStorage.getItem('currentUser') || 'null');
+  }, [navigate]);
 
   const [activeTab, setActiveTab] = useState('case');
   const [chatHistory, setChatHistory] = useState([]);

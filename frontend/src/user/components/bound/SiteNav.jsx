@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../../../lib/api';
+import { validateSessionOrPurge } from '../../../lib/sessionManager';
 
 const LINKS = [
   { to: '/about', label: 'How it works' },
@@ -29,6 +30,7 @@ const SiteNav = () => {
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      if (!validateSessionOrPurge()) return null;
       const token = localStorage.getItem('authToken');
       const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
       return token && user ? user : null;
@@ -47,6 +49,10 @@ const SiteNav = () => {
   useEffect(() => {
     const handleStorage = () => {
       try {
+        if (!validateSessionOrPurge()) {
+          setCurrentUser(null);
+          return;
+        }
         const token = localStorage.getItem('authToken');
         const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
         setCurrentUser(token && user ? user : null);

@@ -19,6 +19,8 @@
  *     shared Gemini budget), which the caller shows as "busy, try again".
  */
 
+import { initSessionTimeout, clearSessionTimeout } from './sessionManager';
+
 export const TOKEN_KEY = 'authToken';
 export const ADMIN_TOKEN_KEY = 'adminAuthToken';
 
@@ -35,6 +37,7 @@ const readToken = (key) => {
 export const setToken = (token, { admin = false } = {}) => {
   try {
     localStorage.setItem(admin ? ADMIN_TOKEN_KEY : TOKEN_KEY, token);
+    initSessionTimeout();
   } catch {
     /* storage unavailable: requests go out unauthenticated */
   }
@@ -43,6 +46,7 @@ export const setToken = (token, { admin = false } = {}) => {
 export const clearToken = ({ admin = false } = {}) => {
   try {
     localStorage.removeItem(admin ? ADMIN_TOKEN_KEY : TOKEN_KEY);
+    clearSessionTimeout();
   } catch {
     /* nothing to clear */
   }

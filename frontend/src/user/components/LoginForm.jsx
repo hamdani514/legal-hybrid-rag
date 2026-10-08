@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import { apiFetch, setToken } from '../../lib/api';
 
@@ -22,6 +22,9 @@ const LoginForm = () => {
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const sessionExpired = searchParams.get('expired') === 'true' || Boolean(location.state?.sessionExpired);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -201,6 +204,21 @@ const LoginForm = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Expired Banner */}
+      {sessionExpired && !errorMsg && !isDeactivated && (
+        <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-4 mb-5 shadow-xs flex items-start gap-3 animate-in fade-in duration-200">
+          <span className="material-symbols-outlined text-amber-600 text-xl mt-0.5">timer_off</span>
+          <div className="flex-1">
+            <h4 className="font-headline font-bold text-xs text-[#0D1C32] mb-0.5">
+              Session Timed Out
+            </h4>
+            <p className="font-body text-xs text-[#585F6A] leading-relaxed">
+              You were automatically logged out after 1 minute of session time. Please sign in again to continue.
+            </p>
           </div>
         </div>
       )}
