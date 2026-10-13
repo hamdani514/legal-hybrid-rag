@@ -6,13 +6,15 @@ import AdminStatsCard from '../components/AdminStatsCard';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import IngestionProgress from '../components/IngestionProgress';
 import AdminPagination from '../components/AdminPagination';
-import UploadQueue, { isTerminalJob } from '../components/UploadQueue';
+import UploadQueue, { isTerminalJob, isRowFinished, isRowProblem } from '../components/UploadQueue';
 import { apiFetch, ADMIN_TOKEN_KEY } from '../../lib/api';
 
 // Files uploaded at the same time from the browser. The server queues them
 // anyway (ADMIN_INGEST_CONCURRENCY); this only bounds the upload requests.
 const UPLOAD_PARALLEL = 2;
 const QUEUE_POLL_MS = 2500;
+// How long "Batch finished" stays on screen before the panel closes itself.
+const BATCH_DISMISS_MS = 2500;
 
 /*
  * Case ingestion console.
@@ -128,7 +130,7 @@ const AdminCasesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
-  const JOBS_PER_PAGE = 6;
+  const JOBS_PER_PAGE = 10;
   const [showAllModal, setShowAllModal] = useState(false);
   const [deletingJobId, setDeletingJobId] = useState('');
   const [retryingJobId, setRetryingJobId] = useState('');
@@ -372,9 +374,14 @@ const AdminCasesPage = () => {
     return counts;
   }, [allJobs]);
 
+  // The history lists judgments that have finished. One still in the queue, or
+  // being parsed or embedded, belongs to the batch panel above, which tracks it
+  // live; it joins this table once it lands. Failed and stalled jobs DO stay
+  // here, because this is the only place to see them and press Retry.
   const filteredJobs = React.useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const jobs = allJobs.filter((job) => {
+      if (caseState(job) === 'processing') return false;
       if (!term) return true;
       return (job.filename || '').toLowerCase().includes(term) || (job.job_id || '').toLowerCase().includes(term);
     });
@@ -617,6 +624,20 @@ const AdminCasesPage = () => {
     );
     fetchRecentJobs(false);
   };
+
+  // A batch that finished cleanly closes itself: the rows are already in the
+  // history table below, so leaving the panel up just hides it. A batch where
+  // anything failed, stalled or was rejected stays until the admin closes it.
+  useEffect(() => {
+    if (!queue.length) return undefined;
+    if (!queue.every(isRowFinished)) return undefined;
+    if (queue.some(isRowProblem)) return undefined;
+    const timer = setTimeout(() => {
+      setQueue([]);
+      fetchRecentJobs(false);
+    }, BATCH_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [queue]);
 
   const batchBusy = queue.some(
     (row) =>
@@ -1119,7 +1140,11 @@ const AdminCasesPage = () => {
                   ) : filteredJobs.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="py-10 text-center text-ash-400">
-                        {searchTerm ? 'No cases match your search.' : 'No ingestion jobs recorded.'}
+                        {searchTerm
+                          ? 'No cases match your search.'
+                          : stateCounts.processing > 0
+                          ? `Processing ${stateCounts.processing} judgment${stateCounts.processing > 1 ? 's' : ''}: they appear here once finished.`
+                          : 'No ingestion jobs recorded.'}
                       </td>
                     </tr>
                   ) : (

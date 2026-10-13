@@ -10,7 +10,16 @@ class Settings(BaseSettings):
     
     # Gemini API Settings (Primary)
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash-lite"
+    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
+    # Tried in order when GEMINI_MODEL answers 503 "high demand" (see
+    # app/llm/gemini_models.py). Comma-separated; empty turns the fallback off.
+    # The same 3.1 lite family on purpose: gemini-3.5-flash-lite is not to be
+    # used (owner's decision, 13 Oct), and on the free tier gemini-3.5-flash and
+    # gemini-3.6-flash allow 20 requests a day, which one batch exhausts.
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.1-flash-lite-preview"
+    # How long one request may hang before the next model is tried. On a
+    # healthy day 99% of parse calls return within 6s (measured 12 Oct, n=238).
+    LLM_REQUEST_TIMEOUT_S: float = 30.0
     
     # Groq Cloud API Settings (Preserved/Commented in active provider)
     GROQ_API_KEY: str = ""

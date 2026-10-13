@@ -45,7 +45,7 @@ import asyncio
 import contextvars
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
@@ -220,7 +220,15 @@ def _normalise_llm(parsed: dict) -> dict:
     def as_list(value) -> list[str]:
         if isinstance(value, str):
             value = [value] if value.strip() else []
-        return [str(v).strip() for v in (value or []) if str(v).strip()]
+        out: list[str] = []
+        for v in value or []:
+            # The model sometimes sends {"issue": "..."} for a list item: keep
+            # the text, never the dict's repr.
+            if isinstance(v, dict):
+                v = " ".join(str(x).strip() for x in v.values() if isinstance(x, str))
+            if str(v).strip():
+                out.append(str(v).strip())
+        return out
 
     return {
         "subject": subject,
@@ -262,11 +270,76 @@ def _install_rl_sink() -> None:
     _rl_sink_installed = True
 
 
+# The wait the limiter reports: "next LLM slot in 27349.6s", "cooling down 27361.0s".
+_WAIT_S = re.compile(r"(?:slot in|cooling down|retry in)\s+(\d+(?:\.\d+)?)s")
+# A per-minute limit clears in seconds. A wait this long is the daily quota,
+# whose retry hint runs to the reset (midnight UTC): hours, not seconds.
+DAILY_WAIT_S = 900.0
+
+
+def _longest_wait(text: str) -> float:
+    return max((float(x) for x in _WAIT_S.findall(text or "")), default=0.0)
+
+
+# Signs that OUR allowance is the problem (a quota or a pacing limit), as
+# opposed to the provider's servers being busy.
+_OWN_LIMIT_RE = re.compile(
+    r"\b429\b|RESOURCE_EXHAUSTED|rate[ _-]?limit|too many requests|quota|next LLM slot", re.IGNORECASE)
+
+
 def _classify_failure(text: str) -> str:
-    """'daily_quota' | 'rate_limited' for a rate-limit signature, else ''."""
+    """'daily_quota' | 'rate_limited' | 'overloaded' for a provider-side refusal, else ''.
+
+    The limiter's warnings carry the provider's wait but not its quota id, so a
+    spent daily quota is recognised by the length of that wait as well as by
+    the provider's own "PerDay" wording.
+
+    'overloaded' is the provider answering 503 "high demand" or not answering
+    at all. It is kept apart from 'rate_limited' because it says nothing about
+    this key's allowance: calling it a rate limit sent the admin looking for a
+    quota problem that was not there.
+    """
     if not RATE_LIMIT_RE.search(text or ""):
         return ""
-    return "daily_quota" if DAILY_QUOTA_RE.search(text) else "rate_limited"
+    if DAILY_QUOTA_RE.search(text) or _longest_wait(text) >= DAILY_WAIT_S:
+        return "daily_quota"
+    return "rate_limited" if _OWN_LIMIT_RE.search(text) else "overloaded"
+
+
+# A provider-side refusal that clears by waiting: the card wave backs off and retries.
+RETRY_LATER = ("rate_limited", "overloaded")
+
+OVERLOADED_MESSAGE = ("overloaded: the AI provider's servers are busy right now (their side, not this key's "
+                      "limit); press Card again in a few minutes. The judgment is fully searchable meanwhile.")
+
+
+def _quota_message(evidence: str) -> str:
+    """What the admin page shows for a spent daily quota: the cause and when it clears."""
+    wait = _longest_wait(evidence)
+    when = (datetime.now() + timedelta(seconds=wait)).strftime("%H:%M on %d %b") if wait else "the daily reset"
+    return (f"daily_quota: the LLM provider's daily request quota is used up; cards can be built "
+            f"again after {when}. The judgment is fully searchable meanwhile.")
+
+
+# {"some text"}: an object holding one bare string and no key. Never valid JSON.
+_BARE_STRING_OBJECT = re.compile(r'\{\s*("(?:[^"\\]|\\.)*")\s*\}')
+
+
+def _parse_card(response: str) -> dict | None:
+    """Parse the card reply, repairing the one malformation the model repeats.
+
+    For some judgments the model writes every list item as {"text"} — braces
+    round a bare string — which no JSON parser accepts, and it does so again on
+    the retry, so the judgment never got a card. That shape cannot occur in
+    valid JSON, so unwrapping it is safe; it is tried only after a normal parse
+    has failed.
+    """
+    from app.retrieval.comparator import _parse
+
+    parsed = _parse(response)
+    if parsed is None and response and _BARE_STRING_OBJECT.search(response):
+        parsed = _parse(_BARE_STRING_OBJECT.sub(lambda m: m.group(1), response))
+    return parsed
 
 
 async def _llm_card(prompt: str, judgment_id: str, attempts: int = 2) -> tuple[dict | None, str]:
@@ -277,7 +350,6 @@ async def _llm_card(prompt: str, judgment_id: str, attempts: int = 2) -> tuple[d
     short sleep — the caller (the card wave) owns backoff, so it can pause every
     concurrent call at once and stop cleanly when the daily quota is gone.
     """
-    from app.retrieval.comparator import _parse
     from app.retrieval.llm_responder import ERROR_RESPONSE, _complete
 
     _install_rl_sink()
@@ -296,15 +368,25 @@ async def _llm_card(prompt: str, judgment_id: str, attempts: int = 2) -> tuple[d
             response, hits = ERROR_RESPONSE, hits + [f"{type(e).__name__}: {e}"]
         finally:
             _rl_watch.reset(token)
-        parsed = _parse(response) if response != ERROR_RESPONSE else None
+        parsed = _parse_card(response) if response != ERROR_RESPONSE else None
         if parsed:
             return parsed, ""
-        evidence = " | ".join(hits) or (response if response != ERROR_RESPONSE else "")
+        # Only the limiter's own warnings say whether this was a rate limit.
+        # The model's reply must never be scanned for them: a judgment about
+        # a tobacco "quota", a 429-page record or an "overloaded" dock matches
+        # the same words, and a truncated reply would then be reported as
+        # rate_limited when the real fault is unparseable JSON.
+        evidence = " | ".join(hits)
         kind = _classify_failure(evidence)
         if kind:
             logger.warning(f"{judgment_id}: card call {kind}: {evidence[:160]}")
+            if kind == "daily_quota":
+                return None, _quota_message(evidence)
+            if kind == "overloaded":
+                return None, OVERLOADED_MESSAGE
             return None, f"{kind}: {evidence[:200]}"
-        failure = "bad_json" if response != ERROR_RESPONSE else f"error: {evidence[:200] or 'LLM error'}"
+        failure = (f"bad_json: {response[:200]}" if response != ERROR_RESPONSE
+                   else f"error: {evidence[:200] or 'LLM error'}")
         logger.warning(f"{judgment_id}: LLM attempt {attempt + 1} failed ({failure[:80]})")
         if attempt + 1 < attempts:
             await asyncio.sleep(5 * (attempt + 1))
@@ -445,11 +527,11 @@ async def card_wave(force: bool = False, limit: int | None = None, concurrency: 
                 stats["stopped"] = "daily quota exhausted" if err.startswith("daily") else "LLM call budget reached"
                 stop.set()
                 break
-            if err.startswith("rate_limited") and attempt + 1 < max_attempts:
+            if err.startswith(RETRY_LATER) and attempt + 1 < max_attempts:
                 delay = guard.backoff_delay(attempt)
                 guard.open_cooldown(delay)
                 stats["retries"] += 1
-                logger.warning(f"{jid}: rate limited; retry {attempt + 2}/{max_attempts} in {delay:.0f}s")
+                logger.warning(f"{jid}: {err.split(':')[0]}; retry {attempt + 2}/{max_attempts} in {delay:.0f}s")
                 continue
             if err.startswith(("bad_json", "error")) and attempt == 0:
                 stats["retries"] += 1
@@ -475,11 +557,11 @@ async def card_wave(force: bool = False, limit: int | None = None, concurrency: 
             await prune_local_copies(jid)
         else:
             stats["metadata_only"] += 1
-            if card.get("card_error", "").startswith("rate_limited") and not stop.is_set():
+            if card.get("card_error", "").startswith(RETRY_LATER) and not stop.is_set():
                 consecutive_give_ups += 1
                 if consecutive_give_ups >= stop_after:
-                    stats["stopped"] = (f"{consecutive_give_ups} judgments in a row still rate-limited "
-                                        f"after {max_attempts} attempts; treating the quota as exhausted")
+                    stats["stopped"] = (f"{consecutive_give_ups} judgments in a row still refused by the provider "
+                                        f"after {max_attempts} attempts; stopping until it recovers")
                     stop.set()
 
     await asyncio.gather(*(one(j) for j in todo))
@@ -524,6 +606,34 @@ if __name__ == "__main__":
     assert _classify_failure("Gemini API call failed via m: 429 RESOURCE_EXHAUSTED") == "rate_limited"
     assert _classify_failure("429 quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier") == "daily_quota"
     assert _classify_failure("Expecting value: line 1 column 1") == ""
+    # The limiter's own warning for a spent daily quota: a wait of hours, no "PerDay" text.
+    _spent = ("LLM[llm/gemini] rate_limited: next LLM slot in 27349.6s exceeds the remaining 20.0s budget "
+              "(queued 0.0s, 0 attempt(s))")
+    assert _classify_failure(_spent) == "daily_quota", "a 7.6 hour wait is the daily quota"
+    assert _classify_failure("LLM[llm/gemini] provider 429; cooling down 17.4s (retry-after)") == "rate_limited"
+    assert _classify_failure("LLM[llm/gemini] rate_limited: next LLM slot in 24.7s exceeds the remaining 20.0s budget") == "rate_limited"
+    # The provider's servers being busy is not this key's rate limit.
+    _busy = ("LLM[llm/gemini] transient failure, retrying once: 503 UNAVAILABLE. {'error': {'code': 503, "
+             "'message': 'This model is currently experiencing high demand.'}}")
+    assert _classify_failure(_busy) == "overloaded", _classify_failure(_busy)
+    assert _classify_failure("LLM[llm/gemini] error: ServerError: 503 UNAVAILABLE") == "overloaded"
+    assert OVERLOADED_MESSAGE.startswith(RETRY_LATER), "the card wave must still retry an overloaded card"
+    assert _quota_message(_spent).startswith("daily_quota: ") and "again after" in _quota_message(_spent)
+    # Issues written as {"text"} (invalid JSON) or {"issue": "text"} still give a card.
+    _wrapped = ('```json\n{"subject": "Civil procedure", '
+                r'"issues": [{ "First?" }, { "Second \"quoted\"?" }]}' '\n```')
+    _got = _parse_card(_wrapped)
+    assert _got and _got["issues"] == ["First?", 'Second "quoted"?'], _got
+    assert _parse_card('{"subject": "x", "issues": ["plain"]}')["issues"] == ["plain"]
+    assert _parse_card("not json at all") is None
+    assert _normalise_llm({"subject": "Other", "issues": [{"issue": "Keyed?"}, "plain"]})["issues"] == ["Keyed?", "plain"]
+    # A judgment may be ABOUT a quota, a 429-page record or an overloaded
+    # court. Only the limiter's warnings are classified, never the model's
+    # reply, so this text can no longer be read as a rate limit (it was: a
+    # tobacco-quota card reported "rate_limited" when its JSON was truncated).
+    _tobacco = '{"subject": "Taxation", "headnote": "the tobacco quota fixed for the factory'
+    assert _classify_failure(_tobacco) == "rate_limited", "the detector itself still matches content"
+
     if args.max_calls is not None:
         _budget.limit = args.max_calls
 
@@ -552,5 +662,31 @@ if __name__ == "__main__":
             assert _budget.used <= _budget.limit
             print(f"cards: {len(cards)}  complete: {sum(c.get('card_status') == 'complete' for c in cards)}  "
                   f"llm calls this run: {stats['llm_calls']}  still missing: {stats['remaining']}")
+
+
+    async def _unparseable_reply_is_not_a_rate_limit() -> None:
+        """A truncated reply about a quota must be bad_json, not rate_limited."""
+        from app.retrieval import llm_responder
+
+        truncated = '```json {"subject": "Taxation", "headnote": "the tobacco quota fixed'
+        original, calls = llm_responder._complete, []
+
+        async def fake(_system, _prompt, _max_tokens):
+            calls.append(1)
+            return truncated
+
+        llm_responder._complete = fake
+        limit_before, _budget.limit = _budget.limit, _budget.used + 4
+        try:
+            parsed, failure = await _llm_card("prompt", "selftest-quota", attempts=1)
+        finally:
+            llm_responder._complete = original
+            _budget.limit = limit_before
+        assert parsed is None, parsed
+        assert failure.startswith("bad_json"), f"content read as a rate limit again: {failure[:80]}"
+        assert calls, "the stub was not called"
+        print("OK: a truncated card reply mentioning a quota is bad_json, not rate_limited")
+
+    asyncio.run(_unparseable_reply_is_not_a_rate_limit())
 
     asyncio.run(main())

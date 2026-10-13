@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 from pathlib import Path
@@ -584,17 +585,28 @@ async def call_gemini(prompt: str, system: str) -> str:
     from google.genai import types
 
     try:
+        from app.llm.gemini_models import call_with_fallback
+
         client = _gemini_client(api_key)
-        model_name = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash-lite")
-        response = await client.aio.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                temperature=0.0,
-                response_mime_type="application/json",
-            ),
-        )
+
+        async def on_model(model_name: str):
+            # Bounded, so a hung request cannot stall the parse for minutes.
+            return await asyncio.wait_for(
+                client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system,
+                        temperature=0.0,
+                        response_mime_type="application/json",
+                    ),
+                ),
+                timeout=float(getattr(settings, "LLM_REQUEST_TIMEOUT_S", 60.0) or 60.0),
+            )
+
+        # Without this an overloaded model returned "" here, and the judgment was
+        # silently parsed by the rule-based outline instead.
+        response = await call_with_fallback(on_model)
         return response.text or ""
     except Exception as e:
         logger.error(f"Gemini API error in parser: {e}")

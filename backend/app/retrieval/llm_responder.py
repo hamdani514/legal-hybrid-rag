@@ -292,22 +292,28 @@ async def _provider_call(
     resolved = _resolve_provider(provider)
 
     if resolved == "gemini":
-        model = settings.GEMINI_MODEL or "gemini-2.5-flash-lite"
+        from app.llm.gemini_models import call_with_fallback
+
         client = _get_gemini_client()
-        # Bounded: a hung request would otherwise hold one of the limiter's
-        # few concurrency slots for good. A timeout counts as transient.
-        response = await asyncio.wait_for(
-            client.aio.models.generate_content(
-                model=model,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=TEMPERATURE,
-                    max_output_tokens=max_tokens,
+
+        async def on_model(model: str):
+            # Bounded: a hung request would otherwise hold one of the limiter's
+            # few concurrency slots for good. A timeout counts as transient.
+            return await asyncio.wait_for(
+                client.aio.models.generate_content(
+                    model=model,
+                    contents=user_prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=TEMPERATURE,
+                        max_output_tokens=max_tokens,
+                    ),
                 ),
-            ),
-            timeout=float(getattr(settings, "LLM_REQUEST_TIMEOUT_S", 60.0) or 60.0),
-        )
+                timeout=float(getattr(settings, "LLM_REQUEST_TIMEOUT_S", 60.0) or 60.0),
+            )
+
+        # An overloaded model (503 "high demand") hands the call to the next one.
+        response = await call_with_fallback(on_model)
         return (response.text or "").strip()
 
     # OpenAI-compatible (Ollama / Groq when passed explicitly). The client's own

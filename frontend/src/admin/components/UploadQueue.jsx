@@ -49,6 +49,23 @@ export const isRowFinished = (item) =>
   ['rejected', 'cancelled', 'removed'].includes(item.state) ||
   (item.state === 'tracking' && (isTerminalJob(item.status) || item.active === false));
 
+/*
+ * A row that ended badly: rejected by the server, cancelled, deleted, failed,
+ * or stalled because the server lost the task. The batch panel stays on screen
+ * when any row ends this way, so the admin sees the problem and can retry.
+ */
+export const isRowProblem = (item) => {
+  if (['rejected', 'cancelled', 'removed'].includes(item.state)) return true;
+  if (item.state !== 'tracking') return false;
+  const status = item.status || '';
+  if (status === 'failed' || status.endsWith('_failed')) return true;
+  // `active: false` means the server holds no task for this job. That is a
+  // stall only while the job is unfinished — a job that COMPLETED is also
+  // inactive, and reading that as a problem kept every finished batch on
+  // screen. rowView() orders these checks the same way.
+  return !isTerminalJob(status) && item.active === false;
+};
+
 const TONE = {
   idle: 'bg-ash-100 text-ash-600',
   busy: 'bg-amber-100 text-amber-800',

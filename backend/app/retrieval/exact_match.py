@@ -113,6 +113,7 @@ accountability court courts high supreme
 foreign affairs interior finance defence defense law justice parliamentary health education home
 communications railways petroleum information commerce industries planning labour religious overseas
 housing works irrigation excise taxation customs inland wapda fbr cbr nadra
+tax taxes income wealth bank banks banking savings insurance prosecutor advocate
 """.split())
 
 _TOKEN = re.compile(r"[a-z0-9]+")
@@ -395,7 +396,11 @@ if __name__ == "__main__":
         def a(q: str) -> QueryAnalysis:
             return {"raw": q, "cleaned": clean_query(q)}  # type: ignore[return-value]
 
-        target = "5a14105d-8a45-413c-8c93-26d6301cf028"
+        # Resolved from the live index: judgment ids change when a case is re-ingested.
+        await r._refresh()
+        hits = r._key_index.get("CA-5-Q-2014") or ()
+        assert hits, "C.A. 5-Q/2014 is not in the archive: cannot run this check"
+        target = next(iter(hits))
         for q in ("C.A. 5-Q/2014", "Civil Appeal No. 5-Q of 2014", "what was held in CA 5-Q/2014?"):
             got = await r.retrieve(a(q), 10)
             assert got and got[0]["judgment_id"] == target and got[0]["score"] == 1.0, (q, got)
@@ -442,7 +447,9 @@ if __name__ == "__main__":
     async def fallback_only() -> None:
         r = ExactMatchRetriever(use_cards=False)
         got = await r.retrieve({"raw": "C.A. 23-P/2017", "cleaned": "c.a. 23-p/2017"}, 5)
-        assert got and got[0]["judgment_id"].startswith("3eff8217"), got
+        # The id is resolved from the index: it changes when the case is re-ingested.
+        assert got and got[0]["judgment_id"] in (r._key_index.get("CA-23-P-2017") or ()), got
+        assert got[0]["score"] == 1.0 and got[0]["pinned"] is True, got
         assert all(e["source"] == "fallback" for e in r._table.values())
         print("OK: no-card fallback (uploads head + root summary) finds the case")
 
