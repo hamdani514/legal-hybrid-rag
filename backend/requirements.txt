@@ -9,7 +9,12 @@ motor
 # The ODM behind app/models/*.py (User, Chat, Message, Blog). It was imported
 # by main.py's lifespan while missing from this file, so a fresh install
 # started and then crashed on startup with ModuleNotFoundError.
-beanie
+# Below 2.0: beanie 2.x no longer accepts the motor database this app passes
+# to init_beanie (TypeError: MotorDatabase object is not callable), and the
+# startup code re-raises it, so the server would not start.
+beanie<2
+# Short ids for chat slugs (app/utils/slug.py).
+nanoid
 
 python-jose
 bcrypt
