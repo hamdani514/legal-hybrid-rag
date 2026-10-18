@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import ChatInput from './ChatInput';
@@ -18,6 +18,7 @@ import {
   renameSession,
   setPinned,
 } from '../lib/chatHistory';
+import { chatPath, chatSlug, slugMatches } from '../lib/chatSlug';
 
 // The backend's MAX_QUERY_CHARS; checked here too so a long description gets
 // a clear message instead of a validation error.
@@ -35,6 +36,8 @@ const errorDetail = async (res) => {
 
 const WelcomeContent = () => {
   const navigate = useNavigate();
+  // /chat/<slug> is a saved conversation; /welcome (no slug) is a new query.
+  const { slug } = useParams();
   // Read ONCE, not on every render. Re-parsing localStorage each render returns
   // a brand-new object, so any effect depending on it re-runs on every render;
   // an effect that then sets state turns that into an endless request loop.
@@ -119,6 +122,34 @@ const WelcomeContent = () => {
     };
   }, [userId]);
 
+  // The address decides which conversation is on screen. A click in the
+  // history, back and forward, a pasted link and a refresh all arrive here as
+  // a change of `slug`, so there is one place that opens a conversation.
+  useEffect(() => {
+    if (!userId) return;
+    if (!slug) {
+      // Back on /welcome (New Chat, or the browser's back button).
+      if (sessionRef.current) resetConversation();
+      return;
+    }
+    // Already on screen, e.g. the conversation the first question just created.
+    if (slugMatches(slug, sessionRef.current)) return;
+    // The list is needed to turn the address into a conversation.
+    if (historyLoading) return;
+    const match = sessions.find((s) => slugMatches(slug, s.session_id));
+    if (!match) {
+      // Deleted, mistyped, or another user's conversation.
+      navigate('/welcome', { replace: true });
+      return;
+    }
+    // Show the current title in the address if the link carried an old one.
+    if (slug !== chatSlug(match.session_id, match.title)) {
+      navigate(chatPath(match.session_id, match.title), { replace: true });
+    }
+    openSession(match.session_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, userId, historyLoading, sessions]);
+
   const refreshSessions = async () => setSessions(await listSessions(userId));
 
   /** The conversation to write into, creating one on the first question. */
@@ -128,6 +159,9 @@ const WelcomeContent = () => {
     if (created) {
       sessionRef.current = created;
       setSessionId(created);
+      // The conversation now exists, so it gets its own address. replace, not
+      // push: Back should not return to an empty page for the same chat.
+      navigate(chatPath(created, firstQuestion), { replace: true });
     }
     return created;
   };
@@ -140,16 +174,28 @@ const WelcomeContent = () => {
     refreshSessions();
   };
 
+  /** Load a conversation's messages. Called by the address effect above. */
   const openSession = async (id) => {
-    const conversation = await loadSession(userId, id);
-    if (!conversation) {
-      await refreshSessions();
-      return;
-    }
-    setChatHistory(conversation.messages || []);
+    // Claimed before the load, so a list refresh meanwhile does not open it twice.
     sessionRef.current = id;
     setSessionId(id);
     setActiveTab('case');
+    const conversation = await loadSession(userId, id);
+    if (sessionRef.current !== id) return; // the user moved on while it loaded
+    if (!conversation) {
+      sessionRef.current = '';
+      setSessionId('');
+      await refreshSessions();
+      navigate('/welcome', { replace: true });
+      return;
+    }
+    setChatHistory(conversation.messages || []);
+  };
+
+  /** A click in the history: change the address, and the effect opens it. */
+  const goToSession = (id) => {
+    const s = sessions.find((x) => x.session_id === id);
+    navigate(chatPath(id, s?.title || ''));
   };
 
   /** Pin a conversation to the top of the sidebar, or unpin it. */
@@ -163,6 +209,8 @@ const WelcomeContent = () => {
   /** Rename a conversation from the sidebar's three-dot menu. */
   const renameSessionTitle = async (id, title) => {
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, title } : s)));
+    // The open conversation's address follows its new name.
+    if (sessionRef.current === id) navigate(chatPath(id, title), { replace: true });
     await renameSession(userId, id, title);
     await refreshSessions();
   };
@@ -170,12 +218,19 @@ const WelcomeContent = () => {
   const removeSession = async (id) => {
     await deleteSession(userId, id);
     if (sessionRef.current === id) {
-      sessionRef.current = '';
-      setSessionId('');
-      setChatHistory([]);
+      resetConversation();
+      navigate('/welcome', { replace: true });
     }
     await refreshSessions();
   };
+
+  /** An empty screen for a new query. */
+  function resetConversation() {
+    setChatHistory([]);
+    sessionRef.current = '';
+    setSessionId('');
+    setActiveTab('case');
+  }
 
   if (!currentUser) {
     return null;
@@ -190,10 +245,8 @@ const WelcomeContent = () => {
   };
 
   const handleNewQuery = () => {
-    setChatHistory([]);
-    sessionRef.current = '';
-    setSessionId('');
-    setActiveTab('case');
+    resetConversation();
+    if (slug) navigate('/welcome');
   };
 
   /**
@@ -404,7 +457,7 @@ const WelcomeContent = () => {
         userEmail={userEmail}
         sessions={sessions}
         activeSessionId={sessionId}
-        onOpenSession={openSession}
+        onOpenSession={goToSession}
         onPinSession={pinSession}
         onRenameSession={renameSessionTitle}
         onDeleteSession={removeSession}

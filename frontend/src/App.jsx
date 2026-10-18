@@ -16,7 +16,6 @@ import OtpVerificationPage from './user/otp-verification/OtpVerificationPage';
 import ResetPasswordPage from './user/reset-password/ResetPasswordPage';
 import ReactivateAccountPage from './user/reactivate/ReactivateAccountPage';
 import WelcomePage from './user/welcome/WelcomePage';
-import ChatPage from './pages/ChatPage';
 import SettingsPage from './user/account-settings/SettingsPage';
 import LegalPage from './user/legal/LegalPage';
 import NotFound from './user/components/bound/NotFound';
@@ -58,14 +57,15 @@ function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/reactivate/:token" element={<ReactivateAccountPage />} />
 
-          {/* Slug-Based Chat URL System */}
-          <Route path="/chat/new" element={<ChatPage />} />
-          <Route path="/chat/:slug" element={<ChatPage />} />
-          <Route path="/chat" element={<Navigate to="/chat/new" replace />} />
-
-          {/* Legacy redirects */}
-          <Route path="/welcome" element={<Navigate to="/chat/new" replace />} />
-          <Route path="/ip_welcome" element={<Navigate to="/chat/new" replace />} />
+          {/* The research workspace: search, results, filters, summaries,
+              comparison and the chat-history sidebar. /welcome is a new
+              query; /chat/<slug> reopens a saved conversation (see
+              src/user/lib/chatSlug.js). */}
+          <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/chat/:slug" element={<WelcomePage />} />
+          <Route path="/chat/new" element={<Navigate to="/welcome" replace />} />
+          <Route path="/chat" element={<Navigate to="/welcome" replace />} />
+          <Route path="/ip_welcome" element={<Navigate to="/welcome" replace />} />
 
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/account-settings" element={<SettingsPage />} />
