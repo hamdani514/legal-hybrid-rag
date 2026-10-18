@@ -419,7 +419,8 @@ async def build_card(judgment_id: str, attempts: int = 2) -> dict:
         source = (raw or "") + "\n" + "\n".join(sections.values())
         card["grounding"] = ground(card, source, judgment_id)
         card["card_status"] = "complete"
-        card["card_model"] = getattr(settings, "GEMINI_MODEL", "") or "gemini-2.5-flash-lite"
+        card["card_model"] = (settings.OPENROUTER_MODEL if (settings.LLM_PROVIDER or "").lower() == "openrouter"
+                              else getattr(settings, "GEMINI_MODEL", "") or "gemini-2.5-flash-lite")
 
     card["filename"] = src["filename"]
     card["metadata_version"] = METADATA_VERSION

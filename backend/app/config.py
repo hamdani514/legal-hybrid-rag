@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
 
+    # OpenRouter: an OpenAI-compatible gateway, used when LLM_PROVIDER=openrouter
+    # for both ingestion (context summary, case cards) and retrieval (answers).
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "google/gemini-3.1-flash-lite"
+    # OpenRouter itself moves a request to these, in order, when the model above
+    # fails or is overloaded. Comma-separated; empty turns it off.
+    OPENROUTER_FALLBACK_MODELS: str = "google/gemini-3.1-flash-lite-preview"
+    # Shown on the OpenRouter dashboard against each request.
+    OPENROUTER_APP_NAME: str = "Verdict AI"
+
     # Retrieval: where the ingestion pipeline writes its node->vector index.
     # Empty means "use backend/app/connection". Accepts a directory of
     # *_mappings.json files or a single JSON file.

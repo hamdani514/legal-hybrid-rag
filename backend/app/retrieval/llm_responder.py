@@ -235,9 +235,22 @@ def _resolve_provider(provider: str | None) -> str:
     return (provider or settings.LLM_PROVIDER or "gemini").strip().lower()
 
 
+def openrouter_models() -> list[str]:
+    """OPENROUTER_MODEL, then its fallbacks, without repeats."""
+    primary = (settings.OPENROUTER_MODEL or "google/gemini-3.1-flash-lite").strip()
+    extra = (settings.OPENROUTER_FALLBACK_MODELS or "").split(",")
+    return list(dict.fromkeys([primary, *(m.strip() for m in extra if m.strip())]))
+
+
 def _client_for(provider: str) -> tuple[AsyncOpenAI, str]:
     """Return a cached client and model name for `provider`."""
-    if provider == "ollama":
+    headers = None
+    if provider == "openrouter":
+        base_url = settings.OPENROUTER_BASE_URL
+        model = openrouter_models()[0]
+        api_key = settings.OPENROUTER_API_KEY
+        headers = {"X-Title": settings.OPENROUTER_APP_NAME or "Verdict AI"}
+    elif provider == "ollama":
         base_url = settings.OLLAMA_BASE_URL
         model = settings.OLLAMA_MODEL
         # Ollama ignores the key, but the OpenAI client requires a non-empty one.
@@ -262,6 +275,7 @@ def _client_for(provider: str) -> tuple[AsyncOpenAI, str]:
             # The limiter owns retrying (with the shared budget and the
             # provider's retry-after); SDK retries would spend quota blindly.
             max_retries=0,
+            default_headers=headers,
         )
     return _clients[provider], model
 
@@ -319,6 +333,9 @@ async def _provider_call(
     # OpenAI-compatible (Ollama / Groq when passed explicitly). The client's own
     # retries are off: the limiter owns retrying, with the shared budget.
     client, model = _client_for(resolved)
+    # OpenRouter's own fallback: it moves the request down this list when a
+    # model fails or is overloaded, so no second round trip is needed here.
+    extra = {"models": openrouter_models()} if resolved == "openrouter" and len(openrouter_models()) > 1 else None
     response = await client.chat.completions.create(
         model=model,
         messages=[
@@ -328,6 +345,7 @@ async def _provider_call(
         temperature=TEMPERATURE,
         max_tokens=max_tokens,
         timeout=REQUEST_TIMEOUT,
+        extra_body=extra,
     )
     return (response.choices[0].message.content or "").strip()
 

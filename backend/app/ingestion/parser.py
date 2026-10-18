@@ -668,11 +668,36 @@ async def call_groq(prompt: str, system: str) -> str:
         return ""
 
 
+async def call_openrouter(prompt: str, system: str) -> str:
+    """The same JSON call as call_gemini, through OpenRouter. "" on any failure."""
+    if not getattr(settings, "OPENROUTER_API_KEY", ""):
+        logger.warning("OPENROUTER_API_KEY is not configured in the .env file.")
+        return ""
+    from app.retrieval.llm_responder import _client_for, openrouter_models
+
+    try:
+        client, model = _client_for("openrouter")
+        models = openrouter_models()
+        res = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                temperature=0.0,
+                response_format={"type": "json_object"},
+                extra_body={"models": models} if len(models) > 1 else None,
+            ),
+            timeout=float(getattr(settings, "LLM_REQUEST_TIMEOUT_S", 60.0) or 60.0),
+        )
+        return res.choices[0].message.content or ""
+    except Exception as e:
+        logger.error(f"OpenRouter API error in parser: {e}")
+        return ""
+
+
 async def call_llm(prompt: str, system: str) -> str:
-    """
-    Unified LLM caller routing to Gemini API (Groq commented as primary).
-    """
-    # return await call_groq(prompt, system)  # Groq commented out as requested
+    """Unified LLM caller: OpenRouter or Gemini, by LLM_PROVIDER."""
+    if (getattr(settings, "LLM_PROVIDER", "") or "").strip().lower() == "openrouter":
+        return await call_openrouter(prompt, system)
     return await call_gemini(prompt, system)
 
 
