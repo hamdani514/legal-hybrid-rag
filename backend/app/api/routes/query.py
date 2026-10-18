@@ -38,6 +38,7 @@ from app.api.schemas import (
 from app.retrieval.comparator import compare_judgments
 from app.retrieval.llm_responder import status_of
 from app.retrieval.orchestrator import answer_for_judgment, retrieve_and_answer, summarize_judgment
+from modules.payment.plan_guard import plan_guard, refund_query
 
 router = APIRouter()
 
@@ -69,6 +70,9 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
     started = time.perf_counter()
     await _await_warmup(request)
 
+    # Enforce tier-based daily rate limits (1/day Free, 20/day Standard)
+    await plan_guard(request)
+
     try:
         result = await retrieve_and_answer(
             raw_query=body.query,
@@ -79,6 +83,8 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
         )
     except Exception as e:
         logger.exception("Error in /query/search")
+        # Refund query counter on pipeline failure
+        await refund_query(request)
         raise HTTPException(status_code=500, detail=str(e))
 
     return SearchResponse(

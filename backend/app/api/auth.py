@@ -44,6 +44,7 @@ from app.database import db
 from app.retrieval.contracts import TokenPayload
 from app.services.email_service import (
     send_otp_email,
+    send_signup_otp_email,
     send_password_changed_email,
     send_deactivation_email,
     send_reactivation_link_email,
@@ -65,6 +66,15 @@ class ForgotPasswordRequest(BaseModel):
 class VerifyOtpRequest(BaseModel):
     email: str
     otp: str
+
+
+class VerifySignupOtpRequest(BaseModel):
+    email: str
+    otp: str
+
+
+class ResendSignupOtpRequest(BaseModel):
+    email: str
 
 
 class ResetPasswordRequest(BaseModel):
@@ -778,8 +788,20 @@ async def _upgrade_password(collection, doc: dict, plain: str) -> None:
 async def login(body: LoginRequest):
     _require_db()
     user = await _find_user_by_email(body.email)
+    if not user:
+        pending = await db.database.pending_registrations.find_one({"email": (body.email or "").strip().lower()})
+        if pending:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "Your email is not verified yet. Please check your Gmail for the 6-digit verification code.",
+                    "is_unverified": True,
+                    "email": pending.get("email"),
+                },
+            )
+        raise HTTPException(status_code=401, detail="Invalid Email or Password.")
     ok, needs_upgrade = verify_password(body.password, user.get("password") if user else None)
-    if not user or not ok:
+    if not ok:
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
     if needs_upgrade:
         await _upgrade_password(db.database.users, user, body.password)
@@ -848,14 +870,13 @@ async def _next_user_id() -> str:
 @router.post("/signup")
 async def signup(body: SignupRequest):
     """
-    User registration with First Name, Last Name, Email, and Password.
-    Password is stored as a bcrypt hash and plan is default Free.
+    User registration initiation with First Name, Last Name, Email, and Password.
+    Generates 6-digit verification OTP and dispatches to user's Gmail.
+    User is NOT saved to the main users collection until the OTP is verified.
     """
     _require_db()
     from app.api.admin import (
-        validate_age_limit,
         validate_email_domain,
-        validate_human_name,
         validate_password_strength,
     )
 
@@ -872,33 +893,200 @@ async def signup(body: SignupRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
     now = datetime.now(timezone.utc)
-    if body.created_at:
-        try:
-            now = datetime.fromisoformat(body.created_at.replace("Z", "+00:00"))
-        except ValueError:
-            logger.warning(f"Unparseable signup created_at {body.created_at!r}; using server time")
 
+    # Check if already registered in the users collection
     existing = await db.database.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=409, detail="Email is already registered.")
 
-    new_user = {
-        "id": await _next_user_id(),
+    # Generate 6-digit numeric OTP
+    otp = f"{random.randint(100000, 999999)}"
+    otp_hash = _hash_otp(email, otp)
+    otp_expires = now + timedelta(minutes=1)
+
+    # Store exclusively in pending_registrations (NOT in users collection)
+    pending_record = {
+        "email": email,
         "first_name": first_name,
         "last_name": last_name,
         "name": full_name,
+        "password": password_hash,
+        "otp_hash": otp_hash,
+        "otp_expires": otp_expires,
+        "otp_attempts": 0,
+        "created_at": now,
+    }
+    await db.database.pending_registrations.update_one(
+        {"email": email},
+        {"$set": pending_record},
+        upsert=True,
+    )
+
+    # Dispatch verification email via Gmail SMTP
+    try:
+        await send_signup_otp_email(full_name, email, otp)
+    except Exception as e:
+        logger.error(f"Failed to dispatch signup OTP email to {email}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Unable to dispatch verification email right now. Please try again later."
+        )
+
+    return {
+        "message": "Verification code sent to your email. Please verify to complete registration.",
         "email": email,
+        "require_otp": True,
+    }
+
+
+@router.post("/verify-signup-otp")
+async def verify_signup_otp(body: VerifySignupOtpRequest):
+    """
+    Verifies the 6-digit registration OTP, creates the user in the main users
+    collection in MongoDB, removes pending registration, and logs the user in.
+    """
+    _require_db()
+
+    clean_email = body.email.strip().lower()
+    clean_otp = body.otp.strip()
+
+    if not clean_email or not clean_otp:
+        raise HTTPException(status_code=400, detail="Email and verification code are required.")
+
+    # Check if user already activated in users
+    existing_user = await db.database.users.find_one({"email": clean_email})
+    if existing_user:
+        return {
+            "message": "Account is already verified. Please sign in.",
+            "already_verified": True,
+            "token": create_access_token(_user_sub(existing_user), "user"),
+            "user": _user_view(existing_user),
+        }
+
+    pending = await db.database.pending_registrations.find_one({"email": clean_email})
+    if not pending or not pending.get("otp_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="No pending registration found for this email. Please sign up again.",
+        )
+
+    # Check expiry
+    expires = pending.get("otp_expires")
+    if not expires:
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires:
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
+
+    # Rate limiting: max 5 attempts
+    attempts = pending.get("otp_attempts", 0)
+    if attempts >= 5:
+        raise HTTPException(
+            status_code=429, detail="Too many incorrect attempts. Please request a fresh verification code."
+        )
+
+    computed_hash = _hash_otp(clean_email, clean_otp)
+    if computed_hash != pending.get("otp_hash"):
+        await db.database.pending_registrations.update_one(
+            {"email": clean_email},
+            {"$inc": {"otp_attempts": 1}},
+        )
+        raise HTTPException(status_code=400, detail="Invalid verification code.")
+
+    # Code is valid! Now create user in main users collection
+    now = datetime.now(timezone.utc)
+    new_user_id = await _next_user_id()
+    new_user = {
+        "id": new_user_id,
+        "first_name": pending.get("first_name", ""),
+        "last_name": pending.get("last_name", ""),
+        "name": pending.get("name") or f"{pending.get('first_name', '')} {pending.get('last_name', '')}".strip() or "User",
+        "email": clean_email,
         "plan": "Free",
         "planColor": PLAN_COLORS["Free"],
         "status": "Active",
         "statusColor": "bg-[#22C55E]",
-        "password": password_hash,
+        "password": pending["password"],
         "created_at": now,
+        "email_verified": True,
+        "email_verified_at": now,
+        "stripeCustomerId": None,
+        "stripe_customer_id": None,
+        "stripeSubscriptionId": None,
+        "stripe_subscription_id": None,
+        "stripePaymentMethodId": None,
+        "cardLast4": None,
+        "cardBrand": None,
+        "cancelAtPeriodEnd": False,
+        "cancel_at_period_end": False,
+        "cancellationRequestedAt": None,
+        "subscriptionEndsAt": None,
+        "subscription_ends_at": None,
+        "autoRenew": True,
+        "auto_renew": True,
+        "dailyQueries": {"count": 0, "date": now},
     }
+
     await db.database.users.insert_one(new_user)
-    view = {k: v for k, v in new_user.items() if k not in ("password", "_id")}
-    view["created_at"] = now.isoformat()
-    return view
+    # Remove from pending_registrations
+    await db.database.pending_registrations.delete_one({"email": clean_email})
+
+    token = create_access_token(_user_sub(new_user), "user")
+    return {
+        "message": "Account successfully verified! Welcome to VerdictAI.",
+        "token": token,
+        "user": _user_view(new_user),
+    }
+
+
+@router.post("/resend-signup-otp")
+async def resend_signup_otp(body: ResendSignupOtpRequest):
+    """
+    Resends a fresh 6-digit registration verification OTP to the user's email.
+    """
+    _require_db()
+
+    clean_email = body.email.strip().lower()
+    if not clean_email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    # Check if already registered
+    existing_user = await db.database.users.find_one({"email": clean_email})
+    if existing_user:
+        return {"message": "Account is already verified. Please sign in."}
+
+    pending = await db.database.pending_registrations.find_one({"email": clean_email})
+    if not pending:
+        raise HTTPException(
+            status_code=400, detail="No pending registration found for this email. Please sign up."
+        )
+
+    # Generate fresh 6-digit OTP
+    otp = f"{random.randint(100000, 999999)}"
+    otp_hash = _hash_otp(clean_email, otp)
+    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=1)
+
+    await db.database.pending_registrations.update_one(
+        {"email": clean_email},
+        {
+            "$set": {
+                "otp_hash": otp_hash,
+                "otp_expires": otp_expires,
+                "otp_attempts": 0,
+            }
+        },
+    )
+
+    full_name = pending.get("name") or "Counselor"
+    try:
+        await send_signup_otp_email(full_name, clean_email, otp)
+    except Exception as e:
+        logger.error(f"Failed to resend signup OTP to {clean_email}: {e}")
+        raise HTTPException(status_code=500, detail="Unable to dispatch email right now. Please try again.")
+
+    return {"message": f"A fresh verification code has been dispatched to {clean_email}."}
+
 
 
 # -------------------------------------------------------------
@@ -1008,6 +1196,21 @@ async def google_login(body: GoogleLoginRequest):
             "auth_provider": "google",
             "google_sub": info.get("sub"),
             "created_at": datetime.now(timezone.utc),
+            "stripeCustomerId": None,
+            "stripe_customer_id": None,
+            "stripeSubscriptionId": None,
+            "stripe_subscription_id": None,
+            "stripePaymentMethodId": None,
+            "cardLast4": None,
+            "cardBrand": None,
+            "cancelAtPeriodEnd": False,
+            "cancel_at_period_end": False,
+            "cancellationRequestedAt": None,
+            "subscriptionEndsAt": None,
+            "subscription_ends_at": None,
+            "autoRenew": True,
+            "auto_renew": True,
+            "dailyQueries": {"count": 0, "date": datetime.now(timezone.utc)},
         }
         await db.database.users.insert_one(user)
         logger.info(f"Created Google account {user['id']}")

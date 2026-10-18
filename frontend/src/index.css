@@ -838,3 +838,196 @@ body {
   }
 }
 
+
+/* ── Article body (user/blogs) ──────────────────────────────────────────
+   The blog body is HTML from the admin editor, so it arrives as bare tags
+   with no utility classes to hang styling on. These rules are the contract
+   between what the editor is allowed to produce (see blogs/articleHtml.js)
+   and how it reads on the page. Tailwind's typography plugin is not
+   installed; this is deliberately the smaller, fixed version of it. */
+.blog-prose {
+  font-family: 'Lato', system-ui, sans-serif;
+  color: #374151; /* ash-700 */
+  font-size: 1.0625rem;
+  line-height: 1.85;
+}
+
+.blog-prose > *:first-child {
+  margin-top: 0;
+}
+
+.blog-prose h2,
+.blog-prose h3,
+.blog-prose h4 {
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: #111827; /* ash-900 */
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  /* Headings are jump targets for the contents rail, and the site header is
+     fixed at 76px — without this they land underneath it. */
+  scroll-margin-top: 108px;
+}
+
+.blog-prose h2 {
+  font-size: clamp(1.45rem, 2.6vw, 1.85rem);
+  font-weight: 700;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+}
+
+.blog-prose h3 {
+  font-size: clamp(1.15rem, 2vw, 1.3rem);
+  font-weight: 700;
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.blog-prose h4 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.blog-prose p {
+  margin-bottom: 1.35rem;
+}
+
+.blog-prose ul,
+.blog-prose ol {
+  margin: 0 0 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.blog-prose ul {
+  list-style: disc;
+}
+
+.blog-prose ol {
+  list-style: decimal;
+}
+
+.blog-prose li {
+  margin-bottom: 0.6rem;
+  padding-left: 0.35rem;
+}
+
+.blog-prose li::marker {
+  color: #0074e4; /* brand-600 */
+}
+
+.blog-prose a {
+  color: #0065c7; /* brand-700 */
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.blog-prose a:hover {
+  color: #003d99; /* brand-900 */
+}
+
+.blog-prose strong,
+.blog-prose b {
+  font-weight: 700;
+  color: #111827;
+}
+
+.blog-prose blockquote {
+  margin: 0 0 1.5rem;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  border-left: 3px solid #bae0ff; /* brand-200 */
+  color: #4b5563; /* ash-600 */
+  font-style: italic;
+}
+
+.blog-prose code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+  background: #f1f5f9;
+  border-radius: 0.375rem;
+  padding: 0.15em 0.4em;
+}
+
+.blog-prose pre {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  background: #111827;
+  color: #f1f5f9;
+  border-radius: 0.75rem;
+}
+
+.blog-prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.blog-prose img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.75rem 0;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.blog-prose figcaption {
+  margin-top: -1rem;
+  margin-bottom: 1.75rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.blog-prose hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.blog-prose table {
+  width: 100%;
+  margin: 0 0 1.75rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.blog-prose th,
+.blog-prose td {
+  border: 1px solid #e5e7eb;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+}
+
+.blog-prose th {
+  background: #f8fafc;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* The contents rail scrolls within its card once an article has more
+   sections than fit, so the CTA beneath it stays in view. */
+.toc-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.toc-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+
+.toc-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

@@ -8,6 +8,7 @@ const COLUMNS = [
       { to: '/about', label: 'How it works' },
       { to: '/pricing', label: 'Pricing' },
       { to: '/faq', label: 'FAQ' },
+      { to: '/blogs', label: 'Insights' },
     ],
   },
   {

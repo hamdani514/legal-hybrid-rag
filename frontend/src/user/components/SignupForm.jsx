@@ -104,10 +104,11 @@ const SignupForm = () => {
       });
 
       if (res.ok) {
-        setSuccessMsg('Account created successfully! Redirecting to login...');
+        const data = await res.json();
+        setSuccessMsg(data.message || 'Verification code sent to your Gmail! Redirecting to verification...');
         setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+          navigate('/verify-otp', { state: { email: formData.email.trim(), flow: 'signup' } });
+        }, 1000);
       } else {
         const err = await res.json();
         setErrorMsg(err.detail || 'An error occurred during registration.');

@@ -6,6 +6,10 @@ pydantic-settings
 
 pymongo
 motor
+# The ODM behind app/models/*.py (User, Chat, Message, Blog). It was imported
+# by main.py's lifespan while missing from this file, so a fresh install
+# started and then crashed on startup with ModuleNotFoundError.
+beanie
 
 python-jose
 bcrypt
@@ -67,3 +71,4 @@ tiktoken
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+apscheduler

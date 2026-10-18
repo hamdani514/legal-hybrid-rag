@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Judge's gavel">
+  <rect x="34" y="30" width="86" height="44" rx="6" transform="rotate(-38 77 52)"/>
+  <path d="M62 22 90 44M52 62 80 84" />
+  <path d="M96 76 152 132" />
+  <rect x="140" y="120" width="34" height="20" rx="6" transform="rotate(45 157 130)"/>
+  <path d="M44 176h112"/>
+  <rect x="60" y="156" width="80" height="16" rx="5"/>
+</svg>

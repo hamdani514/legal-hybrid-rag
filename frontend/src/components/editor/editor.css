@@ -1,0 +1,92 @@
+/* Rich text editor (components/editor).
+   The editing surface carries the .blog-prose class from index.css, so what
+   the author sees while typing is what the article page renders. Only the
+   chrome around it is styled here. */
+
+.rich-editor__surface {
+  position: relative;
+  overflow-y: auto;
+  /* Long unbroken strings (a pasted URL) must not widen the whole panel. */
+  overflow-wrap: anywhere;
+}
+
+/* The empty-document hint.
+   Keyed off data-empty, which the component maintains, NOT off :empty — an
+   empty contentEditable document is `<p><br></p>`, which has a child node and
+   so never matches :empty. Positioned absolutely so it overlays the first
+   line instead of pushing the caret down. */
+.rich-editor__surface[data-empty='true']::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  color: #9ca3af;
+  font-family: 'Lato', system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .rich-editor__surface[data-empty='true']::before {
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+  }
+}
+
+.rich-editor__surface:focus {
+  outline: none;
+}
+
+/* While editing, structural elements need to be visible even when empty —
+   an author cannot click into a table cell they cannot see. */
+.rich-editor__surface table {
+  min-width: 60%;
+}
+
+.rich-editor__surface td,
+.rich-editor__surface th {
+  min-width: 48px;
+  outline: 1px dashed rgba(156, 163, 175, 0.45);
+  outline-offset: -1px;
+}
+
+.rich-editor__surface hr {
+  border-top: 2px solid #d1d5db;
+}
+
+/* A selected image should look selected. */
+.rich-editor__surface img {
+  cursor: default;
+}
+
+.rich-editor__surface img::selection {
+  background: rgba(0, 133, 255, 0.25);
+}
+
+/* Full screen: the editor takes the viewport, above the admin sidebar and the
+   sticky site header, both of which sit below z-100. */
+.rich-editor--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  border-radius: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rich-editor--fullscreen .rich-editor__surface,
+.rich-editor--fullscreen textarea {
+  flex: 1;
+}
+
+/* Keep the toolbar reachable on a narrow window rather than letting it push
+   the editor wider than the screen. */
+@media (max-width: 900px) {
+  .rich-editor__surface {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 460" width="1600" height="460" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Neoclassical courthouse colonnade">
+  <defs>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBF8F1"/>
+      <stop offset="100%" stop-color="#E4DCC8"/>
+    </linearGradient>
+    <linearGradient id="stoneDeep" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EDE6D6"/>
+      <stop offset="100%" stop-color="#D5CBB2"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B98C36" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#B98C36" stop-opacity=".45"/>
+      <stop offset="100%" stop-color="#B98C36" stop-opacity="0"/>
+    </linearGradient>
+    <g id="vcol">
+      <rect x="-4" y="0" width="60" height="14" fill="url(#stoneDeep)"/>
+      <rect x="2" y="14" width="48" height="206" fill="url(#stone)"/>
+      <rect x="13" y="18" width="1.6" height="198" fill="#CFC3A6"/>
+      <rect x="25" y="18" width="1.6" height="198" fill="#CFC3A6"/>
+      <rect x="37" y="18" width="1.6" height="198" fill="#CFC3A6"/>
+      <rect x="44" y="14" width="6" height="206" fill="#DED4BD"/>
+      <rect x="-6" y="220" width="64" height="16" fill="url(#stoneDeep)"/>
+    </g>
+  </defs>
+
+  <!-- pediment -->
+  <path d="M800 26 L1128 150 H472 Z" fill="url(#stone)"/>
+  <path d="M800 48 L1074 150 H526 Z" fill="#EFE9DA"/>
+  <circle cx="800" cy="118" r="17" fill="none" stroke="#B98C36" stroke-opacity=".6" stroke-width="2"/>
+  <path d="M783 118 h34 M800 101 v34" stroke="#B98C36" stroke-opacity=".4" stroke-width="1.5"/>
+
+  <!-- architrave -->
+  <rect x="430" y="150" width="740" height="26" fill="url(#stoneDeep)"/>
+  <rect x="430" y="176" width="740" height="10" fill="#D5CBB2"/>
+  <rect x="430" y="150" width="740" height="2" fill="url(#edge)"/>
+
+  <!-- wing entablatures -->
+  <rect x="0" y="186" width="432" height="20" fill="url(#stoneDeep)"/>
+  <rect x="1168" y="186" width="432" height="20" fill="url(#stoneDeep)"/>
+
+  <!-- central colonnade -->
+  <use href="#vcol" x="470" y="186"/>
+  <use href="#vcol" x="580" y="186"/>
+  <use href="#vcol" x="690" y="186"/>
+  <use href="#vcol" x="800" y="186"/>
+  <use href="#vcol" x="910" y="186"/>
+  <use href="#vcol" x="1020" y="186"/>
+
+  <!-- wing colonnade -->
+  <g opacity=".8">
+    <use href="#vcol" x="55"   y="206"/>
+    <use href="#vcol" x="165"  y="206"/>
+    <use href="#vcol" x="275"  y="206"/>
+    <use href="#vcol" x="1235" y="206"/>
+    <use href="#vcol" x="1345" y="206"/>
+    <use href="#vcol" x="1455" y="206"/>
+  </g>
+
+  <!-- stylobate / steps -->
+  <rect x="360" y="422" width="880" height="14" fill="#E7DFCC"/>
+  <rect x="326" y="436" width="948" height="14" fill="#DCD2B9"/>
+  <rect x="0" y="442" width="1600" height="18" fill="#D2C7AB"/>
+  <rect x="326" y="436" width="948" height="1.5" fill="url(#edge)"/>
+</svg>

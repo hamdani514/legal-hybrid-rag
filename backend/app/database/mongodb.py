@@ -18,7 +18,15 @@ async def init_mongodb_indexes():
         await db.database.embedding_mappings.create_index("node_id", unique=True)
         await db.database.embedding_mappings.create_index("file_id")
         await db.database.embedding_mappings.create_index("parent_node_id")
+
+        # 3. Idempotency and 30-day TTL index for Stripe webhook events
+        await db.database.processed_events.create_index("eventId", unique=True)
+        await db.database.processed_events.create_index("processedAt", expireAfterSeconds=86400 * 30)
+
+        # 4. User subscription indexes
+        await db.database.users.create_index("stripeCustomerId")
+        await db.database.users.create_index("plan")
         
-        logger.info("MongoDB unique and relational indexes initialized successfully.")
+        logger.info("MongoDB unique, relational, and subscription indexes initialized successfully.")
     except Exception as e:
         logger.error(f"Error during database index creation: {e}")
