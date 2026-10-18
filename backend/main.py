@@ -12,6 +12,8 @@ search limits.
     /api/admin/*      admin, except ADMIN_PUBLIC_ROUTES (login, availability
                       checks, contact form) and the PDF download (any user)
     /api/auth/*       public — each route authenticates the caller itself
+    /api/blogs/*      public — read-only marketing content
+    /api/admin/blogs/*  admin — authoring the same articles
     /query/*          signed-in user + per-user limits
     /embeddings/*     /search: user + limits; /generate: admin
     /api/judgments/{id}/download   signed-in user (token may be ?token=)
@@ -69,6 +71,29 @@ async def lifespan(app: FastAPI):
         from app.database.mongodb import init_mongodb_indexes
         await init_mongodb_indexes()
 
+        # Initialize Beanie ODM and compound unique indexes
+        from beanie import init_beanie
+        from app.models.user import User
+        from app.models.chat import Chat, Message
+        from app.models.blog import Blog
+
+        await init_beanie(
+            database=db.database,
+            document_models=[User, Chat, Message, Blog],
+        )
+
+        conversations = (
+            Chat.get_pymongo_collection()
+            if hasattr(Chat, "get_pymongo_collection")
+            else Chat.get_motor_collection()
+        )
+        await conversations.create_index(
+            [("userId", 1), ("slug", 1)],
+            unique=True,
+            name="userId_slug_unique",
+        )
+        logger.info("✅ Beanie initialized, unique compound index (userId, slug) created")
+
         # Optional real ping check
         if db.client:
             try:
@@ -122,9 +147,21 @@ async def lifespan(app: FastAPI):
 
     app.state.warmup = asyncio.create_task(_warm())
 
+    # Start background subscription expiration scheduler
+    try:
+        from scheduled_tasks import start_scheduler, stop_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.warning(f"Could not start background scheduler: {e}")
+
     yield
 
     logger.info("🛑 Shutting down application...")
+    try:
+        from scheduled_tasks import stop_scheduler
+        stop_scheduler()
+    except Exception:
+        pass
     try:
         await close_db()
         logger.info("✅ Database connection closed")
@@ -135,7 +172,17 @@ async def lifespan(app: FastAPI):
 # ----------------------------
 # FastAPI app
 # ----------------------------
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(RateLimitExceeded)
@@ -191,6 +238,18 @@ app.include_router(admin_router, prefix="", dependencies=[Depends(admin_router_g
 app.include_router(auth_router, prefix="")  # public by design: see app/api/auth.py
 # Chat history belongs to one signed-in user; every route filters on that user.
 app.include_router(chat_router, prefix="", dependencies=[Depends(require_user)])
+# Slug-based chat URL system
+from app.routes.chats import router as chats_router, query_api_router
+app.include_router(chats_router)
+app.include_router(query_api_router)
+# Blog: public marketing content, read-only — no guard by design, see
+# app/routes/blogs.py. Must stay registered before the SPA catch-all below.
+from app.routes.blogs import router as blogs_router
+app.include_router(blogs_router)
+# Authoring the same articles. Separate router so the public one stays
+# read-only, and guarded like the rest of /api/admin.
+from app.routes.admin_blogs import router as admin_blogs_router
+app.include_router(admin_blogs_router, dependencies=[Depends(admin_router_guard)])
 # Payments: the two account routes carry their own require_user dependency,
 # because POST /api/payments/webhook must stay public — Stripe is not a
 # signed-in user, and its signature is what authenticates that call.

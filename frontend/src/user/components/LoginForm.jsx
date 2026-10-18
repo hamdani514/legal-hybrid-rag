@@ -19,6 +19,8 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
   const [deactivatedEmail, setDeactivatedEmail] = useState('');
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const navigate = useNavigate();
@@ -30,6 +32,7 @@ const LoginForm = () => {
     e.preventDefault();
     setErrorMsg('');
     setIsDeactivated(false);
+    setIsUnverified(false);
     setLoading(true);
 
     if (!email.trim() || !password) {
@@ -61,10 +64,17 @@ const LoginForm = () => {
 
         if (isDeact) {
           setIsDeactivated(true);
+          setIsUnverified(false);
           setDeactivatedEmail(err.email || email.trim());
+          setErrorMsg('');
+        } else if (err.is_unverified || err.detail?.toLowerCase().includes('not verified')) {
+          setIsDeactivated(false);
+          setIsUnverified(true);
+          setUnverifiedEmail(err.email || email.trim());
           setErrorMsg('');
         } else {
           setIsDeactivated(false);
+          setIsUnverified(false);
           setErrorMsg(err.detail || 'Invalid Email or Password.');
         }
       }
@@ -202,6 +212,31 @@ const LoginForm = () => {
                     <span>Yes, Reactivate My Account</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Unverified Prompt Banner */}
+      {isUnverified && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-5 mb-5 shadow-sm">
+          <div className="flex items-start gap-3.5">
+            <span className="material-symbols-outlined text-amber-600 text-2xl mt-0.5">mark_email_unread</span>
+            <div className="flex-1">
+              <h4 className="font-headline font-bold text-sm text-[#0D1C32] mb-1">
+                Email Verification Required
+              </h4>
+              <p className="font-body text-xs text-[#585F6A] leading-relaxed mb-3">
+                Your account registration is not verified yet. A 6-digit verification code was dispatched to your email.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/verify-otp', { state: { email: unverifiedEmail, flow: 'signup' } })}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#0D1C32] text-[#E9C176] font-body text-xs font-bold hover:bg-[#172D4D] transition-all shadow-sm active:translate-y-0 hover:-translate-y-0.5"
+              >
+                <span className="material-symbols-outlined text-sm">verified_user</span>
+                <span>Enter 6-Digit Code →</span>
               </button>
             </div>
           </div>

@@ -117,6 +117,28 @@ const AdminSidebar = ({ activeRoute, currentAdmin }) => {
             </li>
           )}
 
+          {/* Blog articles — same permission as Cases: both are content. */}
+          {canAccessCases && (
+            <li>
+              <Link
+                to="/admin/blogs"
+                className={`flex items-center gap-4 w-full px-8 py-4 transition-all duration-200 ${
+                  activeRoute === 'blogs'
+                    ? 'bg-brand-500/12 text-brand-300 font-semibold shadow-[inset_3px_0_0_0_#0085ff]'
+                    : 'text-ash-400 hover:bg-white/[0.06] hover:text-white'
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '18px', color: activeRoute === 'blogs' ? '#0085FF' : '#9ca3af' }}
+                >
+                  article
+                </span>
+                <span className="font-prose text-sm tracking-[0.35px]">Blog Articles</span>
+              </Link>
+            </li>
+          )}
+
           {/* Support */}
           {canAccessSupport && (
             <li>

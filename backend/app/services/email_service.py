@@ -196,6 +196,49 @@ async def send_otp_email(user_name: str, user_email: str, otp: str) -> bool:
     return await send_mail(user_email, subject, html_body)
 
 
+async def send_signup_otp_email(user_name: str, user_email: str, otp: str) -> bool:
+    safe_name = html.escape(user_name or "Counselor")
+    subject = "Verify Your Email - 6-Digit Registration Code"
+
+    content_html = f"""
+        <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-top: 0;">
+            Welcome to VerdictAI, <strong>{safe_name}</strong>!
+        </p>
+        <p style="color: #334155; font-size: 15px; line-height: 1.6;">
+            Thank you for creating an account. To complete your registration and activate your legal research workspace, please enter this 6-digit verification code:
+        </p>
+
+        <!-- 6-Digit OTP Box -->
+        <div style="text-align: center; margin: 28px 0;">
+            <div style="display: inline-block; background-color: #0D1C32; color: #ffffff; font-size: 36px; font-weight: 800; letter-spacing: 12px; padding: 18px 36px; border-radius: 12px; border: 2px solid #C5A880; box-shadow: 0 4px 12px rgba(13, 28, 50, 0.25);">
+                {otp}
+            </div>
+        </div>
+
+        <!-- 1-Minute Expiry Warning Banner -->
+        <div style="background-color: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 8px; padding: 14px 18px; margin: 24px 0;">
+            <div style="font-size: 13px; font-weight: 700; color: #991B1B; margin-bottom: 2px; display: flex; align-items: center;">
+                ⏱️ Security Notice: 1-Minute Expiration
+            </div>
+            <p style="margin: 0; font-size: 13px; color: #B91C1C; line-height: 1.5;">
+                This registration code expires in exactly <strong>60 seconds (1 minute)</strong>. Please enter it immediately on the verification screen to activate your account.
+            </p>
+        </div>
+
+        <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 0;">
+            If you did not initiate this registration, please disregard this email. No account will be created without verification.
+        </p>
+    """
+
+    html_body = _email_container(
+        title="Email Verification Required",
+        subtitle="Complete Your Registration",
+        content_html=content_html,
+        footer_note="Never share your verification code with anyone. Our support team will never ask for your OTP."
+    )
+    return await send_mail(user_email, subject, html_body)
+
+
 async def send_password_changed_email(user_name: str, user_email: str) -> bool:
     safe_name = html.escape(user_name or "Counselor")
     subject = "Security Notice: Your Password Has Been Updated"

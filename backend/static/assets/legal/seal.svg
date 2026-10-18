@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" fill="none" role="img" aria-label="Verdict AI verification seal">
+  <circle cx="120" cy="120" r="112" stroke="#E9C176" stroke-opacity=".55" stroke-width="2"/>
+  <circle cx="120" cy="120" r="100" stroke="#E9C176" stroke-opacity=".28" stroke-width="1"/>
+  <circle cx="120" cy="120" r="74" stroke="#E9C176" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="4 7"/>
+  <g stroke="#E9C176" stroke-opacity=".45" stroke-width="2" stroke-linecap="round">
+    <path d="M120 8v14M120 218v14M8 120h14M218 120h14"/>
+    <path d="M41 41l10 10M189 189l10 10M199 41l-10 10M51 189l-10 10"/>
+  </g>
+  <g stroke="#E9C176" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 84v66"/><circle cx="120" cy="80" r="5" fill="#E9C176" stroke="none"/>
+    <path d="M84 98h72"/><path d="M84 98l-13 28h26z"/><path d="M156 98l13 28h-26z"/>
+    <path d="M71 126a13 13 0 0 0 26 0"/><path d="M143 126a13 13 0 0 0 26 0"/>
+    <path d="M104 150h32"/><path d="M96 162h48"/>
+  </g>
+</svg>

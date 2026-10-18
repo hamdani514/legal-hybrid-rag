@@ -114,3 +114,49 @@ export async function startCheckout() {
   window.location.assign(data.url);
   return { ok: true };
 }
+
+/**
+ * Cancel active subscription at period end.
+ */
+export async function cancelSubscription() {
+  const id = currentUserId();
+  if (!id) return { ok: false, message: 'Please sign in first.' };
+
+  try {
+    const res = await apiFetch('/api/payments/cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: id }),
+    });
+    const data = await readJson(res);
+    if (!res.ok) {
+      return { ok: false, message: data?.detail || 'Could not cancel subscription.' };
+    }
+    return { ok: true, data, message: data?.message || 'Subscription cancelled.' };
+  } catch (err) {
+    return { ok: false, message: 'Network error communicating with payment service.' };
+  }
+}
+
+/**
+ * Reactivate a subscription that was scheduled for cancellation.
+ */
+export async function reactivateSubscription() {
+  const id = currentUserId();
+  if (!id) return { ok: false, message: 'Please sign in first.' };
+
+  try {
+    const res = await apiFetch('/api/payments/reactivate-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: id }),
+    });
+    const data = await readJson(res);
+    if (!res.ok) {
+      return { ok: false, message: data?.detail || 'Could not reactivate subscription.' };
+    }
+    return { ok: true, data, message: data?.message || 'Subscription reactivated.' };
+  } catch (err) {
+    return { ok: false, message: 'Network error communicating with payment service.' };
+  }
+}

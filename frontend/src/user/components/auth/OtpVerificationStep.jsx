@@ -7,9 +7,11 @@ import { apiFetch } from '../../../lib/api';
  */
 const OtpVerificationStep = ({
   email,
+  flow = 'reset',
   onVerified,
   onChangeEmail,
 }) => {
+  const isSignup = flow === 'signup';
   const OTP_LENGTH = 6;
   const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(''));
   const [errorMsg, setErrorMsg] = useState('');
@@ -102,7 +104,8 @@ const OtpVerificationStep = ({
     setErrorMsg('');
     setInfoMsg('');
     try {
-      const res = await apiFetch('/api/auth/forgot-password', {
+      const endpoint = isSignup ? '/api/auth/resend-signup-otp' : '/api/auth/forgot-password';
+      const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -114,7 +117,7 @@ const OtpVerificationStep = ({
       }
       setCountdown(60);
       setCanResend(false);
-      setInfoMsg(`A fresh verification code has been dispatched to ${email || 'your email'}.`);
+      setInfoMsg(data.message || `A fresh verification code has been dispatched to ${email || 'your email'}.`);
       inputRefs.current[0]?.focus();
     } catch (err) {
       console.error('Resend OTP error:', err);
@@ -128,30 +131,48 @@ const OtpVerificationStep = ({
     const enteredCode = otp.join('');
 
     if (enteredCode.length < OTP_LENGTH) {
-      setErrorMsg(`Please enter the complete ${OTP_LENGTH}-digit authorization code.`);
+      setErrorMsg(`Please enter the complete ${OTP_LENGTH}-digit verification code.`);
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await apiFetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: enteredCode }),
-      });
+      if (isSignup) {
+        const res = await apiFetch('/api/auth/verify-signup-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp: enteredCode }),
+        });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data.detail || data.message || 'Invalid or expired verification code.');
+        const data = await res.json();
+        if (!res.ok) {
+          setErrorMsg(data.detail || data.message || 'Invalid or expired verification code.');
+          setLoading(false);
+          return;
+        }
+
         setLoading(false);
-        return;
-      }
+        onVerified(enteredCode, data);
+      } else {
+        const res = await apiFetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp: enteredCode }),
+        });
 
-      sessionStorage.setItem('resetEmail', email);
-      sessionStorage.setItem('resetOtp', enteredCode);
-      setLoading(false);
-      onVerified(enteredCode);
+        const data = await res.json();
+        if (!res.ok) {
+          setErrorMsg(data.detail || data.message || 'Invalid or expired verification code.');
+          setLoading(false);
+          return;
+        }
+
+        sessionStorage.setItem('resetEmail', email);
+        sessionStorage.setItem('resetOtp', enteredCode);
+        setLoading(false);
+        onVerified(enteredCode);
+      }
     } catch (err) {
       console.error('Verify OTP error:', err);
       setErrorMsg('Failed to communicate with authentication server.');
@@ -174,14 +195,14 @@ const OtpVerificationStep = ({
             2
           </span>
           <span className="font-prose text-xs font-semibold uppercase tracking-[1.4px] text-brand-700">
-            Step 2 of 3 · Identity Verification
+            {isSignup ? 'Step 2 of 3 · Email Verification' : 'Step 2 of 3 · Identity Verification'}
           </span>
         </div>
         <h1 className="font-display font-bold tracking-[-0.025em] text-[28px] sm:text-[32px] leading-9 text-ash-900">
-          Enter Authorization Code
+          {isSignup ? 'Verify Your Email Address' : 'Enter Authorization Code'}
         </h1>
         <div className="flex flex-wrap items-center gap-1 font-prose text-sm leading-5 text-ash-600">
-          <span>Code sent to</span>
+          <span>{isSignup ? 'Enter the 6-digit code sent to' : 'Code sent to'}</span>
           <strong className="text-ash-900 font-semibold">{email || 'your email address'}</strong>
           {onChangeEmail && (
             <button
@@ -230,22 +251,30 @@ const OtpVerificationStep = ({
           ))}
         </div>
 
-        {/* Resend Timer section */}
-        <div className="flex items-center justify-between font-prose text-xs text-ash-500 pt-1">
-          <span>Didn't receive the OTP?</span>
+        {/* Resend & Expiry Timer section */}
+        <div className="flex items-center justify-between font-prose text-xs pt-1">
           {canResend ? (
-            <button
-              type="button"
-              onClick={handleResend}
-              className="font-bold text-ash-900 hover:text-brand-700 underline decoration-brand-500 transition-colors"
-            >
-              Resend OTP Code
-            </button>
+            <div className="flex items-center justify-between w-full">
+              <span className="text-amber-700 font-medium flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">schedule</span>
+                Code expired (1-min limit)
+              </span>
+              <button
+                type="button"
+                onClick={handleResend}
+                className="font-bold text-ash-900 hover:text-brand-700 underline decoration-brand-500 transition-colors ml-auto"
+              >
+                Resend OTP Code
+              </button>
+            </div>
           ) : (
-            <span className="text-ash-500 flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs">timer</span>
-              Resend in {formatTime(countdown)}
-            </span>
+            <div className="flex items-center justify-between w-full text-ash-500">
+              <span>Security validity:</span>
+              <span className="text-amber-800 bg-amber-50/80 px-2.5 py-1 rounded-full border border-amber-200 font-medium flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">timer</span>
+                Expires in {formatTime(countdown)}
+              </span>
+            </div>
           )}
         </div>
 
@@ -261,7 +290,7 @@ const OtpVerificationStep = ({
               Authenticating Code...
             </>
           ) : (
-            'Verify & Continue'
+            isSignup ? 'Verify & Create Account' : 'Verify & Continue'
           )}
         </button>
       </form>
@@ -275,7 +304,7 @@ const OtpVerificationStep = ({
             className="font-prose text-xs font-semibold uppercase tracking-[1.2px] text-ash-500 hover:text-ash-900 transition-colors flex items-center justify-center gap-1 mx-auto"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
-            Back to Email Step
+            {isSignup ? 'Back to Registration' : 'Back to Email Step'}
           </button>
         </div>
       )}

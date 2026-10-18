@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Scales of justice">
+  <path d="M100 26v138"/>
+  <circle cx="100" cy="20" r="7" fill="currentColor" stroke="none"/>
+  <path d="M30 52h140"/>
+  <path d="M30 52 8 106h44z"/>
+  <path d="M170 52l22 54h-44z"/>
+  <path d="M8 106a22 22 0 0 0 44 0"/>
+  <path d="M148 106a22 22 0 0 0 44 0"/>
+  <path d="M30 52v10M170 52v10"/>
+  <path d="M70 164h60"/>
+  <path d="M60 178h80"/>
+  <path d="M70 164l-10 14M130 164l10 14"/>
+</svg>

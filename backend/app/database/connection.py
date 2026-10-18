@@ -2,6 +2,10 @@ from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
+# Motor + Beanie compatibility patch: forward append_metadata to delegate
+if not hasattr(AsyncIOMotorClient, "append_metadata"):
+    AsyncIOMotorClient.append_metadata = lambda self, *a, **kw: getattr(self.delegate, 'append_metadata', lambda *x, **y: None)(*a, **kw)
+
 from app.config import settings
 
 

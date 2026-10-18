@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch, clearToken } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
-import { startCheckout, paymentStatus } from '../lib/payments';
+import { startCheckout, paymentStatus, cancelSubscription, reactivateSubscription } from '../lib/payments';
 import DeactivateModal from '../components/DeactivateModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import SiteNav from '../components/bound/SiteNav';
@@ -21,6 +21,21 @@ const SettingsPage = () => {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saveError, setSaveError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Subscription status & rate limiting states
+  const [subStatus, setSubStatus] = useState({
+    plan: 'free',
+    cancelAtPeriodEnd: false,
+    subscriptionEndsAt: null,
+    cardLast4: null,
+    cardBrand: null,
+    dailyQueriesUsed: 0,
+    dailyQueriesLimit: 1,
+    autoRenew: true,
+  });
+  const [cancellingSub, setCancellingSub] = useState(false);
+  const [reactivatingSub, setReactivatingSub] = useState(false);
+  const [subFeedback, setSubFeedback] = useState({ type: '', message: '' });
 
   // Modals
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
@@ -100,7 +115,25 @@ const SettingsPage = () => {
       }
     };
 
+    const fetchSubStatus = async () => {
+      try {
+        const data = await paymentStatus();
+        if (data && isMounted) {
+          setSubStatus(data);
+          if (data.plan) {
+            setProfile((prev) => ({
+              ...prev,
+              plan: data.plan.charAt(0).toUpperCase() + data.plan.slice(1),
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching subscription status:', err);
+      }
+    };
+
     fetchProfileData();
+    fetchSubStatus();
 
     return () => {
       isMounted = false;
@@ -268,6 +301,68 @@ const SettingsPage = () => {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    const endsFormatted = subStatus.subscriptionEndsAt
+      ? formatDate(subStatus.subscriptionEndsAt)
+      : 'the end of your current billing period';
+
+    if (
+      !window.confirm(
+        `Are you sure you want to cancel your Standard subscription?\n\nYou will keep full Standard access (20 queries/day) until ${endsFormatted}.\nAfter that, your account will downgrade to Free (1 query/day), and your card will be automatically detached.`
+      )
+    ) {
+      return;
+    }
+
+    setCancellingSub(true);
+    setSubFeedback({ type: '', message: '' });
+    try {
+      const res = await cancelSubscription();
+      if (res.ok) {
+        setSubFeedback({
+          type: 'success',
+          message: res.message || 'Subscription cancelled. Access remains active until period end.',
+        });
+        const updated = await paymentStatus();
+        if (updated) setSubStatus(updated);
+      } else {
+        setSubFeedback({
+          type: 'error',
+          message: res.message || 'Could not cancel subscription.',
+        });
+      }
+    } catch (err) {
+      setSubFeedback({ type: 'error', message: 'Failed to communicate with payment server.' });
+    } finally {
+      setCancellingSub(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    setReactivatingSub(true);
+    setSubFeedback({ type: '', message: '' });
+    try {
+      const res = await reactivateSubscription();
+      if (res.ok) {
+        setSubFeedback({
+          type: 'success',
+          message: res.message || 'Subscription reactivated! Auto-renewal has been restored.',
+        });
+        const updated = await paymentStatus();
+        if (updated) setSubStatus(updated);
+      } else {
+        setSubFeedback({
+          type: 'error',
+          message: res.message || 'Could not reactivate subscription.',
+        });
+      }
+    } catch (err) {
+      setSubFeedback({ type: 'error', message: 'Failed to communicate with payment server.' });
+    } finally {
+      setReactivatingSub(false);
+    }
+  };
+
   const handleLogout = () => {
     clearToken();
     try {
@@ -292,7 +387,7 @@ const SettingsPage = () => {
     }
   };
 
-  const isPaid = (profile.plan || '').toLowerCase() === 'standard' || (profile.plan || '').toLowerCase() === 'advocate';
+  const isPaid = (subStatus.plan || profile.plan || '').toLowerCase() === 'standard' || (profile.plan || '').toLowerCase() === 'advocate';
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-ash-900 flex flex-col font-ui selection:bg-brand-500 selection:text-white">
@@ -640,6 +735,67 @@ const SettingsPage = () => {
         {/* SECTION 2: SUBSCRIPTION & HISTORY */}
         {activeSection === 'subscription' && (
           <div className="flex flex-col gap-8 animate-[fadeIn_0.2s_ease-out]">
+            {/* Feedback alert banner */}
+            {subFeedback.message && (
+              <div
+                className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm font-prose ${
+                  subFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px]">
+                    {subFeedback.type === 'success' ? 'check_circle' : 'error'}
+                  </span>
+                  <span>{subFeedback.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubFeedback({ type: '', message: '' })}
+                  className="text-ash-500 hover:text-ash-800"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+            )}
+
+            {/* Scheduled Cancellation Alert Banner */}
+            {isPaid && subStatus.cancelAtPeriodEnd && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <span className="material-symbols-outlined text-amber-700 text-[28px] shrink-0 mt-0.5">
+                    warning
+                  </span>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-amber-950">
+                      Subscription Scheduled to Cancel
+                    </h3>
+                    <p className="font-prose text-xs text-amber-900 mt-1 leading-relaxed">
+                      Your access remains fully active until{' '}
+                      <span className="font-bold underline">
+                        {formatDate(subStatus.subscriptionEndsAt)}
+                      </span>
+                      . On that date, your plan will downgrade to Free (1 query/day), and your card{' '}
+                      {subStatus.cardLast4 ? `(•••• ${subStatus.cardLast4})` : ''} will be permanently detached.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleReactivateSubscription}
+                  disabled={reactivatingSub}
+                  className="shrink-0 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-ui text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {reactivatingSub && (
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  <span>Reactivate Subscription</span>
+                </button>
+              </div>
+            )}
+
             {/* Active Subscription Overview Card */}
             <div className="bg-white rounded-3xl p-8 border border-ash-200/80 shadow-sm flex flex-col gap-6">
               <div className="border-b border-ash-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -656,11 +812,17 @@ const SettingsPage = () => {
                 <span
                   className={`self-start sm:self-auto px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                     isPaid
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      ? subStatus.cancelAtPeriodEnd
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-ash-100 text-ash-700 border border-ash-200'
                   }`}
                 >
-                  ● Active Status
+                  {isPaid
+                    ? subStatus.cancelAtPeriodEnd
+                      ? '● Canceling at Period End'
+                      : '● Active Standard'
+                    : '● Active Free Tier'}
                 </span>
               </div>
 
@@ -672,12 +834,12 @@ const SettingsPage = () => {
                       Current Tier
                     </span>
                     <h3 className="font-display text-2xl font-bold mt-1">
-                      {profile.plan || 'Free'} Plan
+                      {isPaid ? 'Standard' : 'Free'} Plan
                     </h3>
                     <p className="font-prose text-xs text-ash-300 mt-2 leading-relaxed">
                       {isPaid
-                        ? 'Full practitioner access with unlimited reasoning and comparative search.'
-                        : 'Essential moot and academic research with 25 monthly queries.'}
+                        ? 'Full practitioner access with 20 daily queries, comparative analysis, and priority queue.'
+                        : 'Essential moot and academic research with 1 daily query quota (resets midnight UTC).'}
                     </p>
                   </div>
 
@@ -691,16 +853,44 @@ const SettingsPage = () => {
                   </div>
                 </div>
 
-                {/* Quotas & Features */}
+                {/* Quotas & Rate Limits */}
                 <div className="md:col-span-2 rounded-2xl border border-ash-200 bg-ash-50/50 p-6 flex flex-col justify-between gap-6">
                   <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-ui font-bold text-xs uppercase tracking-wider text-ash-600">
+                        Daily Query Quota (24-Hour Reset)
+                      </h4>
+                      <span className="text-xs font-mono font-bold text-brand-700">
+                        {subStatus.dailyQueriesUsed} / {subStatus.dailyQueriesLimit} queries used today
+                      </span>
+                    </div>
+
+                    {/* Usage Progress Bar */}
+                    <div className="w-full bg-ash-200 rounded-full h-2.5 overflow-hidden mb-4">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-500 ${
+                          subStatus.dailyQueriesUsed >= subStatus.dailyQueriesLimit
+                            ? 'bg-rose-500'
+                            : subStatus.dailyQueriesUsed > 0
+                            ? 'bg-brand-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (subStatus.dailyQueriesUsed / Math.max(1, subStatus.dailyQueriesLimit)) * 100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+
                     <h4 className="font-ui font-bold text-xs uppercase tracking-wider text-ash-600 mb-3">
-                      Included Capabilities in your tier:
+                      Included Capabilities:
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-prose text-ash-700">
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>{isPaid ? 'Unlimited research queries' : '25 research queries monthly'}</span>
+                        <span>{isPaid ? '20 queries / day (Atomic limiter)' : '1 query / day (Atomic limiter)'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
@@ -725,26 +915,61 @@ const SettingsPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-ash-200/80 pt-4">
-                    <div className="text-xs text-ash-500">
-                      {profile.plan_activated_at
-                        ? `Activated on ${formatDate(profile.plan_activated_at)}`
-                        : `Account activated on ${formatDate(profile.created_at)}`}
+                  {/* Payment Card & Renewal Info */}
+                  <div className="border-t border-ash-200/80 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-1 text-xs text-ash-600">
+                      {subStatus.cardLast4 ? (
+                        <div className="flex items-center gap-2 font-medium text-ash-800">
+                          <span className="material-symbols-outlined text-[16px] text-brand-600">credit_card</span>
+                          <span>
+                            {subStatus.cardBrand ? subStatus.cardBrand.toUpperCase() : 'Card'} •••• {subStatus.cardLast4}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-ash-500">No payment card on file.</span>
+                      )}
+
+                      <div className="text-[11px] text-ash-500">
+                        {isPaid
+                          ? subStatus.cancelAtPeriodEnd
+                            ? `Card purges automatically on ${formatDate(subStatus.subscriptionEndsAt)}`
+                            : `Renews automatically on ${formatDate(subStatus.subscriptionEndsAt)}`
+                          : 'Zero commitments. Cancel or upgrade anytime.'}
+                      </div>
                     </div>
-                    {!isPaid ? (
-                      <button
-                        type="button"
-                        onClick={handleUpgradeToStandard}
-                        disabled={upgrading}
-                        className="grad-btn text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-glow hover:shadow-glow-lg transition-all"
-                      >
-                        {upgrading ? 'Connecting Stripe...' : 'Upgrade to Standard ($10/mo)'}
-                      </button>
-                    ) : (
-                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
-                        Active Paid Member
-                      </span>
-                    )}
+
+                    <div className="flex items-center gap-2">
+                      {!isPaid ? (
+                        <button
+                          type="button"
+                          onClick={handleUpgradeToStandard}
+                          disabled={upgrading}
+                          className="grad-btn text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-glow hover:shadow-glow-lg transition-all"
+                        >
+                          {upgrading ? 'Connecting Stripe...' : 'Upgrade to Standard ($10/mo)'}
+                        </button>
+                      ) : subStatus.cancelAtPeriodEnd ? (
+                        <button
+                          type="button"
+                          onClick={handleReactivateSubscription}
+                          disabled={reactivatingSub}
+                          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-ui text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                          <span>Reactivate</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleCancelSubscription}
+                          disabled={cancellingSub}
+                          className="px-4 py-2 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 font-ui text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">cancel</span>
+                          <span>{cancellingSub ? 'Cancelling...' : 'Cancel Subscription'}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
