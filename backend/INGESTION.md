@@ -56,7 +56,8 @@ python ingest_bulk.py --input "D:\path\to\pdfs" --allow-main-db --llm-concurrenc
   half-finished ones resume at the store that is missing. A file whose tree
   already exists is never parsed again.
 - Failed files are listed in the run's report. Retry them with `--retry-failed`.
-- Scanned PDFs go through OCR and are much slower (roughly 10-20 s per page).
+- Scanned PDFs go through OCR and are slower (about 4 s per page per core; see
+  "Scanned PDFs" below).
   Embedding is CPU work too, measured at 5-20 s per judgment depending on load.
 
 **3. Check, after every batch.**
@@ -128,6 +129,87 @@ case-card call is rate-limited, the judgment is still **searchable**. Use the
 
 Deleting through the admin panel removes the case from every store. See the
 warnings below.
+
+## Scanned PDFs
+
+Scanned judgments (a PDF that is only page images) go through the same chain as
+typed ones. Nothing extra is needed: triage, bulk ingest and admin upload detect
+them and OCR them. The OCR lives in `app/ingestion/ocr.py`.
+
+**Setup, once per machine.** Install Tesseract 5 (Windows: the UB-Mannheim
+installer, default path). The accurate English model, `tessdata_best`, goes in
+`backend/tessdata/eng.traineddata`:
+
+```
+curl -L -o tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/eng.traineddata
+```
+
+Without that file Tesseract's own (fast, less accurate) model is used and a
+warning is logged.
+
+**What happens to a scanned PDF**
+
+- Each scanned page is rendered at ~300 dpi and straightened: a tilt of up to
+  15 degrees is measured and corrected, and a page scanned sideways or upside
+  down is turned upright. It is then cleaned (scanner borders, binding shadow
+  and page-edge lines are painted out) and OCR'd. Typed pages keep their text
+  layer, so mixed files work.
+- A scan that carries the scanner's own OCR text (an invisible layer, often
+  garbled: "INIJIF SupIZEME COURT Or'") is treated as a scan and OCR'd afresh
+  when that layer does not show the court heading. Such files used to be read
+  as typed and refused as "not a judgment".
+- Lines Tesseract skips or garbles, typically the bold underlined court
+  heading and case-number line, are re-read one at a time.
+- Stamps, handwriting and margin marks are dropped: words are checked against
+  the archive's vocabulary (`app/ingestion/data/ocr_lexicon.json`, built from
+  the typed judgments) and Tesseract's confidence.
+- A few unambiguous misreads are repaired: a lost date dot (`7.122017`), the
+  Lahore registry letter read as 1 (`933-1/2013`), `No0.`.
+- Each judgment's OCR quality is saved on `documents.ocr`: pages OCR'd, mean
+  confidence, vocabulary rate (typed text scores ~0.99), low-quality pages.
+  Weak OCR also appears in `quality_issues`, so it shows on the admin Cases
+  page.
+
+**How accurate it is.** It was measured two ways. First, on typed judgment
+pages made to look photocopied, where the true text is known: 97.6% of words
+and 98.2% of characters are read correctly, as are 97% of dates, case numbers,
+section numbers and names. Most of the remaining "errors" are reading-order
+differences in the page header, and typos in the typed original. Second, on
+all 260 scanned judgments in `remaining judgement/scanned pdf` (2,375 pages):
+
+- 98.5% of OCR'd words are in the archive vocabulary (typed text: ~99%);
+- the court heading is read on 255 of 260 first pages, and the case number on
+  251 of 258;
+- all 260 pass validation as Supreme Court judgments;
+- 6 judgments have weak pages (27 pages in all, mostly the 1976 typewritten
+  appeal and two very faint ones); these are flagged in `quality_issues`.
+
+**Section parsing.** OCR text is laid out in paragraphs, as typed text is,
+because the section parser splits judgments at blank lines. On 40 typed
+judgments, each parsed once from its own text and once from OCR of its pages
+made to look photocopied, the parse-quality check passed for 33 typed and 37
+OCR parses (mean confidence 0.854 against 0.852), the Gemini fallback was needed
+for 3 of each, and the median share of each typed section's words that land in
+the same section of the OCR parse is 94-100% across the six sections.
+
+The old OCR read 94.1% of words and 87% of key tokens, and on the 1976 appeal
+it read the heading as "SUPREME COURT OF PAKIGPAN", which the validator rejects
+as "not a judgment".
+
+**The `not judgement document` folder (64 files).** 10 are tilted scans with a
+garbled scanner text layer: all 10 now pass and are ingested. 40 are Urdu
+judgments: refused, because OCR, vocabulary, parser and search are English
+only. 14 are typed English files whose first page is not the court heading
+(separate opinions and notes, e.g. a dissent that begins "Ayesha A. Malik, J.-
+I have read the opinion of the majority"): refused by the typed-PDF
+validation, which is unchanged.
+
+**Speed.** About 3.5 s per page on an idle core. All 260 scanned judgments took
+87 minutes with bulk ingest's default 12 OCR workers on this 8-core machine
+(~27 pages a minute). An admin upload OCRs up to 4 pages at once
+(`OCR_PAGE_WORKERS`).
+
+**Self-check:** `python -m app.ingestion.ocr_selfcheck`
 
 ## Older commands you no longer need for new judgments
 

@@ -7,12 +7,13 @@ functions therefore live here, away from the async driver, and the pool
 initializer keeps each worker light:
 
 * `easyocr` is replaced by a stub that imports the real package on first
-  attribute access. `app.ingestion.extractor` and `validator` import easyocr at
-  module level, which drags in torch: measured 391 MB RSS per worker with it,
-  129 MB without. Twelve OCR workers is the difference between ~4.7 GB and
-  ~1.5 GB. EasyOCR is only the fallback when Tesseract throws, so most workers
-  never pay for it; when one does, the stub loads the real module and
-  extractor's cached Reader takes over.
+  attribute access. easyocr drags in torch: measured 391 MB RSS per worker with
+  it, 129 MB without. Twelve OCR workers is the difference between ~4.7 GB and
+  ~1.5 GB. The extractor now imports it only inside its last-resort fallback
+  (Tesseract unable to run), so the stub is a guard against that regressing.
+* Each worker OCRs its pages one at a time (OCR_PAGE_WORKERS=1, one Tesseract
+  thread): the pool already runs one worker per core, and app.ingestion.ocr's
+  default of several page threads per document would oversubscribe the CPU.
 * loguru is turned down to WARNING in workers: detect_pdf_type / validator log
   one INFO line per file, which is noise across 3,000 files.
 
@@ -35,7 +36,9 @@ from pathlib import Path
 # The worker runs the initializer before it unpickles any task, so this wins.
 BOOTSTRAP_SRC = r"""
 def _bulk_bootstrap(log_level):
-    import importlib, sys, types
+    import importlib, os, sys, types
+    os.environ["OCR_PAGE_WORKERS"] = "1"
+    os.environ["OMP_THREAD_LIMIT"] = "1"
     if "easyocr" not in sys.modules:
         stub = types.ModuleType("easyocr")
         stub.__spec__ = None
@@ -162,6 +165,9 @@ def ocr_one(path: str, pdf_id: str, validate: bool = True) -> dict:
         text = extract(pdf_path=path, pdf_id=pdf_id, detected_type="scanned")
         out["extract_s"] = round(time.perf_counter() - t0, 3)
         out["chars"] = len(text)
+        from app.ingestion.extractor import ocr_summary
+
+        out["ocr"] = ocr_summary(pdf_id)
     except Exception as e:  # noqa: BLE001
         out["error"] = f"OCR extraction failed: {type(e).__name__}: {e}"
     return out

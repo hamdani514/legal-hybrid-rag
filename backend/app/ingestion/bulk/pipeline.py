@@ -76,10 +76,10 @@ def is_protected(db_name: str, protected: str = PROTECTED_DB) -> bool:
 def default_ocr_workers() -> int:
     """cpu_count - 4, capped by free RAM.
 
-    A worker is ~130 MB idle (easyocr deferred) and peaks around ~450 MB while
-    preprocessing a 300-DPI page (upscale + fastNlMeansDenoising on a
-    ~5000x7000 grayscale image). On a 16 GB machine that is already busy, the
-    CPU-based default alone can exhaust memory, so it is capped.
+    A worker is ~130 MB idle (easyocr deferred). app.ingestion.ocr works on a
+    ~2500x4100 grayscale page plus Tesseract's own process, well under the
+    450 MB per worker budgeted here; the cap is kept for a machine that is
+    already busy.
     """
     cpu = os.cpu_count() or 4
     n = max(1, cpu - 4)
@@ -282,7 +282,7 @@ class BulkIngester:
             self.results.append(r)
 
     async def _run_chain(self, pdf_id: str, e: dict, r: dict) -> None:
-        from app.ingestion.extractor import extract
+        from app.ingestion.extractor import extract, ocr_issues, ocr_summary
 
         jobs, docs = self.db.jobs, self.db.documents
         dtype = e.get("detected_type") or "text"
@@ -313,6 +313,10 @@ class BulkIngester:
             await jobs.update_one({"job_id": pdf_id}, {"$set": {
                 "status": "extracted", "char_count": len(text), "extracted_at": now(), "updated_at": now()}})
             await docs.update_one({"pdf_id": pdf_id}, {"$set": {"status": "extracted"}})
+            ocr = ocr_summary(pdf_id)
+            if ocr:
+                await docs.update_one({"pdf_id": pdf_id}, {"$set": {"ocr": ocr}})
+                r["ocr"] = ocr
 
             # 3. Parse, bounded + retried.
             r["stage"] = "parse"
@@ -324,7 +328,7 @@ class BulkIngester:
                 "parse_mode": final.get("parse_mode", ""),
                 "confidence": float(final.get("confidence_score", 0.0) or 0.0),
                 "quality_passed": bool(final.get("quality_passed", True)),
-                "quality_issues": final.get("quality_issues", []),
+                "quality_issues": final.get("quality_issues", []) + ocr_issues(ocr),
             }
             await jobs.update_one({"job_id": pdf_id}, {"$set": {
                 "status": "parsed", "parsed_at": now(), "updated_at": now(), **quality}})

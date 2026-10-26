@@ -67,6 +67,27 @@ class SearchResponse(BaseModel):
     notice: str = ""
     judgments: list[JudgmentResult]
     top_judgment_answer: str | None = None
+    # More judgments than these can be fetched with POST /query/more.
+    has_more: bool = False
+    latency_ms: int
+
+
+# The most judgments a search ever shows, first page and "more" pages together
+# (pipeline_v2.MAX_RESULTS).
+MAX_SHOWN = 100
+
+
+class MoreRequest(BaseModel):
+    """The next page of a search: the query as searched, and every judgment
+    already on screen for it."""
+    query: str = Field(min_length=3, max_length=MAX_QUERY_CHARS)
+    shown: list[str] = Field(default_factory=list, max_length=MAX_SHOWN)
+    top_k_sections: int = Field(default=3, ge=1, le=6)
+
+
+class MoreResponse(BaseModel):
+    judgments: list[JudgmentResult]
+    has_more: bool = False
     latency_ms: int
 
 

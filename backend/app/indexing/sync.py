@@ -65,7 +65,7 @@ DEFAULT_CONTEXTUAL_COLLECTION = "legal_embeddings_v3_ctx"
 
 # Local working copies of one judgment, under backend/uploads/.
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
-LOCAL_COPY_SUFFIXES = (".pdf", ".txt", "_sections.json", "_summary.md")
+LOCAL_COPY_SUFFIXES = (".pdf", ".txt", ".ocr.json", "_sections.json", "_summary.md")
 
 # documents.status values owned by the indexing stages (see module docstring).
 STATUS_INDEXING = "indexing"

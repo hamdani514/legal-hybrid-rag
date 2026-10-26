@@ -32,6 +32,17 @@ docker-compose.override.yml
 
 # Local / temporary files
 api.txt
+# Windows launchers for running the project on one machine
+/*.bat
+# Personal notes
+/issued cases list
+# Retrieval test reports (PDFs generated from the test runs)
+/retrieval_test_queries*.pdf
+# Triage manifests and run reports written by ingest_bulk.py
+backend/ingest_reports/
+# A stray sample PDF; setup_google_drive.py reads uploads/test_judgment.pdf
+backend/test_judgment.pdf
+*.log
 
 # Testing, utilities, and classifier files
 test_*.py

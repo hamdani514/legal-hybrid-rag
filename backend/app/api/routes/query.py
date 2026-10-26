@@ -30,6 +30,8 @@ from app.api.schemas import (
     CompareRequest,
     CompareResponse,
     JudgmentResult,
+    MoreRequest,
+    MoreResponse,
     SearchRequest,
     SearchResponse,
     SummarizeRequest,
@@ -37,7 +39,7 @@ from app.api.schemas import (
 )
 from app.retrieval.comparator import compare_judgments
 from app.retrieval.llm_responder import status_of
-from app.retrieval.orchestrator import answer_for_judgment, retrieve_and_answer, summarize_judgment
+from app.retrieval.orchestrator import answer_for_judgment, more_results, retrieve_and_answer, summarize_judgment
 from modules.payment.plan_guard import plan_guard, refund_query
 
 router = APIRouter()
@@ -99,6 +101,31 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
         notice=result.get("notice", ""),
         judgments=[JudgmentResult(**j) for j in result["judgments"]],
         top_judgment_answer=result["top_judgment_answer"],
+        has_more=result.get("has_more", False),
+        latency_ms=int((time.perf_counter() - started) * 1000),
+    )
+
+
+@router.post("/more", response_model=MoreResponse)
+async def more(body: MoreRequest, request: Request) -> MoreResponse:
+    """The next page of a search's judgments ("More relevant cases").
+
+    Continues the search the user already ran, so it does not count against
+    the plan's daily search limit; it spends no Gemini quota either (every
+    result is "on_demand"). It is rate-limited per minute like a search,
+    because each page runs the cross-encoder.
+    """
+    started = time.perf_counter()
+    await _await_warmup(request)
+    try:
+        result = await more_results(body.query, body.shown, top_k_sections=body.top_k_sections)
+    except Exception as e:
+        logger.exception("Error in /query/more")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return MoreResponse(
+        judgments=[JudgmentResult(**j) for j in result["judgments"]],
+        has_more=result["has_more"],
         latency_ms=int((time.perf_counter() - started) * 1000),
     )
 

@@ -347,12 +347,15 @@ async def query_router_guard(request: Request) -> TokenPayload:
 # Per-user limits
 # ─────────────────────────────────────────────────────────────────────────────
 # Paths that each run a search and/or an LLM answer. All count towards the
-# per-minute window; all count towards the daily answer budget, because each
-# one spends shared Gemini quota (search answers its top case automatically).
+# per-minute window; all but /query/more count towards the daily answer budget,
+# because each one spends shared Gemini quota (search answers its top case
+# automatically). /query/more pages through a search already run: it uses the
+# CPU (the cross-encoder) but no Gemini call.
 SEARCH_PATHS = frozenset({
-    "/query/search", "/query/answer", "/query/compare", "/query/summarize", "/embeddings/search",
+    "/query/search", "/query/more", "/query/answer", "/query/compare", "/query/summarize",
+    "/embeddings/search",
 })
-ANSWER_PATHS = SEARCH_PATHS
+ANSWER_PATHS = SEARCH_PATHS - {"/query/more"}
 
 MINUTE = 60.0
 DAY = 86_400.0

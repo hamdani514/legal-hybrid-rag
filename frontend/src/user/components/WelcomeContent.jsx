@@ -24,6 +24,10 @@ import { chatPath, chatSlug, slugMatches } from '../lib/chatSlug';
 // a clear message instead of a validation error.
 const MAX_QUERY_CHARS = 4000;
 
+// The most judgments one search shows at first. Further pages of the same
+// size come from POST /query/more ("More relevant cases" in ResultsPanel).
+const PAGE_SIZE = 10;
+
 /** The `detail` of an error response, when it is a plain string. */
 const errorDetail = async (res) => {
   try {
@@ -284,7 +288,7 @@ const WelcomeContent = () => {
         },
         body: JSON.stringify({
           query: queryText,
-          top_k_judgments: 3,
+          top_k_judgments: PAGE_SIZE,
           top_k_sections: 3,
           mode: 'answer',
         }),
@@ -335,6 +339,9 @@ const WelcomeContent = () => {
         // to POST /query/answer for that result. Stored with the message, so
         // those buttons still work in a conversation reopened days later.
         query: queryText,
+        // More relevant judgments exist beyond this page: ResultsPanel offers
+        // "More relevant cases", which fetches them with this query.
+        hasMore: Boolean(data.has_more),
         latencyMs: data.latency_ms,
         // Set when a broad query was answered with a category browse.
         notice: data.notice || '',

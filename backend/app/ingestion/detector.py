@@ -4,6 +4,21 @@ import fitz
 from loguru import logger
 
 
+def _scan_with_unusable_text_layer(doc) -> bool:
+    """A scanned judgment that carries the scanner's own OCR text: the first pages are
+    full-page images and page 1's text layer does not even show the court heading
+    (e.g. "INIJIF SupIZEME COURT Or'"). Read as typed it was refused as not a
+    judgment; it is OCR'd instead. A scan whose text layer is good is unaffected."""
+    from app.ingestion.ocr import page_is_scan
+    from app.ingestion.validator import _court_markers
+
+    sample = range(min(3, len(doc)))
+    if not sample or sum(page_is_scan(doc[i]) for i in sample) * 2 <= len(sample):
+        return False
+    has_court, has_pakistan = _court_markers(doc[0].get_text() or "", False)
+    return not (has_court and has_pakistan)
+
+
 def detect_pdf_type(pdf_path: str) -> str:
     """
     Detect if PDF is typed (text-based) or scanned (image-based).
@@ -16,6 +31,9 @@ def detect_pdf_type(pdf_path: str) -> str:
     """
     try:
         with fitz.open(pdf_path) as doc:
+            if _scan_with_unusable_text_layer(doc):
+                logger.info("PDF detected as SCANNED (page images whose text layer lacks the court heading)")
+                return "scanned"
             sample_pages = min(3, len(doc))
             total_chars = 0
             word_count = 0

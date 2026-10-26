@@ -83,11 +83,32 @@ def _card_collection():
     return _existing_collection(collection_name())
 
 
+# Records per page when reading a whole collection. One get() of everything
+# fails past roughly 32,000 vectors ("too many SQL variables": SQLite's cap on
+# query parameters), which the chunk collection passes at about 2,500 judgments.
+GET_PAGE = 5000
+
+
+def _get_all(coll, **kwargs) -> dict:
+    """coll.get(**kwargs) for every record, read GET_PAGE at a time."""
+    ids: list = []
+    metadatas: list = []
+    offset = 0
+    while True:
+        got = coll.get(limit=GET_PAGE, offset=offset, **kwargs)
+        batch = got.get("ids") or []
+        ids.extend(batch)
+        metadatas.extend(got.get("metadatas") or [])
+        if len(batch) < GET_PAGE:
+            return {"ids": ids, "metadatas": metadatas}
+        offset += GET_PAGE
+
+
 def _chroma_by_file(coll, pdf_id: str | None) -> dict[str, int]:
     if coll is None:
         return {}
     got = coll.get(where={"file_id": pdf_id}, include=["metadatas"]) if pdf_id \
-        else coll.get(include=["metadatas"])
+        else _get_all(coll, include=["metadatas"])
     out: dict[str, int] = defaultdict(int)
     for m in got.get("metadatas") or []:
         out[(m or {}).get("file_id", "")] += 1
@@ -98,7 +119,7 @@ def _card_vectors(pdf_id: str | None) -> dict[str, dict]:
     coll = _card_collection()
     if coll is None:
         return {}
-    got = coll.get(ids=[pdf_id], include=["metadatas"]) if pdf_id else coll.get(include=["metadatas"])
+    got = coll.get(ids=[pdf_id], include=["metadatas"]) if pdf_id else _get_all(coll, include=["metadatas"])
     return {i: (m or {}) for i, m in zip(got.get("ids") or [], got.get("metadatas") or [])}
 
 

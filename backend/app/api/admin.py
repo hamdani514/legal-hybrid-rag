@@ -11,7 +11,7 @@ from loguru import logger
 
 from app.database import db
 from app.ingestion.detector import detect_pdf_type
-from app.ingestion.extractor import extract
+from app.ingestion.extractor import extract, ocr_issues, ocr_summary
 from app.ingestion.parser import parse_sections
 from app.vectorstore.chroma_store import chroma_store
 from app.services.email_service import send_contact_notification, send_contact_acknowledgement
@@ -85,7 +85,7 @@ def _queue() -> dict:
     return _queue_state
 
 
-def _remove_upload_files(pdf_id: str, suffixes=(".pdf", ".txt", "_sections.json", "_summary.md")) -> None:
+def _remove_upload_files(pdf_id: str, suffixes=(".pdf", ".txt", ".ocr.json", "_sections.json", "_summary.md")) -> None:
     for suffix in suffixes:
         f_path = UPLOADS_DIR / f"{pdf_id}{suffix}"
         if f_path.exists():
@@ -174,6 +174,9 @@ async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
             now = datetime.now(timezone.utc)
             await _job_set(pdf_id, status="extracted", char_count=len(text), extracted_at=now)
             await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "extracted"}})
+            ocr = ocr_summary(pdf_id)
+            if ocr:
+                await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"ocr": ocr}})
             logger.info(f"[{pdf_id}] Extraction completed (chars={len(text)})")
 
             if await is_cancelled():
@@ -202,7 +205,7 @@ async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
                 "parse_mode": final.get("parse_mode", ""),
                 "confidence": float(final.get("confidence_score", 0.0) or 0.0),
                 "quality_passed": bool(final.get("quality_passed", True)),
-                "quality_issues": final.get("quality_issues", []),
+                "quality_issues": final.get("quality_issues", []) + ocr_issues(ocr_summary(pdf_id)),
             }
             await _job_set(pdf_id, status="parsed", parsed_at=datetime.now(timezone.utc), **quality)
             await db.documents.update_one({"pdf_id": pdf_id}, {"$set": {"status": "parsed", **quality}})

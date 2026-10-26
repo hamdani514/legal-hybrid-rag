@@ -69,6 +69,7 @@ retrieve_v2 itself never raises for a well-formed string.
 import asyncio
 import sys
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -664,6 +665,225 @@ TOO_BROAD_MESSAGE = (
 CATEGORY_WINDOW = 30
 
 
+# ── Shared tail: root nodes and sections for the judgments shown ─────────────
+
+async def _roots() -> dict:
+    from app.retrieval.chroma_client import _root_nodes_by_judgment
+
+    try:
+        return await asyncio.to_thread(_root_nodes_by_judgment)
+    except Exception as e:
+        logger.warning(f"root node lookup failed: {e}")
+        return {}
+
+
+async def _sections(query_vector, ids: list[str], chunk_evidence: list, top_k_sections: int) -> dict:
+    """Each judgment's best sections; the evidence alone if the vector search fails."""
+    from app.retrieval.node_searcher import search_all_judgments, sections_from_candidates
+
+    try:
+        if query_vector is None:
+            raise RuntimeError("no query vector")
+        return await asyncio.to_thread(search_all_judgments, query_vector, ids, top_k_sections, chunk_evidence)
+    except Exception as e:
+        logger.warning(f"section search failed, using evidence only: {e}")
+        return sections_from_candidates(chunk_evidence, ids, top_k_sections)
+
+
+async def _judgment_texts(ids: list[str]) -> dict[str, list[str]]:
+    """{judgment_id: [node texts]}, for the category grounding test."""
+    from app.database import db
+
+    texts: dict[str, list[str]] = {jid: [] for jid in ids}
+    if ids:
+        async for node in db.database.nodes.find({"pdf_id": {"$in": ids}}, {"pdf_id": 1, "text": 1}):
+            texts.setdefault(node["pdf_id"], []).append(node.get("text") or "")
+    return texts
+
+
+def _ground(category: str, items: list[FusedJudgment], texts: dict[str, list[str]]) -> list[tuple]:
+    """(phrase count, position, item, phrases) for each item that is about the
+    category, most phrases first, fused order breaking ties."""
+    from app.retrieval import categories
+
+    grounded = []
+    for position, item in enumerate(items):
+        found = categories.matched_phrases(category, "\n".join(texts.get(item["judgment_id"], [])))
+        if found:
+            grounded.append((len(found), position, item, found))
+    grounded.sort(key=lambda g: (-g[0], g[1]))
+    return grounded
+
+
+# ── Paging: "More relevant cases" ────────────────────────────────────────────
+#
+# A search shows at most PAGE_SIZE judgments. The retrievers find many more
+# (a broad query like "NAB bail" fuses ~100 judgments), but only the first
+# V2_RERANK_JUDGMENTS are scored by the cross-encoder, because scoring is the
+# expensive step. Each "more" request scores the next slice of the same fused
+# list and returns the next PAGE_SIZE that pass — never more than MAX_RESULTS
+# in all. A judgment beyond the first page passes on the same rule as a
+# secondary result on the first page: pinned, or relevance >= the confident
+# cut (category browses: it literally contains a category phrase).
+#
+# The fused list, the scores and the vectors are kept per query in a small
+# in-process LRU, so a "more" request costs one cross-encoder slice, not a new
+# search. If the session was evicted (or the server restarted), the first page
+# is recomputed: same query, same index, same order.
+#
+# Scanning stops when a scored slice has no passing judgment in its last
+# TAIL_WINDOW positions: relevance has run out, and the button would only
+# return an empty page.
+
+PAGE_SIZE = 10
+MAX_RESULTS = 100
+SCAN_SLICE = 10       # judgments scored per cross-encoder call
+SCAN_BUDGET = 30      # most judgments one "more" request scores
+TAIL_WINDOW = 5
+SESSION_CACHE_SIZE = 64
+
+_sessions: OrderedDict[str, dict] = OrderedDict()
+
+
+def _session_key(raw_query: str) -> str:
+    return " ".join((raw_query or "").lower().split())
+
+
+def _save_session(raw_query: str, **fields) -> dict:
+    session = {"raw": raw_query, "lock": asyncio.Lock(), "scores": {}, "reasons": {}, "evidence": {}, **fields}
+    key = _session_key(raw_query)
+    _sessions[key] = session
+    _sessions.move_to_end(key)
+    while len(_sessions) > SESSION_CACHE_SIZE:
+        _sessions.popitem(last=False)
+    return session
+
+
+def _tail_pass(scanned: list[FusedJudgment], passing: set[str]) -> bool:
+    """Whether relevance reaches the end of a scored slice."""
+    return any(item["judgment_id"] in passing for item in scanned[-TAIL_WINDOW:])
+
+
+def _has_more(session: dict, shown: set[str]) -> bool:
+    if len(shown) >= MAX_RESULTS:
+        return False
+    if any(jid not in shown for jid in session["order"]):
+        return True
+    return bool(session["tail_pass"]) and session["scanned"] < len(session["fused"])
+
+
+async def _score_slice(session: dict, batch: list[FusedJudgment]) -> list[str]:
+    """The judgments of one fused slice that pass, in display order."""
+    if session["kind"] == "category":
+        grounded = _ground(session["category"], batch,
+                           await _judgment_texts([item["judgment_id"] for item in batch]))
+        for _, _, item, found in grounded:
+            session["reasons"][item["judgment_id"]] = "Mentions " + ", ".join(found[:5])
+            session["evidence"][item["judgment_id"]] = list(item.get("evidence") or [])
+        return [item["judgment_id"] for _, _, item, _ in grounded]
+
+    from app.retrieval import reranker
+
+    analysis = session["analysis"]
+    narrative = session["narrative"]
+    evidence = {}
+    if narrative:
+        evidence = await asyncio.to_thread(build_facet_evidence, batch, analysis, session["vectors"])
+        narrative = bool(evidence)
+    if not narrative:
+        evidence = await asyncio.to_thread(build_evidence, batch, analysis, session["query_vector"])
+    try:
+        if narrative:
+            judged = await asyncio.to_thread(rerank_facets, analysis, evidence)
+        else:
+            judged = await asyncio.to_thread(reranker.rerank_judgments, session["raw"].strip(), evidence)
+    except Exception as e:
+        logger.warning(f"cross-encoder failed on a 'more' slice: {e}")
+        return []   # fail closed, as the first page does
+    session["evidence"].update(evidence)
+    if judged is None:
+        if reranker.is_enabled():
+            return []   # the model is unavailable: fail closed
+        return [item["judgment_id"] for item in batch]   # reranking off: ungated, as the first page
+    cut = session["confident"][narrative]
+    passing = []
+    for item in batch:
+        jid = item["judgment_id"]
+        relevance = float(judged.get(jid, {}).get("relevance", 0.0))
+        session["scores"][jid] = relevance
+        if item.get("pinned") or relevance >= cut:
+            passing.append(jid)
+    return passing
+
+
+async def _next_page(session: dict, shown: set[str]) -> list[str]:
+    """The next judgments to show, scoring further slices as needed."""
+    size = min(PAGE_SIZE, MAX_RESULTS - len(shown))
+    if size <= 0:
+        return []
+    page = [jid for jid in session["order"] if jid not in shown][:size]
+    budget = SCAN_BUDGET
+    while (len(page) < size and budget > 0 and session["tail_pass"]
+           and session["scanned"] < len(session["fused"])):
+        batch = session["fused"][session["scanned"]: session["scanned"] + SCAN_SLICE]
+        passing = await _score_slice(session, batch)
+        session["scanned"] += len(batch)
+        budget -= len(batch)
+        known = set(session["order"])
+        session["order"] += [jid for jid in passing if jid not in known]
+        session["tail_pass"] = _tail_pass(batch, set(passing))
+        page += [jid for jid in passing if jid not in shown and jid not in page][: size - len(page)]
+    return page
+
+
+async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3) -> dict:
+    """The next page of judgments for a query whose first page was ``shown``.
+
+    Returns parent_results / stage2_results / candidates / reasons in
+    retrieve_v2's shapes, plus ``has_more``. Every judgment is labelled
+    "related": only the first page's top result is ever a "match".
+    """
+    raw_query = raw_query or ""
+    if opt("NORMALISE_SPELLING", True):
+        from app.retrieval.spelling import normalise
+        raw_query = normalise(raw_query)
+    shown_set = set(shown or [])
+    empty = {"parent_results": [], "stage2_results": {}, "candidates": [], "reasons": {}, "has_more": False}
+
+    session = _sessions.get(_session_key(raw_query))
+    if session is None:
+        first = await retrieve_v2(raw_query, PAGE_SIZE, top_k_sections)
+        session = _sessions.get(_session_key(raw_query))
+        if session is None or first.get("no_results"):
+            return empty
+    _sessions.move_to_end(_session_key(raw_query))
+
+    async with session["lock"]:
+        page = await _next_page(session, shown_set)
+    if not page:
+        return empty
+
+    roots = await _roots()
+    fused_items = {item["judgment_id"]: item for item in session["fused"]}
+    parent_results = [{
+        "judgment_id": jid,
+        "mongo_doc_id": roots.get(jid, {}).get("node_id", ""),
+        "heading": roots.get(jid, {}).get("heading", "") or fused_items.get(jid, {}).get("heading", ""),
+        "score": float(session["scores"].get(jid, 0.0)),
+        "confidence": "related",
+    } for jid in page]
+    candidates = [c for jid in page for c in session["evidence"].get(jid, [])]
+    stage2 = await _sections(session["query_vector"], page,
+                             [c for c in candidates if c.get("mongo_doc_id")], top_k_sections)
+    return {
+        "parent_results": parent_results,
+        "stage2_results": stage2,
+        "candidates": candidates,
+        "reasons": {jid: session["reasons"][jid] for jid in page if jid in session["reasons"]},
+        "has_more": _has_more(session, shown_set | set(page)),
+    }
+
+
 async def _browse_category(raw_query, category, analysis, timings, mark,
                            top_k_judgments, top_k_sections) -> dict:
     """List the judgments that are about one category, instead of answering.
@@ -679,10 +899,7 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
     queries. Every result is labelled "related", and the response carries a
     notice saying this is a browse, not an answer.
     """
-    from app.database import db
     from app.retrieval import categories
-    from app.retrieval.chroma_client import _root_nodes_by_judgment
-    from app.retrieval.node_searcher import search_all_judgments
     from app.retrieval.query_embedder import embed_query
 
     spec = categories.CATEGORIES[category]
@@ -692,21 +909,11 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
     browse["expansions"] = []
 
     lists = await run_retrievers(browse)
-    fused = fuse(lists, mode="rrf")[:CATEGORY_WINDOW]
+    fused = fuse(lists, mode="rrf")
+    window = fused[:CATEGORY_WINDOW]
     mark("category_retrieve")
 
-    ids = [item["judgment_id"] for item in fused]
-    texts: dict[str, list[str]] = {jid: [] for jid in ids}
-    if ids:
-        async for node in db.database.nodes.find({"pdf_id": {"$in": ids}}, {"pdf_id": 1, "text": 1}):
-            texts.setdefault(node["pdf_id"], []).append(node.get("text") or "")
-
-    grounded = []
-    for position, item in enumerate(fused):
-        found = categories.matched_phrases(category, "\n".join(texts.get(item["judgment_id"], [])))
-        if found:
-            grounded.append((len(found), position, item, found))
-    grounded.sort(key=lambda g: (-g[0], g[1]))
+    grounded = _ground(category, window, await _judgment_texts([item["judgment_id"] for item in window]))
     kept = grounded[:top_k_judgments]
     mark("category_ground")
 
@@ -718,7 +925,7 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
         )
         return out
 
-    roots = await asyncio.to_thread(_root_nodes_by_judgment)
+    roots = await _roots()
     parent_results = [{
         "judgment_id": item["judgment_id"],
         "mongo_doc_id": roots.get(item["judgment_id"], {}).get("node_id", ""),
@@ -731,15 +938,22 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
     candidates = [c for _, _, item, _ in kept for c in (item.get("evidence") or [])]
     try:
         vector = await asyncio.to_thread(embed_query, terms)
-        stage2 = await asyncio.to_thread(
-            search_all_judgments, vector, kept_ids, top_k_sections,
-            [c for c in candidates if c.get("mongo_doc_id")],
-        )
     except Exception as e:
-        logger.warning(f"category section search failed: {e}")
-        from app.retrieval.node_searcher import sections_from_candidates
-        stage2 = sections_from_candidates(candidates, kept_ids, top_k_sections)
+        logger.warning(f"category query embedding failed: {e}")
+        vector = None
+    stage2 = await _sections(vector, kept_ids, [c for c in candidates if c.get("mongo_doc_id")], top_k_sections)
     mark("sections")
+
+    # Every grounded judgment in the window is a "more" candidate; the
+    # session also scans past the window (see _next_page).
+    session = _save_session(
+        raw_query, kind="category", category=category, fused=fused,
+        order=[item["judgment_id"] for _, _, item, _ in grounded], scanned=len(window),
+        tail_pass=_tail_pass(window, {item["judgment_id"] for _, _, item, _ in grounded}),
+        query_vector=vector,
+        evidence={item["judgment_id"]: list(item.get("evidence") or []) for _, _, item, _ in grounded},
+        reasons={item["judgment_id"]: "Mentions " + ", ".join(found[:5]) for _, _, item, found in grounded},
+    )
 
     return {
         "analysis": analysis,
@@ -749,8 +963,8 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
         "reranked": False,
         "judge_used": False,
         # Shown under each case: why it counts as part of the category.
-        "reasons": {item["judgment_id"]: "Mentions " + ", ".join(found[:5])
-                    for _, _, item, found in kept},
+        "reasons": {jid: session["reasons"][jid] for jid in kept_ids},
+        "has_more": _has_more(session, set(kept_ids)),
         "no_results": False,
         "notice": (
             f"This is a broad query, so these are judgments that deal with "
@@ -963,19 +1177,27 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
             kept = _agreement_gate(rows, floor, gate_confident, lexical_min)
     else:
         kept = _agreement_gate(rows, floor, gate_confident, lexical_min)
+    passed = kept
     kept = kept[:top_k_judgments]
     if not kept:
         mark("abstain")
         return _empty(analysis, timings, reranked, judge_used, candidates)
 
-    from app.retrieval.chroma_client import _root_nodes_by_judgment
-    from app.retrieval.node_searcher import search_all_judgments
+    # Keep what a "more" request needs to score the rest of the fused list.
+    # A failed cross-encoder shows only case-number hits and pages nothing.
+    session = _save_session(
+        raw_query, kind="search", fused=fused, order=[r["judgment_id"] for r in passed],
+        scanned=len(window),
+        tail_pass=(not rerank_failed) and _tail_pass(window, {r["judgment_id"] for r in passed}),
+        analysis=analysis, vectors=vectors, query_vector=query_vector, narrative=narrative,
+        confident={False: float(opt("V2_CONFIDENT_RELEVANCE", 0.25)),
+                   True: float(opt("V2_NARRATIVE_CONFIDENT_RELEVANCE", opt("V2_CONFIDENT_RELEVANCE", 0.25)))},
+    )
+    session["scores"].update({r["judgment_id"]: r["relevance"] for r in rows})
+    session["evidence"].update(evidence)
+    session["reasons"].update(reasons)
 
-    try:
-        roots = await asyncio.to_thread(_root_nodes_by_judgment)
-    except Exception as e:
-        logger.warning(f"root node lookup failed: {e}")
-        roots = {}
+    roots = await _roots()
     confident = gate_confident
     # Confidence policy for case descriptions (owner's choice): without the LLM
     # judge the top result of a narrative is at most NARRATIVE_MAX_CONFIDENCE
@@ -1010,15 +1232,7 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
     } for i, r in enumerate(kept)]
 
     ids = [r["judgment_id"] for r in kept]
-    chunk_evidence = [c for c in candidates if c.get("mongo_doc_id")]
-    try:
-        if query_vector is None:
-            raise RuntimeError("no query vector")
-        stage2 = await asyncio.to_thread(search_all_judgments, query_vector, ids, top_k_sections, chunk_evidence)
-    except Exception as e:
-        logger.warning(f"section search failed, using evidence only: {e}")
-        from app.retrieval.node_searcher import sections_from_candidates
-        stage2 = sections_from_candidates(chunk_evidence, ids, top_k_sections)
+    stage2 = await _sections(query_vector, ids, [c for c in candidates if c.get("mongo_doc_id")], top_k_sections)
     mark("sections")
 
     return {
@@ -1029,6 +1243,8 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
         "reranked": reranked,
         "judge_used": judge_used,
         "reasons": {jid: reasons[jid] for jid in ids if jid in reasons},
+        # More judgments than this page can be fetched with more_v2.
+        "has_more": _has_more(session, set(ids)),
         "no_results": False,
         "timings_ms": {k: round(v, 1) for k, v in timings.items()},
     }
@@ -1039,7 +1255,7 @@ if __name__ == "__main__":
 
     logger.remove()
     logger.add(sys.stderr, level="WARNING")
-    CA_5Q = "5a14105d-8a45-413c-8c93-26d6301cf028"
+    CA_5Q = "458aa2a8-8c37-4741-b72d-5499df5cf1ab"   # Civil Appeal No. 5-Q of 2014 (id since re-ingestion)
 
     async def main() -> None:
         await connect_db()  # same loop as the retrievers (motor)
@@ -1048,7 +1264,7 @@ if __name__ == "__main__":
 
         out = await retrieve_v2("general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad", 3, 2)
         assert set(out) == {"analysis", "parent_results", "stage2_results", "candidates", "reranked",
-                            "judge_used", "reasons", "no_results", "timings_ms"}, set(out)
+                            "judge_used", "reasons", "has_more", "no_results", "timings_ms"}, set(out)
         assert not out["no_results"] and out["parent_results"][0]["judgment_id"] == CA_5Q, out["parent_results"]
         top = out["parent_results"][0]
         assert top["mongo_doc_id"] and top["heading"] and 0.0 <= top["score"] <= 1.0
@@ -1064,7 +1280,23 @@ if __name__ == "__main__":
 
         out = await retrieve_v2("how do I make chicken biryani at home", 3, 2)
         assert out["no_results"] and out["parent_results"] == [] and out["stage2_results"] == {}
-        print("OK: out-of-corpus query abstains")
+        assert (await more_v2("how do I make chicken biryani at home", []))["parent_results"] == []
+        print("OK: out-of-corpus query abstains, and has nothing more")
+
+        # Paging: a broad query with many matching judgments pages past the first 10.
+        broad = "NAB case on NAB bail NAB ordinance"
+        out = await retrieve_v2(broad, PAGE_SIZE, 2)
+        first = [p["judgment_id"] for p in out["parent_results"]]
+        assert len(first) == PAGE_SIZE and out["has_more"], (len(first), out["has_more"])
+        more = await more_v2(broad, first, 2)
+        second = [p["judgment_id"] for p in more["parent_results"]]
+        assert second and not set(second) & set(first), (first, second)
+        assert all(p["confidence"] == "related" for p in more["parent_results"])
+        assert all(more["stage2_results"].get(j) for j in second)
+        _sessions.clear()   # evicted session: recomputed, same continuation
+        again = await more_v2(broad, first, 2)
+        assert [p["judgment_id"] for p in again["parent_results"]] == second
+        print(f"OK: paging -> {len(first)} + {len(second)} judgments, has_more={more['has_more']}")
 
         # A retriever raising inside gather must not kill the search.
         class Boom:

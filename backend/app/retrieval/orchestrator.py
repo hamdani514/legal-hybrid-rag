@@ -310,6 +310,8 @@ async def retrieve_and_answer(
     reranked = False
     parent_results: list = []
     query_vector = None
+    # Whether more_results can fetch further judgments (v2 only).
+    has_more = False
 
     if pipeline == "v2":
         try:
@@ -323,6 +325,7 @@ async def retrieve_and_answer(
             parent_results = v2.get("parent_results") or []
             stage2_results = v2.get("stage2_results") or {}
             reasons = v2.get("reasons") or {}
+            has_more = bool(v2.get("has_more"))
             v2_message = v2.get("message") or ""
             notice = v2.get("notice") or ""
             query_vector = v2.get("query_vector")  # only for the full (non-slim) record
@@ -411,23 +414,9 @@ async def retrieve_and_answer(
         )
         t = mark("section_search", t)
 
-    # STAGE 6 — expand context (judgments concurrently), alongside the
-    # documents/cards lookups the response needs anyway.
-    expanded, docs_meta, cards = await asyncio.gather(
-        expand_all_judgments(stage2_results),
-        _documents_meta_for(judgment_ids),
-        _cards_for(judgment_ids),
-    )
-    t = mark("expand", t)
-
-    # STAGE 7 — assemble context (tiktoken counting: CPU, so in a thread)
-    assembled = await asyncio.to_thread(assemble_all_judgments, expanded)
+    # STAGES 6-7 — expand and assemble each judgment's context.
+    expanded, assembled, docs_meta, cards = await _assemble(raw_query, judgment_ids, stage2_results)
     t = mark("assemble", t)
-
-    norm = normalise_query(raw_query)
-    for c in assembled:
-        if c.get("context"):
-            _context_cache.put((norm, c["judgment_id"]), c["context"])
 
     # STAGE 8 — analyse. Only judgments that survived the relevance floor reach
     # this point, so no call is spent on an unrelated case. With ANSWER_TOP_ONLY
@@ -455,36 +444,7 @@ async def retrieve_and_answer(
     top_judgment_answer = answers[0] if answers else None
     mark("generate", t)
 
-    # Section labels come from the expanded documents; the Chroma metadata that
-    # stage 4 returns does not carry section_type.
-    sections_by_judgment = {
-        e["judgment_id"]: [s["section_type"] for s in e["retrieved_sections"]]
-        for e in expanded
-    }
-    scores_by_judgment = {r["judgment_id"]: r["score"] for r in parent_results}
-    # v2 labels each result "high" or "medium"; v1 results carry no label.
-    confidence_by_judgment = {r["judgment_id"]: r.get("confidence", "") for r in parent_results}
-
-    judgments = [
-        {
-            "judgment_id": c["judgment_id"],
-            "filename": docs_meta.get(c["judgment_id"], {}).get("filename", ""),
-            "heading": c.get("heading", ""),
-            "similarity_score": scores_by_judgment.get(c["judgment_id"], 0.0),
-            "confidence": confidence_by_judgment.get(c["judgment_id"], ""),
-            "sections_retrieved": sections_by_judgment.get(c["judgment_id"], []),
-            "context": c["context"],
-            "token_count": c["token_count"],
-            "llm_answer": answers[idx] if idx < len(answers) else None,
-            "answer_status": statuses[idx] if idx < len(statuses) else ANSWER_ON_DEMAND,
-            "card": cards.get(c["judgment_id"]),
-            "download_url": f"/api/admin/judgments/{c['judgment_id']}/download",
-            "has_drive_file": docs_meta.get(c["judgment_id"], {}).get("has_drive_file", False),
-            # The LLM judge's one-line justification, when v2 ran it.
-            "reason": reasons.get(c["judgment_id"], ""),
-        }
-        for idx, c in enumerate(assembled)
-    ]
+    judgments = _describe(parent_results, expanded, assembled, docs_meta, cards, reasons, answers, statuses)
 
     total_ms = (time.perf_counter() - started) * 1000
     logger.info(
@@ -523,10 +483,100 @@ async def retrieve_and_answer(
         "reranked": reranked,
         "judgments": judgments,
         "top_judgment_answer": top_judgment_answer,
+        "has_more": has_more,
         "no_results": False,
         "message": "",
         "notice": notice,
     }
+
+
+async def _assemble(raw_query: str, judgment_ids: list[str], stage2_results: dict):
+    """Stages 6-7 for the judgments shown: expand and assemble each one's
+    context (cached for an on-demand analysis), with its document and card.
+
+    Returns ``(expanded, assembled, docs_meta, cards)``.
+    """
+    # Judgments concurrently, alongside the lookups the response needs anyway.
+    expanded, docs_meta, cards = await asyncio.gather(
+        expand_all_judgments(stage2_results),
+        _documents_meta_for(judgment_ids),
+        _cards_for(judgment_ids),
+    )
+    # tiktoken counting: CPU, so in a thread
+    assembled = await asyncio.to_thread(assemble_all_judgments, expanded)
+
+    norm = normalise_query(raw_query)
+    for c in assembled:
+        if c.get("context"):
+            _context_cache.put((norm, c["judgment_id"]), c["context"])
+    return expanded, assembled, docs_meta, cards
+
+
+def _describe(parent_results, expanded, assembled, docs_meta, cards, reasons,
+              answers=None, statuses=None) -> list[dict]:
+    """One response entry per assembled judgment, in ranked order."""
+    answers = answers or []
+    statuses = statuses or []
+    # Section labels come from the expanded documents; the Chroma metadata that
+    # stage 4 returns does not carry section_type.
+    sections_by_judgment = {
+        e["judgment_id"]: [s["section_type"] for s in e["retrieved_sections"]]
+        for e in expanded
+    }
+    scores_by_judgment = {r["judgment_id"]: r["score"] for r in parent_results}
+    # v2 labels each result "high" or "medium"; v1 results carry no label.
+    confidence_by_judgment = {r["judgment_id"]: r.get("confidence", "") for r in parent_results}
+
+    return [
+        {
+            "judgment_id": c["judgment_id"],
+            "filename": docs_meta.get(c["judgment_id"], {}).get("filename", ""),
+            "heading": c.get("heading", ""),
+            "similarity_score": scores_by_judgment.get(c["judgment_id"], 0.0),
+            "confidence": confidence_by_judgment.get(c["judgment_id"], ""),
+            "sections_retrieved": sections_by_judgment.get(c["judgment_id"], []),
+            "context": c["context"],
+            "token_count": c["token_count"],
+            "llm_answer": answers[idx] if idx < len(answers) else None,
+            "answer_status": statuses[idx] if idx < len(statuses) else ANSWER_ON_DEMAND,
+            "card": cards.get(c["judgment_id"]),
+            "download_url": f"/api/admin/judgments/{c['judgment_id']}/download",
+            "has_drive_file": docs_meta.get(c["judgment_id"], {}).get("has_drive_file", False),
+            # The LLM judge's one-line justification, when v2 ran it.
+            "reason": reasons.get(c["judgment_id"], ""),
+        }
+        for idx, c in enumerate(assembled)
+    ]
+
+
+async def more_results(raw_query: str, shown: list[str], top_k_sections: int = 3) -> dict:
+    """The next page of judgments for a search ("More relevant cases").
+
+    ``shown`` is every judgment already on screen for this query. The pipeline
+    scores the next part of the same candidate list (pipeline_v2.more_v2), so
+    nothing here repeats the search. No analysis is generated: every result is
+    ``on_demand`` and spends Gemini quota only if the user opens it.
+
+    Returns:
+        ``{"judgments": [...], "has_more": bool}`` — empty on the v1 pipeline,
+        which has no candidate list to page through.
+    """
+    if not getattr(settings, "USE_V2_PIPELINE", False):
+        return {"judgments": [], "has_more": False}
+
+    from app.retrieval.pipeline_v2 import more_v2
+
+    page = await more_v2(raw_query, shown, top_k_sections=top_k_sections)
+    parent_results = page.get("parent_results") or []
+    if not parent_results:
+        return {"judgments": [], "has_more": False}
+
+    judgment_ids = [r["judgment_id"] for r in parent_results]
+    expanded, assembled, docs_meta, cards = await _assemble(
+        raw_query, judgment_ids, page.get("stage2_results") or {}
+    )
+    judgments = _describe(parent_results, expanded, assembled, docs_meta, cards, page.get("reasons") or {})
+    return {"judgments": judgments, "has_more": bool(page.get("has_more"))}
 
 
 async def answer_for_judgment(raw_query: str, judgment_id: str) -> dict:

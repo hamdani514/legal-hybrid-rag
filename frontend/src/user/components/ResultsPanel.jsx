@@ -31,6 +31,10 @@ import {
  *   several           -> each discussed in turn, then the actions: see every
  *                        judgment in one place, or compare them as a table.
  *
+ * A search shows at most ten judgments. When the backend found more relevant
+ * ones (`message.hasMore`), "More relevant cases" fetches the next ten from
+ * POST /query/more and appends them, up to 100 in all.
+ *
  * The backend applies a relevance floor, so a judgment reaching this component
  * has already been found genuinely responsive. The component's job is to not
  * overstate what arrived.
@@ -47,6 +51,9 @@ import {
 // How a rate-limited analysis retries by itself before leaving it to the user.
 const AUTO_RETRY_DELAY_MS = 20000;
 const MAX_AUTO_RETRIES = 3;
+
+// POST /query/compare accepts at most this many judgments.
+const MAX_COMPARE = 10;
 
 /** A link cannot send an Authorization header, so the token rides in the URL. */
 const withToken = (url) => {
@@ -572,14 +579,90 @@ const JudgmentBlock = ({ cite, index, total, query }) => {
   );
 };
 
+/**
+ * "More relevant cases": the next page of this search, from POST /query/more.
+ * Pages live in this component; a reopened conversation starts again from the
+ * first page, and the button fetches the rest the same way.
+ */
+const useMorePages = (message) => {
+  const [extra, setExtra] = useState([]);
+  const [hasMore, setHasMore] = useState(Boolean(message.hasMore && message.query));
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const citations = [...(message.citations || []), ...extra];
+
+  const loadMore = async () => {
+    setLoading(true);
+    setNotice('');
+    try {
+      const res = await apiFetch('/query/more', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: message.query,
+          shown: citations.map((c) => c.judgment_id),
+          top_k_sections: 3,
+        }),
+      });
+      if (res.status === 429) {
+        setNotice(
+          (await errorDetail(res)) || 'The service is busy. Please try again in a minute.'
+        );
+        return;
+      }
+      if (!res.ok) throw new Error(`More results failed (${res.status})`);
+      const data = await res.json();
+      const seen = new Set(citations.map((c) => c.judgment_id));
+      const fresh = (data.judgments || []).filter((j) => !seen.has(j.judgment_id));
+      setExtra((prev) => [...prev, ...fresh]);
+      setHasMore(Boolean(data.has_more) && fresh.length > 0);
+      if (fresh.length === 0) setNotice('No further relevant cases were found.');
+    } catch (error) {
+      console.error('More results failed:', error);
+      setNotice('More cases could not be loaded. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { citations, hasMore, loading, notice, loadMore };
+};
+
+/** The bar under the list: how many cases are shown, and the button for more. */
+const MoreBar = ({ count, hasMore, loading, notice, onMore }) => (
+  <div className="mt-7 flex flex-wrap items-center gap-3 rounded-2xl border border-ash-200 bg-ash-50/70 px-4 py-3">
+    <span className="font-prose text-[13px] text-ash-600">
+      Showing <strong className="text-ash-900">{count}</strong> {count === 1 ? 'case' : 'cases'}
+      {notice && <span className="ml-2 text-ash-500">· {notice}</span>}
+    </span>
+    {hasMore && (
+      <button
+        type="button"
+        onClick={onMore}
+        disabled={loading}
+        className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand-300 bg-white px-4 py-2 font-ui text-[13px] font-semibold text-brand-700 transition-all hover:-translate-y-0.5 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className={`material-symbols-outlined text-[16px] ${loading ? 'animate-spin' : ''}`}>
+          {loading ? 'progress_activity' : 'expand_more'}
+        </span>
+        {loading ? 'Finding more cases…' : 'More relevant cases'}
+      </button>
+    )}
+  </div>
+);
+
 const ResultsPanel = ({ message }) => {
   const [showAll, setShowAll] = useState(false);
   const [compare, setCompare] = useState(null);
   const [comparing, setComparing] = useState(false);
   const [compareError, setCompareError] = useState('');
+  const more = useMorePages(message);
 
-  const citations = message.citations || [];
+  const citations = more.citations;
   const many = citations.length > 1;
+  // Compare reads the leading judgments only: the endpoint takes at most ten.
+  const compared = citations.slice(0, MAX_COMPARE);
 
   // Filtering narrows what is DISPLAYED only. Compare deliberately still works
   // on the full result set, so narrowing the list cannot silently change what
@@ -599,7 +682,7 @@ const ResultsPanel = ({ message }) => {
       const res = await apiFetch('/query/compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ judgment_ids: citations.map((c) => c.judgment_id) }),
+        body: JSON.stringify({ judgment_ids: compared.map((c) => c.judgment_id) }),
       });
       if (res.status === 429) {
         setCompareError(
@@ -707,6 +790,16 @@ const ResultsPanel = ({ message }) => {
         />
       ))}
 
+      {(many || more.hasMore) && (
+        <MoreBar
+          count={citations.length}
+          hasMore={more.hasMore}
+          loading={more.loading}
+          notice={more.notice}
+          onMore={more.loadMore}
+        />
+      )}
+
       {many && (
         <div className="mt-7 flex flex-wrap items-center gap-2.5 border-t border-ash-200 pt-5">
           <button
@@ -747,14 +840,18 @@ const ResultsPanel = ({ message }) => {
             >
               {comparing ? 'progress_activity' : 'compare_arrows'}
             </span>
-            {comparing ? 'Comparing…' : 'Compare judgments'}
+            {comparing
+              ? 'Comparing…'
+              : citations.length > MAX_COMPARE
+                ? `Compare top ${MAX_COMPARE}`
+                : 'Compare judgments'}
           </button>
 
           {/* Copies every judgment in this answer in one go. Only the analyses
               already drafted are included; one fetched on demand is copied
               from its own card. */}
           <CopyButton
-            text={() => responseShareText(message)}
+            text={() => responseShareText({ ...message, citations })}
             label={`Copy all ${citations.length}`}
             copiedLabel="Copied"
             title="Copy every judgment in this answer"
