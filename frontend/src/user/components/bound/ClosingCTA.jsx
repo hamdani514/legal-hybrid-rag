@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Reveal from '../Reveal';
 import CardBubbles from './CardBubbles';
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 /**
  * ClosingCTA — Card with Organic Floating Bubbles
@@ -16,6 +17,13 @@ const ClosingCTA = ({
   primary = { to: '/signup', label: 'Create free account' },
   secondary = { to: '/about', label: 'See how it works' },
 }) => {
+  const isLoggedIn = useIsLoggedIn();
+  const effectivePrimary = isLoggedIn
+    ? { to: '/welcome', label: 'Research Workplace' }
+    : primary;
+  const effectiveEyebrow = isLoggedIn
+    ? 'Access Verdict AI Research Workspace'
+    : eyebrow;
   return (
     <section aria-labelledby="closing-cta-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
       <Reveal className="mx-auto max-w-[1200px]">
@@ -28,7 +36,7 @@ const ClosingCTA = ({
             {/* Eyebrow Pill */}
             <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-white backdrop-blur-md shadow-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              {eyebrow}
+              {effectiveEyebrow}
             </span>
 
             {/* Main Headline */}
@@ -50,10 +58,10 @@ const ClosingCTA = ({
             {/* Action Buttons */}
             <div className="mt-10 flex w-full flex-col items-stretch gap-3.5 sm:w-auto sm:flex-row sm:items-center">
               <Link
-                to={primary.to}
+                to={effectivePrimary.to}
                 className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-white px-8 py-4 font-ui text-[15.5px] font-bold text-blue-700 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-lg hover:bg-slate-50 active:translate-y-0"
               >
-                {primary.label}
+                {effectivePrimary.label}
                 <span
                   aria-hidden="true"
                   className="material-symbols-outlined text-[19px] transition-transform duration-300 group-hover:translate-x-1"

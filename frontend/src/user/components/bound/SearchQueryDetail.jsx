@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MediaFrame from './MediaFrame';
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 /**
  * Facsimile showcase of real semantic retrieval:
@@ -82,6 +83,7 @@ const SAMPLE_QUERIES = [
 ];
 
 const SearchQueryDetail = () => {
+  const isLoggedIn = useIsLoggedIn();
   const [activeQueryIndex, setActiveQueryIndex] = useState(0);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
 
@@ -178,10 +180,10 @@ const SearchQueryDetail = () => {
                 </span>
               </div>
               <Link
-                to="/signup"
+                to={isLoggedIn ? '/welcome' : '/signup'}
                 className="grad-btn inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-3 font-ui text-[13.5px] font-bold text-white shadow-glow transition-all hover:shadow-glow-lg"
               >
-                Search
+                {isLoggedIn ? 'Research Workplace' : 'Search'}
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>
             </div>
@@ -275,10 +277,10 @@ const SearchQueryDetail = () => {
                   </div>
 
                   <Link
-                    to="/signup"
+                    to={isLoggedIn ? '/welcome' : '/signup'}
                     className="inline-flex items-center gap-1 font-ui text-[12.5px] font-semibold text-brand-600 transition-colors hover:text-brand-700"
                   >
-                    Try live query
+                    {isLoggedIn ? 'Research Workplace' : 'Try live query'}
                     <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
                   </Link>
                 </div>

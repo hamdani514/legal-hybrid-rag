@@ -209,6 +209,74 @@ def document_frequencies(terms: list[str], path: Path | None = None) -> dict[str
     return {t: cache.get(t, 0) for t in terms}
 
 
+# (index path, mtime) -> {quoted term: number of judgments with the term}
+_jdf_cache: dict[tuple[str, float], dict[str, int]] = {}
+
+
+def key_terms(analysis: QueryAnalysis, max_share: float, path: Path | None = None) -> list[str]:
+    """The query's distinctive words: plain terms and phrases (not citation
+    NEAR groups, which exact match handles) found in at most ``max_share`` of
+    the judgments. Common words ("case", "ordinance", "court") are not key
+    terms; a word in no judgment at all cannot be required.
+    """
+    path = Path(path or db_path())
+    terms = [t for t in query_terms(analysis, path) if not t.startswith("NEAR(")]
+    if not terms:
+        return []
+    try:
+        key = (str(path), path.stat().st_mtime)
+    except OSError:
+        return []
+    if key not in _jdf_cache:
+        _jdf_cache.clear()   # the index was rebuilt: old counts are stale
+        _jdf_cache[key] = {}
+    cache = _jdf_cache[key]
+    conn = connect(path)
+    try:
+        total = cache.get("") or int(conn.execute(
+            "SELECT count(DISTINCT judgment_id) FROM chunks_fts").fetchone()[0])
+        cache[""] = total
+        for term in terms:
+            if term not in cache:
+                try:
+                    cache[term] = int(conn.execute(
+                        "SELECT count(DISTINCT judgment_id) FROM chunks_fts WHERE chunks_fts MATCH ?",
+                        (term,)).fetchone()[0])
+                except sqlite3.Error:
+                    cache[term] = 0
+    finally:
+        conn.close()
+    if not total:
+        return []
+    return [t for t in terms if 0 < cache[t] <= max_share * total]
+
+
+def judgments_with_terms(terms: list[str], judgment_ids: list[str],
+                         path: Path | None = None) -> dict[str, set[str]]:
+    """{judgment_id: the key terms its text contains}, for the given judgments."""
+    found: dict[str, set[str]] = {jid: set() for jid in judgment_ids}
+    if not terms or not judgment_ids:
+        return found
+    path = Path(path or db_path())
+    if not path.exists():
+        return found
+    marks = ",".join("?" * len(judgment_ids))
+    conn = connect(path)
+    try:
+        for term in terms:
+            try:
+                rows = conn.execute(
+                    f"SELECT DISTINCT judgment_id FROM chunks_fts WHERE chunks_fts MATCH ? "
+                    f"AND judgment_id IN ({marks})", (term, *judgment_ids)).fetchall()
+            except sqlite3.Error:
+                continue
+            for row in rows:
+                found.setdefault(row[0], set()).add(term)
+    finally:
+        conn.close()
+    return found
+
+
 def build_match(analysis: QueryAnalysis, path: Path | None = None) -> str:
     """The full MATCH expression: quoted terms OR'd together ("" if none)."""
     return " OR ".join(query_terms(analysis, path))
@@ -365,11 +433,20 @@ if __name__ == "__main__":
     if Path(db_path()).exists():
         got = asyncio.run(chunks.retrieve(
             analysis("general elections 2013 National Assembly seat NA-266 Nasirabad Jaffarabad"), 20))
-        assert got and got[0]["judgment_id"] == "5a14105d-8a45-413c-8c93-26d6301cf028", got[:1]
+        # Civil Appeal No. 5-Q of 2014 (its id since re-ingestion).
+        assert got and got[0]["judgment_id"] == "458aa2a8-8c37-4741-b72d-5499df5cf1ab", got[:1]
         assert [c["rank"] for c in got] == list(range(len(got)))
         assert all(got[i]["score"] >= got[i + 1]["score"] for i in range(len(got) - 1))
         assert got[0]["source"] == "bm25_chunks" and got[0]["mongo_doc_id"]
         print(f"OK: NA-266 query -> {got[0]['judgment_id'][:8]} {got[0]['section_type']} "
               f"score {got[0]['score']:.2f}")
+
+        # Key terms: the rare words only ("ordinance" and "case" are not key).
+        keys = key_terms(analysis("NAB case on bail nab ordinance"), 0.20)
+        assert keys == ['"nab"', '"bail"'], keys
+        found = judgments_with_terms(keys, [got[0]["judgment_id"]])
+        assert found == {got[0]["judgment_id"]: set()}, found   # an election case has neither
+        assert judgments_with_terms(keys, []) == {} and key_terms(analysis("the of and"), 0.2) == []
+        print(f"OK: key terms {keys}")
     else:
         print("SKIP: no lexical.db yet (python reindex.py --fts)")

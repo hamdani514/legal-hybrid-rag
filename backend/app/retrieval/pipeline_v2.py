@@ -67,6 +67,7 @@ retrieve_v2 itself never raises for a well-formed string.
 """
 
 import asyncio
+import math
 import sys
 import time
 from collections import OrderedDict
@@ -734,6 +735,20 @@ def _ground(category: str, items: list[FusedJudgment], texts: dict[str, list[str
 # Scanning stops when a scored slice has no passing judgment in its last
 # TAIL_WINDOW positions: relevance has run out, and the button would only
 # return an empty page.
+#
+# Key terms. Past the first page the cross-encoder alone is too lenient: it
+# scores the topic, not the point. For "NAB case on bail nab ordinance" it put
+# the Hisba Bill reference at 0.99 and an election appeal at 0.97 — as high as
+# real NAB bail cases — so raising the cut drops good cases as fast as bad
+# ones (at 0.9: -6 of 27 NAB bail cases, -6 of 11 irrelevant ones). A "more"
+# judgment must therefore also contain the query's key terms: the words found
+# in at most KEY_TERM_MAX_SHARE of judgments ("nab" 6%, "bail" 14%; not
+# "ordinance" 26% or "case"). All of them when there are KEY_TERM_ALL_UP_TO or
+# fewer, else at least KEY_TERM_COVERAGE of them. On that query, of the 78
+# judgments the pages showed, this keeps all 27 NAB bail cases and 44 in all
+# (irrelevant 11 -> 4, NAB-but-not-bail 34 -> 9). The first page is not
+# filtered: on 4,012 earlier test queries the same rule would have hidden the
+# expected judgment in 39 of the 601 where it ranked below first.
 
 PAGE_SIZE = 10
 MAX_RESULTS = 100
@@ -741,6 +756,9 @@ SCAN_SLICE = 10       # judgments scored per cross-encoder call
 SCAN_BUDGET = 30      # most judgments one "more" request scores
 TAIL_WINDOW = 5
 SESSION_CACHE_SIZE = 64
+KEY_TERM_MAX_SHARE = 0.20
+KEY_TERM_ALL_UP_TO = 2
+KEY_TERM_COVERAGE = 0.5
 
 _sessions: OrderedDict[str, dict] = OrderedDict()
 
@@ -816,17 +834,44 @@ async def _score_slice(session: dict, batch: list[FusedJudgment]) -> list[str]:
     return passing
 
 
+async def _with_key_terms(session: dict, ids: list[str]) -> list[str]:
+    """``ids`` that contain the query's key terms (see "Key terms" above), in order.
+
+    Pinned hits (the user named the case) and category browses (grounded on
+    the category's own phrases) are not filtered. If the index cannot be read,
+    nothing is filtered: the check narrows results, it must never empty them.
+    """
+    if session["kind"] != "search" or not ids:
+        return ids
+    from app.retrieval import lexical
+
+    try:
+        if "key_terms" not in session:
+            session["key_terms"] = await asyncio.to_thread(
+                lexical.key_terms, session["analysis"], KEY_TERM_MAX_SHARE)
+        terms = session["key_terms"]
+        if not terms:
+            return ids
+        found = await asyncio.to_thread(lexical.judgments_with_terms, terms, ids)
+    except Exception as e:
+        logger.warning(f"key-term check failed, not filtering: {e}")
+        return ids
+    need = len(terms) if len(terms) <= KEY_TERM_ALL_UP_TO else math.ceil(KEY_TERM_COVERAGE * len(terms))
+    pinned = {item["judgment_id"] for item in session["fused"] if item.get("pinned")}
+    return [jid for jid in ids if jid in pinned or len(found.get(jid, ())) >= need]
+
+
 async def _next_page(session: dict, shown: set[str]) -> list[str]:
     """The next judgments to show, scoring further slices as needed."""
     size = min(PAGE_SIZE, MAX_RESULTS - len(shown))
     if size <= 0:
         return []
-    page = [jid for jid in session["order"] if jid not in shown][:size]
+    page = (await _with_key_terms(session, [jid for jid in session["order"] if jid not in shown]))[:size]
     budget = SCAN_BUDGET
     while (len(page) < size and budget > 0 and session["tail_pass"]
            and session["scanned"] < len(session["fused"])):
         batch = session["fused"][session["scanned"]: session["scanned"] + SCAN_SLICE]
-        passing = await _score_slice(session, batch)
+        passing = await _with_key_terms(session, await _score_slice(session, batch))
         session["scanned"] += len(batch)
         budget -= len(batch)
         known = set(session["order"])

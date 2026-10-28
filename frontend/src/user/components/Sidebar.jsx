@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { relativeTime } from '../lib/chatHistory';
+import DeactivateModal from './DeactivateModal';
 
 /*
- * The research sidebar: a new-query button and the user's saved conversations.
- *
- * A row shows its title and nothing else; the date is in the tooltip. On hover
- * (or while its menu is open) a three-dot button appears, holding the three
- * things you can do to a conversation: rename it, pin it to the top, delete it.
- * Renaming happens in place rather than in a dialog.
+ * The research sidebar: a new-query button, saved conversations, and user profile.
+ * Supports expanded mode (w-72) and collapsed ChatGPT-style icon rail (w-[68px]).
  */
 const Sidebar = ({
   onNewQuery,
@@ -21,13 +18,53 @@ const Sidebar = ({
   onRenameSession,
   loading = false,
   activeTab,
-  setActiveTab,
+  isOpen = true,
+  onToggleSidebar,
+  onLogout,
 }) => {
   const navigate = useNavigate();
   const [menuFor, setMenuFor] = useState('');
   const [renamingId, setRenamingId] = useState('');
   const [draft, setDraft] = useState('');
   const renameRef = useRef(null);
+
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser') || 'null');
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      try {
+        setCurrentUser(JSON.parse(localStorage.getItem('currentUser') || 'null'));
+      } catch {
+        setCurrentUser(null);
+      }
+    };
+    window.addEventListener('storage', handleProfileUpdate);
+    window.addEventListener('user-profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('storage', handleProfileUpdate);
+      window.removeEventListener('user-profile-updated', handleProfileUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (renamingId && renameRef.current) {
@@ -36,17 +73,18 @@ const Sidebar = ({
     }
   }, [renamingId]);
 
-  // Escape closes whichever of the two is open.
+  // Escape closes whichever menu is open.
   useEffect(() => {
-    if (!menuFor && !renamingId) return undefined;
+    if (!menuFor && !renamingId && !profileMenuOpen) return undefined;
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       setMenuFor('');
       setRenamingId('');
+      setProfileMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [menuFor, renamingId]);
+  }, [menuFor, renamingId, profileMenuOpen]);
 
   const startRename = (s) => {
     setMenuFor('');
@@ -62,6 +100,182 @@ const Sidebar = ({
 
   const pinned = sessions.filter((s) => s.pinned);
   const rest = sessions.filter((s) => !s.pinned);
+
+  const initials = (() => {
+    const name = currentUser?.name || currentUser?.username;
+    if (name) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      return name.slice(0, 2).toUpperCase();
+    }
+    if (userEmail) {
+      return userEmail.slice(0, 2).toUpperCase();
+    }
+    return 'DA';
+  })();
+
+  const renderAvatar = (size = 'w-9 h-9 text-xs') => {
+    if (currentUser?.avatar_url) {
+      return (
+        <img
+          src={currentUser.avatar_url}
+          alt="Profile"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+          className={`${size} rounded-full object-cover border border-ash-200 shadow-sm bg-white`}
+        />
+      );
+    }
+    return (
+      <div
+        className={`${size} rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 text-white font-bold font-ui flex items-center justify-center shadow-sm select-none`}
+      >
+        {initials}
+      </div>
+    );
+  };
+
+  const ProfilePopup = ({ positionClasses = 'left-0 bottom-full mb-2 w-full' }) => {
+    const displayName =
+      currentUser?.name ||
+      currentUser?.username ||
+      (userEmail ? userEmail.split('@')[0] : 'Legal Counsel');
+    const displayEmail =
+      userEmail || currentUser?.email || currentUser?.user?.email || 'Authenticated User';
+    const planName = currentUser?.plan || currentUser?.user?.plan || 'STANDARD';
+
+    return (
+      <div
+        className={`absolute ${positionClasses} bg-white rounded-2xl border border-ash-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.2),0_0_0_1px_rgba(15,23,42,0.06)] p-2.5 flex flex-col gap-1 z-[60] animate-[fadeIn_0.15s_ease-out] select-none`}
+      >
+        {/* User Identity Header Card */}
+        <div className="flex items-center gap-3 p-2.5 bg-gradient-to-br from-ash-50 via-white to-brand-50/50 rounded-xl border border-ash-200/70 mb-1">
+          <div className="shrink-0">{renderAvatar('w-10 h-10 text-xs')}</div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-ui text-[13.5px] font-bold text-ash-900 leading-tight">
+              {displayName}
+            </p>
+            <p className="truncate font-ui text-[11px] text-ash-500 mt-0.5">{displayEmail}</p>
+            <div className="mt-1.5 flex items-center">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 border border-brand-200/80 px-2.5 py-0.5 font-ui text-[9.5px] font-bold uppercase tracking-wider text-brand-800 shadow-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
+                {planName} Plan
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Menu Actions with rich icon badges and hover states */}
+        <button
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(false);
+            navigate('/settings');
+          }}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-brand-50/70 cursor-pointer"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ash-100 text-ash-600 transition-colors group-hover:bg-brand-100 group-hover:text-brand-700">
+            <span className="material-symbols-outlined text-[18px]">settings</span>
+          </span>
+          <span className="flex-1 font-ui text-[13px] font-semibold text-ash-800 transition-colors group-hover:text-ash-900">
+            Account Settings
+          </span>
+          <span className="material-symbols-outlined text-[16px] text-ash-400 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600">
+            chevron_right
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(false);
+            navigate('/pricing');
+          }}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-brand-50/70 cursor-pointer"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ash-100 text-ash-600 transition-colors group-hover:bg-brand-100 group-hover:text-brand-700">
+            <span className="material-symbols-outlined text-[18px]">credit_card</span>
+          </span>
+          <span className="flex-1 font-ui text-[13px] font-semibold text-ash-800 transition-colors group-hover:text-ash-900">
+            Plans & Billing
+          </span>
+          <span className="material-symbols-outlined text-[16px] text-ash-400 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600">
+            chevron_right
+          </span>
+        </button>
+
+        <Link
+          to="/terms"
+          onClick={() => setProfileMenuOpen(false)}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-brand-50/70"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ash-100 text-ash-600 transition-colors group-hover:bg-brand-100 group-hover:text-brand-700">
+            <span className="material-symbols-outlined text-[18px]">gavel</span>
+          </span>
+          <span className="flex-1 font-ui text-[13px] font-semibold text-ash-800 transition-colors group-hover:text-ash-900">
+            Terms of Service
+          </span>
+          <span className="material-symbols-outlined text-[16px] text-ash-400 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600">
+            chevron_right
+          </span>
+        </Link>
+
+        <Link
+          to="/privacy"
+          onClick={() => setProfileMenuOpen(false)}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-brand-50/70"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ash-100 text-ash-600 transition-colors group-hover:bg-brand-100 group-hover:text-brand-700">
+            <span className="material-symbols-outlined text-[18px]">privacy_tip</span>
+          </span>
+          <span className="flex-1 font-ui text-[13px] font-semibold text-ash-800 transition-colors group-hover:text-ash-900">
+            Privacy Policy
+          </span>
+          <span className="material-symbols-outlined text-[16px] text-ash-400 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600">
+            chevron_right
+          </span>
+        </Link>
+
+        <div className="my-1 border-t border-ash-200/80" />
+
+        <button
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(false);
+            setDeactivateModalOpen(true);
+          }}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-rose-50 cursor-pointer"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500 transition-colors group-hover:bg-rose-100 group-hover:text-rose-600">
+            <span className="material-symbols-outlined text-[17px]">power_settings_new</span>
+          </span>
+          <span className="flex-1 font-ui text-[12.5px] font-semibold text-rose-600 transition-colors group-hover:text-rose-700">
+            Deactivate Account
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(false);
+            onLogout?.();
+          }}
+          className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 hover:bg-ash-900 cursor-pointer"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ash-100 text-ash-700 transition-colors group-hover:bg-ash-800 group-hover:text-white">
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+          </span>
+          <span className="flex-1 font-ui text-[13px] font-bold text-ash-800 transition-colors group-hover:text-white">
+            Sign Out
+          </span>
+          <span className="material-symbols-outlined text-[16px] text-ash-400 transition-all group-hover:translate-x-0.5 group-hover:text-white">
+            chevron_right
+          </span>
+        </button>
+      </div>
+    );
+  };
 
   const Row = ({ s }) => {
     const isActive = s.session_id === activeSessionId && activeTab === 'case';
@@ -167,68 +381,142 @@ const Sidebar = ({
       </>
     );
 
-  return (
-    <aside className="h-full w-72 fixed left-0 top-0 bg-ash-100 flex flex-col p-6 gap-y-4 z-40 border-r border-ash-200/70">
-      {/* Clicking anywhere else closes an open menu. */}
-      {menuFor && <div className="fixed inset-0 z-40" onClick={() => setMenuFor('')} />}
+  // ── Collapsed ChatGPT-style Rail ───────────────────────────────────────────
+  if (!isOpen) {
+    return (
+      <>
+        <aside
+          className="fixed left-0 top-14 bottom-0 w-[68px] bg-ash-100 flex flex-col items-center py-3 px-2 z-50 border-r border-ash-200/70 transition-all duration-300 ease-in-out select-none"
+        >
+          {/* Middle Spacer - + button removed when sidebar is closed as requested */}
+          <div className="flex-1" />
 
-      <div className="mb-6 px-2">
-        <h1 className="font-display text-lg font-semibold text-ash-900">Verdict AI Research</h1>
-        <p className="text-xs font-ui uppercase tracking-widest text-ash-600 mt-1">
-          {userEmail ? userEmail.split('@')[0] : 'Senior Counsel'}
-        </p>
-      </div>
-
-      <button
-        onClick={onNewQuery}
-        className="grad-btn flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-ui text-sm font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0"
-      >
-        <span className="material-symbols-outlined">add</span>
-        New Research Query
-      </button>
-
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible -mx-2 px-2">
-        {loading ? (
-          <p className="px-3 pt-4 font-prose text-xs text-ash-500">Loading your research…</p>
-        ) : sessions.length === 0 ? (
-          <p className="px-3 pt-4 font-prose text-xs leading-relaxed text-ash-500">
-            Your past research will appear here. Describe a case below to start.
-          </p>
-        ) : (
-          <>
-            <Group label="Pinned" rows={pinned} />
-            <Group label={pinned.length ? 'Recent' : 'Research history'} rows={rest} />
-          </>
-        )}
-      </div>
-
-      <div className="mt-auto border-t border-ash-200 pt-4 flex flex-col gap-y-1">
-        {[
-          { id: 'settings', label: 'Settings', icon: 'settings' },
-          { id: 'support', label: 'Support', icon: 'help_outline' },
-        ].map((item) => {
-          const isActive = activeTab === item.id;
-          return (
+          {/* Bottom: User Profile Avatar */}
+          <div className="mt-auto mb-3 relative" ref={profileMenuRef}>
             <button
-              key={item.id}
-              onClick={() => {
-                if (item.id === 'settings') {
-                  navigate('/settings');
-                } else {
-                  setActiveTab(isActive ? 'case' : item.id);
-                }
-              }}
-              className={`flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left transition-all duration-200 ${
-                isActive ? 'bg-white font-medium text-ash-900 shadow-soft' : 'text-ash-600 hover:bg-ash-100'
+              type="button"
+              onClick={() => setProfileMenuOpen((v) => !v)}
+              title={currentUser?.name || userEmail || 'Account Menu'}
+              className={`relative flex items-center justify-center p-0.5 rounded-full transition-all duration-200 cursor-pointer ${
+                profileMenuOpen
+                  ? 'ring-2 ring-brand-500 ring-offset-2'
+                  : 'hover:ring-2 hover:ring-brand-400/60 hover:ring-offset-1'
               }`}
+              aria-label="Account Menu"
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="font-ui text-sm tracking-wide">{item.label}</span>
+              {renderAvatar('w-10 h-10 text-xs')}
+              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
             </button>
-          );
-        })}
-      </div>
-    </aside>
+
+            {profileMenuOpen && (
+              <ProfilePopup positionClasses="left-[74px] bottom-0 w-72" />
+            )}
+          </div>
+        </aside>
+
+        <DeactivateModal
+          isOpen={deactivateModalOpen}
+          onClose={() => setDeactivateModalOpen(false)}
+          userEmail={userEmail}
+        />
+      </>
+    );
+  }
+
+  // ── Expanded Full Sidebar ──────────────────────────────────────────────────
+  return (
+    <>
+      <aside
+        className="h-full w-72 fixed left-0 top-0 bg-ash-100 flex flex-col p-5 gap-y-4 z-50 border-r border-ash-200/70 transition-all duration-300 ease-in-out"
+      >
+        {/* Clicking anywhere else closes an open session menu. */}
+        {menuFor && <div className="fixed inset-0 z-40" onClick={() => setMenuFor('')} />}
+
+        <div className="flex items-center justify-between mb-2 px-1">
+          <Link to="/" className="group flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="grad-brand flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-glow transition-transform duration-300 group-hover:scale-105"
+            >
+              <span className="material-symbols-outlined text-[19px]">balance</span>
+            </span>
+            <span className="font-display text-[17px] font-bold tracking-[-0.02em] text-ash-900">
+              Verdict<span className="grad-text">AI</span>
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            title="Close sidebar"
+            className="flex items-center justify-center h-8 w-8 rounded-lg text-ash-400 hover:text-ash-900 hover:bg-ash-200/60 transition-colors"
+            aria-label="Close sidebar"
+          >
+            <span className="material-symbols-outlined text-[19px]">dock_to_left</span>
+          </button>
+        </div>
+
+        <button
+          onClick={onNewQuery}
+          className="grad-btn flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-ui text-sm font-semibold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0"
+        >
+          <span className="material-symbols-outlined">add</span>
+          New Research Query
+        </button>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible -mx-2 px-2">
+          {loading ? (
+            <p className="px-3 pt-4 font-prose text-xs text-ash-500">Loading your research…</p>
+          ) : sessions.length === 0 ? (
+            <p className="px-3 pt-4 font-prose text-xs leading-relaxed text-ash-500">
+              Your past research will appear here. Describe a case below to start.
+            </p>
+          ) : (
+            <>
+              <Group label="Pinned" rows={pinned} />
+              <Group label={pinned.length ? 'Recent' : 'Research history'} rows={rest} />
+            </>
+          )}
+        </div>
+
+        {/* User Profile Option at the Bottom of Sidebar */}
+        <div className="mt-auto border-t border-ash-200/80 pt-3 relative" ref={profileMenuRef}>
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen((v) => !v)}
+            className={`flex w-full items-center gap-3 rounded-2xl p-2 text-left transition-all duration-200 cursor-pointer ${
+              profileMenuOpen ? 'bg-white shadow-soft ring-1 ring-ash-200' : 'hover:bg-ash-200/60'
+            }`}
+            title="Account & Profile Menu"
+          >
+            <div className="relative shrink-0">
+              {renderAvatar('w-9 h-9 text-xs')}
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-ui text-[13px] font-semibold text-ash-900 leading-tight">
+                {currentUser?.name || currentUser?.username || (userEmail ? userEmail.split('@')[0] : 'Legal Counsel')}
+              </p>
+              <p className="truncate font-ui text-[11px] text-ash-500 mt-0.5">
+                {userEmail || currentUser?.email || 'Authenticated User'}
+              </p>
+            </div>
+            <span className="material-symbols-outlined text-[19px] text-ash-400 shrink-0">
+              {profileMenuOpen ? 'expand_less' : 'more_vert'}
+            </span>
+          </button>
+
+          {profileMenuOpen && (
+            <ProfilePopup positionClasses="left-0 bottom-full mb-2 w-full" />
+          )}
+        </div>
+      </aside>
+
+      <DeactivateModal
+        isOpen={deactivateModalOpen}
+        onClose={() => setDeactivateModalOpen(false)}
+        userEmail={userEmail}
+      />
+    </>
   );
 };
 

@@ -10,7 +10,7 @@ const DEFAULT_PLACEHOLDER =
 
 const MAX_HEIGHT_PX = 260; // about ten lines, then the box scrolls
 
-const ChatInput = ({ onSend, loading, placeholder = DEFAULT_PLACEHOLDER }) => {
+const ChatInput = ({ onSend, loading, placeholder = DEFAULT_PLACEHOLDER, sidebarOpen = true }) => {
   const [query, setQuery] = useState('');
   const textareaRef = useRef(null);
 
@@ -45,16 +45,16 @@ const ChatInput = ({ onSend, loading, placeholder = DEFAULT_PLACEHOLDER }) => {
   const words = query.trim() ? query.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="fixed bottom-0 right-0 left-72 p-8 z-40 bg-gradient-to-t from-white via-white/95 to-transparent">
-      <div className="max-w-4xl mx-auto relative">
+    <div className={`fixed bottom-0 right-0 ${sidebarOpen ? 'left-72' : 'left-[68px]'} p-8 z-40 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none transition-[left] duration-300 ease-in-out`}>
+      <div className="max-w-4xl mx-auto relative pointer-events-auto">
         <form
           onSubmit={handleSubmit}
-          className="glass-panel rounded-[28px] border border-ash-200 flex items-end gap-3 p-2 pr-3 focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-500/12 transition-all duration-250 shadow-card"
+          className="chat-input-form glass-panel rounded-[28px] border border-ash-200 flex items-end gap-3 p-2 pr-3 focus-within:border-brand-400 focus-within:shadow-[0_4px_20px_rgba(0,133,255,0.08)] transition-all duration-200 shadow-card outline-none"
         >
           <textarea
             ref={textareaRef}
             rows={1}
-            className="w-full resize-none bg-transparent border-none focus:ring-0 text-ash-900 placeholder:text-ash-400 font-prose py-4 pl-6 outline-none border-0 leading-relaxed"
+            className="w-full resize-none bg-transparent border-none focus:ring-0 text-ash-900 placeholder:text-ash-400 font-prose py-4 pl-6 outline-none border-0 leading-relaxed shadow-none focus:outline-none"
             placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

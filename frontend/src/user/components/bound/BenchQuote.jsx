@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 /**
  * BenchQuote — Redesigned Judicial Authority Showcase
@@ -59,6 +60,7 @@ const JUDGMENT_RECORDS = [
 ];
 
 const BenchQuote = () => {
+  const isLoggedIn = useIsLoggedIn();
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const activeRecord = JUDGMENT_RECORDS[activeIndex];
@@ -240,10 +242,10 @@ const BenchQuote = () => {
               </button>
 
               <Link
-                to="/signup"
+                to={isLoggedIn ? '/welcome' : '/signup'}
                 className="grad-btn inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 font-ui text-[13px] font-bold text-white shadow-glow transition-all hover:shadow-glow-lg"
               >
-                Research in Workspace
+                Research Workplace
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>
             </div>

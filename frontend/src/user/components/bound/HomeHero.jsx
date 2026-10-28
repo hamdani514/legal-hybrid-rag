@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import MediaFrame from './MediaFrame';
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 /**
  * Universal Hero Banner used across Home, About, Pricing, FAQ, and Contact pages.
@@ -7,7 +8,7 @@ import MediaFrame from './MediaFrame';
  * authority badge, primary/secondary action triggers, and highlight pills.
  */
 const DEFAULT_HIGHLIGHTS = [
-  { icon: 'bolt', label: 'Answers in seconds' },
+  { icon: '/assets/thunder.svg', label: 'Answers in seconds' },
   { icon: 'format_quote', label: 'Every answer cited' },
   { icon: 'school', label: 'Free for students' },
 ];
@@ -21,6 +22,10 @@ const HomeHero = ({
   secondaryCta = { to: '/about', label: 'See how it works', icon: 'play_circle' },
   highlights = DEFAULT_HIGHLIGHTS,
 }) => {
+  const isLoggedIn = useIsLoggedIn();
+  const effectivePrimaryCta = isLoggedIn
+    ? { to: '/welcome', label: 'Research Workplace', icon: 'arrow_forward' }
+    : primaryCta;
   return (
     <section className="relative w-full overflow-hidden">
       <MediaFrame
@@ -78,22 +83,22 @@ const HomeHero = ({
               </p>
             )}
 
-            {(primaryCta || secondaryCta) && (
+            {(effectivePrimaryCta || secondaryCta) && (
               <div
                 className="pop-in mt-10 flex w-full flex-col items-stretch gap-3.5 sm:w-auto sm:flex-row sm:items-center"
                 style={{ '--i': 3 }}
               >
-                {primaryCta && (
+                {effectivePrimaryCta && (
                   <Link
-                    to={primaryCta.to}
+                    to={effectivePrimaryCta.to}
                     className="grad-btn group inline-flex items-center justify-center gap-2.5 rounded-full px-8 py-4 font-ui text-[15.5px] font-bold text-white shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-lg active:translate-y-0"
                   >
-                    {primaryCta.label}
+                    {effectivePrimaryCta.label}
                     <span
                       aria-hidden="true"
                       className="material-symbols-outlined text-[19px] transition-transform duration-300 group-hover:translate-x-1"
                     >
-                      {primaryCta.icon || 'arrow_forward'}
+                      {effectivePrimaryCta.icon || 'arrow_forward'}
                     </span>
                   </Link>
                 )}
@@ -118,17 +123,33 @@ const HomeHero = ({
                 className="pop-in mt-9 flex flex-wrap items-center justify-center gap-x-7 gap-y-3"
                 style={{ '--i': 4 }}
               >
-                {highlights.map(({ icon, label }) => (
-                  <li key={label} className="inline-flex items-center gap-2 font-prose text-[14px] text-white/80">
-                    <span
-                      aria-hidden="true"
-                      className="material-symbols-outlined text-[18px] text-cyan-300"
-                    >
-                      {icon}
-                    </span>
-                    {label}
-                  </li>
-                ))}
+                {highlights.map(({ icon, label }) => {
+                  const isImage =
+                    typeof icon === 'string' &&
+                    (icon.endsWith('.svg') || icon.startsWith('/') || icon.includes('.'));
+                  return (
+                    <li key={label} className="inline-flex items-center gap-2 font-prose text-[14px] text-white/80">
+                      {isImage ? (
+                        <img
+                          src={icon}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-[18px] w-[18px] object-contain"
+                        />
+                      ) : typeof icon !== 'string' ? (
+                        icon
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="material-symbols-outlined text-[18px] text-cyan-300"
+                        >
+                          {icon}
+                        </span>
+                      )}
+                      {label}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

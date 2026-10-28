@@ -6,6 +6,7 @@ import ChatInput from './ChatInput';
 import EmptyState from './EmptyState';
 import ResultsPanel from './ResultsPanel';
 import CopyButton from './CopyButton';
+import RetrievalLoadingState from './RetrievalLoadingState';
 import apiFetch, { clearToken } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
@@ -57,6 +58,7 @@ const WelcomeContent = () => {
   const [activeTab, setActiveTab] = useState('case');
   const [chatHistory, setChatHistory] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatEndRef = useRef(null);
 
   // ── Saved conversations ─────────────────────────────────────────────────
@@ -433,21 +435,7 @@ const WelcomeContent = () => {
             </div>
           ))}
 
-          {isSearching && (
-            <div className="flex justify-start animate-pulse">
-              <div className="max-w-[85%] flex gap-4">
-                <span className="material-symbols-outlined text-brand-500 text-2xl mt-1 select-none flex-shrink-0 animate-spin">
-                  progress_activity
-                </span>
-                <div className="flex flex-col gap-2">
-                  <span className="font-display text-base font-semibold text-ash-900">Verdict AI</span>
-                  <p className="font-prose text-sm text-ash-600 italic">
-                    Retrieving matched semantic nodes and precedents...
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {isSearching && <RetrievalLoadingState />}
           <div ref={chatEndRef} />
         </div>
       </div>
@@ -469,19 +457,33 @@ const WelcomeContent = () => {
         onRenameSession={renameSessionTitle}
         onDeleteSession={removeSession}
         loading={historyLoading}
+        isOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        onLogout={handleLogout}
       />
 
       {/* Main Workspace Area */}
-      <main className="flex-1 ml-72 flex flex-col min-h-screen relative overflow-hidden">
+      <main
+        className={`flex-1 flex flex-col min-h-screen relative overflow-hidden transition-[margin] duration-300 ease-in-out ${
+          sidebarOpen ? 'ml-72' : 'ml-[68px]'
+        }`}
+      >
         {/* Top AppBar */}
-        <TopBar onLogout={handleLogout} userEmail={userEmail} />
+        <TopBar
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        />
 
         {/* Dynamic Content Frame */}
         {renderContent()}
 
         {/* Floating Input Area (only on Current Case chat tab) */}
         {activeTab === 'case' && (
-          <ChatInput onSend={handleSendQuery} loading={isSearching} />
+          <ChatInput
+            onSend={handleSendQuery}
+            loading={isSearching}
+            sidebarOpen={sidebarOpen}
+          />
         )}
       </main>
 

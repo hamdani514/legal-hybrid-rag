@@ -971,14 +971,14 @@ const AdminCasesPage = () => {
               label="Total Processed"
               value={stats.total_documents}
               subtext="judgment records"
-              icon="description"
+              icon="/assets/document.svg"
               loading={recentLoading}
             />
             <AdminStatsCard
               label="Searchable"
               value={stateCounts.searchable + stateCounts.complete}
               subtext={`${stateCounts.complete} complete with case card`}
-              icon="task_alt"
+              icon="/assets/success.svg"
               tone="good"
               loading={recentLoading}
             />
@@ -986,7 +986,7 @@ const AdminCasesPage = () => {
               label="Failed / Processing"
               value={stateCounts.failed + stateCounts.stalled + stateCounts.processing}
               subtext={`${stateCounts.failed} failed, ${stateCounts.stalled} stalled, ${stateCounts.flagged} parses flagged`}
-              icon="pending"
+              icon="/assets/failed.svg"
               tone={stateCounts.failed + stateCounts.stalled > 0 ? 'bad' : 'neutral'}
               loading={recentLoading}
             />

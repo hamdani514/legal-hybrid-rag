@@ -1,37 +1,45 @@
 import { Link } from 'react-router-dom';
-
-const COLUMNS = [
-  {
-    heading: 'Product',
-    links: [
-      { to: '/welcome', label: 'Workspace' },
-      { to: '/about', label: 'How it works' },
-      { to: '/pricing', label: 'Pricing' },
-      { to: '/faq', label: 'FAQ' },
-      { to: '/blogs', label: 'Insights' },
-    ],
-  },
-  {
-    heading: 'Account',
-    links: [
-      { to: '/signup', label: 'Create account' },
-      { to: '/login', label: 'Sign in' },
-      { to: '/forgot-password', label: 'Reset password' },
-    ],
-  },
-  {
-    heading: 'Company',
-    links: [
-      { to: '/contact', label: 'Contact' },
-      { to: '/terms', label: 'Terms of use' },
-      { to: '/privacy', label: 'Privacy' },
-      { to: '/disclaimer', label: 'Disclaimer' },
-    ],
-  },
-];
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 const SiteFoot = () => {
   const year = new Date().getFullYear();
+  const isLoggedIn = useIsLoggedIn();
+
+  const columns = [
+    {
+      heading: 'Product',
+      links: [
+        { to: '/welcome', label: 'Workspace' },
+        { to: '/about', label: 'How it works' },
+        { to: '/pricing', label: 'Pricing' },
+        { to: '/faq', label: 'FAQ' },
+        { to: '/blogs', label: 'Insights' },
+      ],
+    },
+    {
+      heading: 'Account',
+      links: isLoggedIn
+        ? [
+            { to: '/welcome', label: 'Research Workplace' },
+            { to: '/settings', label: 'Settings' },
+            { to: '/pricing', label: 'Plans & Billing' },
+          ]
+        : [
+            { to: '/signup', label: 'Create account' },
+            { to: '/login', label: 'Sign in' },
+            { to: '/forgot-password', label: 'Reset password' },
+          ],
+    },
+    {
+      heading: 'Company',
+      links: [
+        { to: '/contact', label: 'Contact' },
+        { to: '/terms', label: 'Terms of use' },
+        { to: '/privacy', label: 'Privacy' },
+        { to: '/disclaimer', label: 'Disclaimer' },
+      ],
+    },
+  ];
 
   return (
     <footer className="w-full border-t border-ash-200 bg-white">
@@ -63,7 +71,7 @@ const SiteFoot = () => {
           </div>
 
           {/* Link columns */}
-          {COLUMNS.map(({ heading, links }) => (
+          {columns.map(({ heading, links }) => (
             <nav key={heading} aria-label={heading}>
               <h2 className="font-display text-[13px] font-bold uppercase tracking-[0.1em] text-ash-900">
                 {heading}

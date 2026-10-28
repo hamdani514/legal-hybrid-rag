@@ -14,6 +14,10 @@ const TONES = {
 };
 
 const AdminStatsCard = ({ label, value, subtext, icon, loading, tone = 'brand' }) => {
+  const isImageSrc =
+    typeof icon === 'string' &&
+    (icon.endsWith('.svg') || icon.startsWith('/') || icon.includes('.'));
+
   return (
     <div className="lift-card rounded-3xl border border-ash-200 bg-white p-6 shadow-soft transition-all hover:border-brand-200 hover:shadow-card">
       <div className="flex items-start justify-between gap-4">
@@ -27,7 +31,13 @@ const AdminStatsCard = ({ label, value, subtext, icon, loading, tone = 'brand' }
               TONES[tone] ?? TONES.brand
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">{icon}</span>
+            {isImageSrc ? (
+              <img src={icon} alt="" className="h-5 w-5 object-contain" />
+            ) : typeof icon !== 'string' ? (
+              icon
+            ) : (
+              <span className="material-symbols-outlined text-[20px]">{icon}</span>
+            )}
           </span>
         )}
       </div>

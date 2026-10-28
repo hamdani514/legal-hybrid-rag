@@ -4,6 +4,7 @@ import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
 import CardBubbles from './CardBubbles';
 import { startCheckout } from '../../lib/payments';
+import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 
 const PLANS = [
   {
@@ -63,6 +64,7 @@ const PLANS = [
  */
 const PlansSection = () => {
   const navigate = useNavigate();
+  const isLoggedIn = useIsLoggedIn();
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState('');
 
@@ -196,14 +198,14 @@ const PlansSection = () => {
                     </button>
                   ) : (
                     <Link
-                      to={to}
+                      to={name === 'Free' && isLoggedIn ? '/welcome' : to}
                       className={`relative z-[2] mt-9 inline-flex items-center justify-center rounded-full px-6 py-3.5 font-ui text-[14.5px] font-bold transition-all duration-300 ${
                         emphasis
                           ? 'bg-white text-brand-800 hover:-translate-y-0.5 hover:shadow-card-lg'
                           : 'border border-ash-300 text-ash-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
                       }`}
                     >
-                      {cta}
+                      {name === 'Free' && isLoggedIn ? 'Research Workplace' : cta}
                     </Link>
                   )}
                 </div>

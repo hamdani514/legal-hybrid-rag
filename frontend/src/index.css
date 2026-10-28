@@ -78,6 +78,31 @@ h1, h2, h3, .brand-font {
   }
 }
 
+@keyframes retrievalProgress {
+  0% {
+    left: -35%;
+    width: 35%;
+  }
+  50% {
+    left: 25%;
+    width: 60%;
+  }
+  100% {
+    left: 100%;
+    width: 35%;
+  }
+}
+
+.animate-retrieval-bar {
+  animation: retrievalProgress 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.chat-input-form,
+.chat-input-form textarea {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
 
 /* ==========================================================================
    Motion primitives — transform/opacity only, GPU-friendly.
