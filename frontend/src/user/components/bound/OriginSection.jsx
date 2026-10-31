@@ -7,7 +7,7 @@ const FACTS = [
   { icon: 'gavel', label: 'Jurisdiction', value: 'Supreme Court of Pakistan' },
   { icon: 'account_tree', label: 'Divisions marked', value: 'Six per judgment' },
   { icon: 'travel_explore', label: 'Retrieval', value: 'Two-stage semantic' },
-  { icon: 'memory', label: 'Embeddings', value: '384 dimensions' },
+  { icon: 'memory', label: 'Embeddings', value: '768 dimensions' },
 ];
 
 /**
@@ -16,7 +16,7 @@ const FACTS = [
  */
 const OriginSection = () => {
   return (
-    <section aria-labelledby="origin-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="origin-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
           eyebrow="The problem"
@@ -79,7 +79,7 @@ const OriginSection = () => {
           {/* Facts card, opened by the shelf it describes */}
           <Reveal
             delay={140}
-            className="group self-start overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card lg:sticky lg:top-28"
+            className="border-trace group self-start overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card lg:sticky lg:top-28"
           >
             <MediaFrame
               name="stacks"

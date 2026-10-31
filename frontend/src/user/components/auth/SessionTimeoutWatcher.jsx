@@ -2,15 +2,16 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SessionTimeoutModal from './SessionTimeoutModal';
 import {
-  isAnySessionActive,
-  initSessionTimeout,
   extendSessionTimeout,
+  getSessionRemainingSeconds,
   performLogout,
+  refreshSessionIfNeeded,
   validateSessionOrPurge,
-  SESSION_EXPIRES_KEY,
   WARNING_SECONDS,
-  getJwtExpiryMs,
 } from '../../../lib/sessionManager';
+
+// How often the session is offered a silent renewal while the app is open.
+const RENEW_CHECK_MS = 60 * 1000;
 
 // Routes where a session warning should never be displayed
 const AUTH_ROUTES = [
@@ -25,12 +26,15 @@ const AUTH_ROUTES = [
 /**
  * SessionTimeoutWatcher
  *
- * Runs globally within the app Router.
- * Monitors the 1-minute auto logout timer for logged-in users.
- * Displays the 10-second countdown popup when 10 seconds remain.
- * Automatically logs out and redirects when the timer reaches 0.
- * Also handles tab closure, visibility changes, and window focus so that
- * re-opening or switching to the tab after 1 minute triggers instant logout.
+ * Runs globally within the app Router. Keeps the signed-in session alive: it
+ * offers the session a silent renewal every minute and whenever the tab
+ * regains focus (sessionManager renews a token once half its lifetime has
+ * passed), so a user who has the app open is never sent back to the login page.
+ *
+ * Only a session that could not renew (the server unreachable for a long time,
+ * or the token already expired while the app was closed) reaches its end: the
+ * popup counts down the last WARNING_SECONDS with a "Stay signed in" button,
+ * and at zero the session signs out to its login page.
  */
 const SessionTimeoutWatcher = () => {
   const navigate = useNavigate();
@@ -71,54 +75,33 @@ const SessionTimeoutWatcher = () => {
     const checkSession = () => {
       if (isLoggingOutRef.current) return;
 
-      const loggedIn = isAnySessionActive();
-      if (!loggedIn) {
+      // The session of this page (user pages: the user's; /admin: the admin's).
+      const remainingSec = getSessionRemainingSeconds();
+      if (remainingSec === null) {
         setShowModal(false);
         return;
       }
 
-      // Check both JWT expiry and local timer
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminAuthToken');
-      const jwtExp = getJwtExpiryMs(token);
-      let rawExpires = localStorage.getItem(SESSION_EXPIRES_KEY);
-
-      if (!rawExpires) {
-        // Logged in without a session timestamp: initialize 1-minute timer now
-        const newExpires = initSessionTimeout();
-        rawExpires = String(newExpires);
-      }
-
-      let expiresAt = Number(rawExpires);
-      if (jwtExp) {
-        expiresAt = expiresAt ? Math.min(expiresAt, jwtExp) : jwtExp;
-      }
-
-      if (!expiresAt || Number.isNaN(expiresAt)) {
-        initSessionTimeout();
-        return;
-      }
-
-      const remainingMs = expiresAt - Date.now();
-      const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
-
       if (remainingSec <= 0) {
-        // 1-minute limit reached (even if user closed and reopened tab!)
         handleLogout(true);
       } else if (remainingSec <= WARNING_SECONDS) {
-        // Display 10-second warning popup
+        // Renewal has not succeeded in time: count down the last minute.
+        refreshSessionIfNeeded();
         setShowModal(true);
         setCountdown(remainingSec);
       } else {
-        // More than 10 seconds remaining
         setShowModal(false);
       }
     };
 
     // Immediate check on route navigation, tab focus, or mount
+    refreshSessionIfNeeded();
     checkSession();
 
-    // Check every 500ms for responsive seconds countdown
+    // A cheap local check twice a second (the countdown needs it), and a
+    // renewal offer every minute.
     const interval = setInterval(checkSession, 500);
+    const renewer = setInterval(refreshSessionIfNeeded, RENEW_CHECK_MS);
 
     const onStorage = () => checkSession();
     const onTimerUpdated = () => checkSession();
@@ -127,11 +110,13 @@ const SessionTimeoutWatcher = () => {
     };
     const onFocus = () => {
       validateSessionOrPurge({ navigate });
+      refreshSessionIfNeeded();
       checkSession();
     };
     const onVisibilityChange = () => {
       if (!document.hidden) {
         validateSessionOrPurge({ navigate });
+        refreshSessionIfNeeded();
         checkSession();
       }
     };
@@ -145,6 +130,7 @@ const SessionTimeoutWatcher = () => {
 
     return () => {
       clearInterval(interval);
+      clearInterval(renewer);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('session-timer-updated', onTimerUpdated);
       window.removeEventListener('session-timer-cleared', onTimerCleared);

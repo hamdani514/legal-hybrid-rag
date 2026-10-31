@@ -62,6 +62,61 @@ def _bearer(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+# Every endpoint the user-facing frontend calls (frontend/src), with a body
+# that cannot change anything outside this scratch DB. The frontend signs a
+# user out on a 401 it cannot renew past, so a signed-in user must never get a
+# 401 from any of these. (Payment calls that would reach Stripe are left out.)
+SIGNED_IN_CALLS = [
+    ("get", "/api/auth/profile", {}),
+    ("put", "/api/auth/profile", {"json": {}}),
+    ("get", "/api/auth/me", {}),
+    ("post", "/api/auth/deactivate", {"json": {}}),
+    ("post", "/api/auth/delete-account", {"json": {}}),
+    ("get", "/api/chat/sessions?user_id=USr-1001", {}),
+    ("post", "/api/chat/sessions", {"json": {"user_id": "USr-1001", "title": "selfcheck"}}),
+    ("get", "/api/chat/sessions/nope?user_id=USr-1001", {}),
+    ("get", "/api/payments/config", {}),
+    ("get", "/api/payments/status?user_id=USr-1001", {}),
+    # (/api/blogs is public and needs Beanie, which only the server lifespan starts.)
+    ("post", "/query/search", {"json": {"query": "constable dismissed from service appeal"}}),
+    ("post", "/query/more", {"json": {}}),
+    ("post", "/query/answer", {"json": {}}),
+    ("post", "/query/compare", {"json": {"judgment_ids": []}}),
+    ("post", "/query/summarize", {"json": {}}),
+    ("get", "/api/admin/users/check-email?email=zzz@gmail.com", {}),
+]
+
+
+async def _no_401_for_signed_in(c, token: str, label: str) -> None:
+    refused = []
+    for method, url, kw in SIGNED_IN_CALLS:
+        r = await getattr(c, method)(url, headers=_bearer(token), **kw)
+        if r.status_code == 401:
+            refused.append(f"{method.upper()} {url.split('?')[0]}")
+    check(f"{label}: a signed-in user gets no 401 from any frontend endpoint "
+          f"({len(SIGNED_IN_CALLS)} checked)", not refused, ", ".join(refused))
+
+
+async def _refresh_rules(c, user_token: str, admin_token: str, label: str) -> None:
+    """POST /api/auth/refresh: renews a valid token, refuses everything else."""
+    r = await c.post("/api/auth/refresh", headers=_bearer(user_token))
+    fresh = r.json().get("token") if r.status_code == 200 else ""
+    claims = security.decode_token(fresh) if fresh else {}
+    check(f"{label}: refresh renews a user token (same user, same role)",
+          r.status_code == 200 and claims.get("sub") == "USr-1001" and claims.get("role") == "user",
+          f"{r.status_code}")
+    r = await c.post("/api/auth/refresh", headers=_bearer(admin_token))
+    check(f"{label}: refresh renews an admin token as admin",
+          r.status_code == 200 and security.decode_token(r.json()["token"])["role"] == "admin", f"{r.status_code}")
+    expired = security.jwt.encode({"sub": "USr-1001", "role": "user", "exp": int(time.time()) - 1},
+                                  settings.JWT_SECRET, algorithm="HS256")
+    for what, headers in (("an expired token", _bearer(expired)), ("a garbage token", _bearer("not.a.jwt")),
+                          ("no token", {})):
+        r = await c.post("/api/auth/refresh", headers=headers)
+        check(f"{label}: refresh with {what} -> 401 (the session is over)", r.status_code == 401,
+              f"{r.status_code}")
+
+
 async def run() -> None:
     # ---- stubs: no LLM / SMTP / Google network ----
     query_mod.retrieve_and_answer = _fake_search
@@ -141,6 +196,10 @@ async def run() -> None:
               and security.decode_token(admin_token)["role"] == "admin"
               and security.decode_token(user_token)["sub"] == "USr-1001")
 
+        # ================= staying signed in (AUTH_REQUIRED off) ==============
+        await _refresh_rules(c, user_token, admin_token, "auth off")
+        await _no_401_for_signed_in(c, user_token, "auth off")
+
         # ================= signup stores a hash ==============================
         r = await c.post("/api/auth/signup", json={
             "username": "Ayesha", "name": "Ayesha Khan", "email": "ayesha@gmail.com", "org": "",
@@ -205,6 +264,12 @@ async def run() -> None:
         check("auth on: user token on /query/search -> 200", r.status_code == 200, f"{r.status_code}")
         r = await c.get("/api/auth/me", headers=_bearer(user_token))
         check("auth on: /api/auth/me returns principal", r.status_code == 200 and r.json()["principal"]["sub"] == "USr-1001")
+
+        # ================= staying signed in (AUTH_REQUIRED on) ===============
+        security.limiter.reset()
+        await _refresh_rules(c, user_token, admin_token, "auth on")
+        await _no_401_for_signed_in(c, user_token, "auth on")
+        security.limiter.reset()
 
         # public allowlist still reachable without a token
         for method, url, kw in [
@@ -305,19 +370,18 @@ async def run() -> None:
         check("POST /users stores bcrypt hash", bdoc and security.is_bcrypt_hash(bdoc.get("password")))
         r = await c.post("/api/auth/login", json={"email": "bilal@gmail.com", "password": "Admin#Made1"})
         check("admin-created user can log in", r.status_code == 200, f"{r.status_code}")
+        # Admins may view and delete users, never edit them.
         edit = {k: bdoc.get(k) for k in ("username", "email", "name", "org", "plan", "dob")}
         r = await c.put(f"/api/admin/users/{bdoc['id']}", json={**edit, "org": "New Firm", "password": ""})
+        check("PUT /users/{id} (edit user) removed", r.status_code in (404, 405), f"{r.status_code}")
+        r = await c.put(f"/api/admin/users/{bdoc['id']}/plan", json={"plan": "Premium"})
+        check("PUT /users/{id}/plan (change plan) removed", r.status_code in (404, 405), f"{r.status_code}")
         after = await users.find_one({"email": "bilal@gmail.com"})
-        check("PUT /users blank password keeps the hash, no password in response",
-              r.status_code == 200 and "password" not in r.json() and after["password"] == bdoc["password"]
-              and after["org"] == "New Firm", f"{r.status_code}")
-        r = await c.put(f"/api/admin/users/{bdoc['id']}", json={**edit, "password": "weak"})
-        check("PUT /users weak password -> 400", r.status_code == 400, f"{r.status_code}")
-        r = await c.put(f"/api/admin/users/{bdoc['id']}", json={**edit, "password": "Changed#Pw2"})
-        after = await users.find_one({"email": "bilal@gmail.com"})
-        check("PUT /users new password stored as a new bcrypt hash",
-              r.status_code == 200 and security.is_bcrypt_hash(after["password"])
-              and after["password"] != bdoc["password"])
+        check("user record unchanged by the removed edit routes",
+              after["org"] == bdoc["org"] and after["plan"] == bdoc["plan"] and after["password"] == bdoc["password"])
+        r = await c.delete(f"/api/admin/users/{bdoc['id']}")
+        check("DELETE /users/{id} still works", r.status_code == 200
+              and await users.find_one({"email": "bilal@gmail.com"}) is None, f"{r.status_code}")
 
         admin_body = {"adminid": "ops@example.com", "name": "Ops", "email": "ops@gmail.com",
                       "role": "admin", "dob": "1985-05-05"}

@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { apiFetch } from '../../../lib/api';
+import { toast } from '../../../lib/toast';
+import useToastOn from '../../../lib/useToastOn';
 
 /**
  * Step 2: OTP Verification Component
@@ -16,6 +18,8 @@ const OtpVerificationStep = ({
   const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(''));
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
+  useToastOn(errorMsg, 'error');
+  useToastOn(infoMsg, 'success');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -153,6 +157,7 @@ const OtpVerificationStep = ({
         }
 
         setLoading(false);
+        toast.success('OTP verified successfully.');
         onVerified(enteredCode, data);
       } else {
         const res = await apiFetch('/api/auth/verify-otp', {
@@ -171,6 +176,7 @@ const OtpVerificationStep = ({
         sessionStorage.setItem('resetEmail', email);
         sessionStorage.setItem('resetOtp', enteredCode);
         setLoading(false);
+        toast.success('OTP verified successfully.');
         onVerified(enteredCode);
       }
     } catch (err) {

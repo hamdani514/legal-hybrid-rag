@@ -42,7 +42,7 @@ const PrincipleList = () => {
   return (
     <section
       aria-labelledby="principles-title"
-      className="ground-tint w-full border-y border-ash-200 px-5 py-20 sm:px-8 md:py-28"
+      className="ground-tint w-full border-y border-ash-200 px-5 py-12 sm:px-8 md:py-16"
     >
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
@@ -54,14 +54,14 @@ const PrincipleList = () => {
           className="mx-auto"
         />
 
-        <ul className="mt-14 grid grid-cols-1 gap-5 md:mt-20 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-10 grid grid-cols-1 gap-5 md:mt-12 sm:grid-cols-2 lg:grid-cols-3">
           {PRINCIPLES.map(({ icon, title, body }, index) => (
             <Reveal
               as="li"
               key={title}
               variant="tilt"
               delay={index * 70}
-              className="lift-card group flex flex-col rounded-3xl border border-ash-200 bg-white p-7 shadow-soft hover:border-brand-200 hover:shadow-card"
+              className="lift-card border-trace group flex flex-col rounded-3xl border border-ash-200 bg-white p-7 shadow-soft hover:border-brand-200 hover:shadow-card"
             >
               <span
                 aria-hidden="true"

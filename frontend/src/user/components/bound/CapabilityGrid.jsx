@@ -33,7 +33,7 @@ const CapabilityGrid = () => {
   return (
     <section
       aria-labelledby="capability-title"
-      className="ground-tint w-full border-y border-ash-200 px-5 py-20 sm:px-8 md:py-28"
+      className="ground-tint w-full border-y border-ash-200 px-5 py-12 sm:px-8 md:py-16"
     >
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
@@ -45,9 +45,9 @@ const CapabilityGrid = () => {
           className="mx-auto"
         />
 
-        <div className="mt-14 grid grid-cols-1 gap-5 md:mt-20 lg:grid-cols-[1.2fr_1fr]">
+        <div className="mt-10 grid grid-cols-1 gap-5 md:mt-12 lg:grid-cols-[1.2fr_1fr]">
           {/* ── Lead capability ─────────────────────────────────────── */}
-          <Reveal variant="rise" className="lift-card flex flex-col justify-between rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-10">
+          <Reveal variant="rise" className="lift-card border-trace flex flex-col justify-between rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-10">
             <div>
               <span
                 aria-hidden="true"
@@ -106,7 +106,7 @@ const CapabilityGrid = () => {
                 key={title}
                 variant="left"
                 delay={index * 110}
-                className="lift-card group flex items-start gap-4 rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
+                className="lift-card border-trace group flex items-start gap-4 rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
               >
                 <span
                   aria-hidden="true"

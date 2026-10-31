@@ -21,4 +21,19 @@ export const slugify = (text) =>
     // A title ending in punctuation can leave a trailing hyphen after the cut.
     .replace(/-+$/, '');
 
+/**
+ * The same rules applied while the author types a slug by hand: a space
+ * becomes a hyphen as soon as it is typed. Unlike slugify it keeps a trailing
+ * hyphen, or "my-" could never be typed on the way to "my-article"; the
+ * server trims it on save.
+ */
+export const slugifyTyping = (text) =>
+  String(text ?? '')
+    .toLowerCase()
+    .replace(/\s/g, '-')
+    .replace(/[^\w-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, 50);
+
 export default slugify;

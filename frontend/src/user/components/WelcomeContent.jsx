@@ -9,6 +9,7 @@ import CopyButton from './CopyButton';
 import RetrievalLoadingState from './RetrievalLoadingState';
 import apiFetch, { clearToken } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
+import { toast } from '../../lib/toast';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
 import {
   appendMessages,
@@ -208,7 +209,11 @@ const WelcomeContent = () => {
   const pinSession = async (id, pinned) => {
     // Show it immediately, then confirm with the server.
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, pinned } : s)));
-    await setPinned(userId, id, pinned);
+    if (await setPinned(userId, id, pinned)) {
+      toast.success(pinned ? 'Conversation pinned.' : 'Conversation unpinned.');
+    } else {
+      toast.error('The conversation could not be updated. Please try again.');
+    }
     await refreshSessions();
   };
 
@@ -217,12 +222,20 @@ const WelcomeContent = () => {
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, title } : s)));
     // The open conversation's address follows its new name.
     if (sessionRef.current === id) navigate(chatPath(id, title), { replace: true });
-    await renameSession(userId, id, title);
+    if (await renameSession(userId, id, title)) {
+      toast.success('Conversation renamed.');
+    } else {
+      toast.error('The conversation could not be renamed. Please try again.');
+    }
     await refreshSessions();
   };
 
   const removeSession = async (id) => {
-    await deleteSession(userId, id);
+    if (await deleteSession(userId, id)) {
+      toast.success('Conversation deleted.');
+    } else {
+      toast.error('The conversation could not be deleted. Please try again.');
+    }
     if (sessionRef.current === id) {
       resetConversation();
       navigate('/welcome', { replace: true });
@@ -247,6 +260,7 @@ const WelcomeContent = () => {
   const handleLogout = () => {
     clearToken();
     localStorage.removeItem('currentUser');
+    toast.success('Signed out successfully.');
     navigate('/login');
   };
 
@@ -307,6 +321,7 @@ const WelcomeContent = () => {
             : res.status === 401
               ? 'Your session has expired. Please sign in again.'
               : `The search service returned an error (${res.status}). Please try again.`;
+        toast.error(text);
         addAiReply(userMessage, { sender: 'ai', text });
         return;
       }
@@ -354,6 +369,7 @@ const WelcomeContent = () => {
     } catch (error) {
       console.error('Query pipeline error:', error);
       const errorText = `Unable to reach the backend search service. Make sure the FastAPI server is running.`;
+      toast.error('Unable to reach the search service. Please try again in a moment.');
       addAiReply(userMessage, { sender: 'ai', text: errorText });
     } finally {
       setIsSearching(false);

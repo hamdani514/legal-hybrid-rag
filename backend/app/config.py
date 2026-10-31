@@ -238,7 +238,11 @@ class Settings(BaseSettings):
     AUTH_REQUIRED: bool = False
     SUPER_ADMIN_EMAIL: str = "admindaniyal@cst.com"
     SUPER_ADMIN_PASSWORD: str = "Dan1yal#SuperAdmin2026!"
-    JWT_EXPIRE_MINUTES: int = 1440
+    # A token's lifetime. The frontend renews it silently once half has passed
+    # (sessionManager.refreshSessionIfNeeded), so someone using the app stays
+    # signed in indefinitely; this is how long the app may stay CLOSED before a
+    # new login is needed. 30 days.
+    JWT_EXPIRE_MINUTES: int = 43200
     USER_SEARCHES_PER_MINUTE: int = 10
     USER_ANSWERS_PER_DAY: int = 200
     # Anonymous callers are keyed by client IP, and behind the Vite dev proxy
@@ -317,6 +321,11 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASS: str = ""
     FRONTEND_URL: str = "http://localhost:5173"
+    # Other addresses the frontend is served from (comma-separated origins,
+    # e.g. "https://verdict.example.com,https://www.verdict.example.com").
+    # Stripe returns a payer to the address they paid from when it is listed
+    # here, is FRONTEND_URL's, or is localhost / a private-network IP.
+    FRONTEND_ORIGINS: str = ""
     REACTIVATION_TOKEN_EXPIRY_DAYS: int = 30
 
     # Auth & Security

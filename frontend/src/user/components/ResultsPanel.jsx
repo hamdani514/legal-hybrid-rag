@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import apiFetch, { TOKEN_KEY } from '../../lib/api';
 import CopyButton from './CopyButton';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 import FilterDialog, { EMPTY_FILTERS, activeFilterCount, matchesFilters } from './ResultsFilter';
 import {
   ANSWER_STATUS,
@@ -350,6 +352,7 @@ const useAnalysis = (cite, query) => {
         }
         if (!res.ok) {
           setState((s) => ({ ...s, status: ANSWER_STATUS.ERROR, loading: false, notice: '' }));
+        toast.error('The analysis could not be generated. Please try again.');
           return;
         }
         const data = await res.json();
@@ -363,6 +366,7 @@ const useAnalysis = (cite, query) => {
       } catch (error) {
         console.error('Analysis request failed:', error);
         setState((s) => ({ ...s, status: ANSWER_STATUS.ERROR, loading: false, notice: '' }));
+        toast.error('The analysis could not be generated. Please try again.');
       }
     },
     [query, cite.judgment_id]
@@ -606,9 +610,9 @@ const useMorePages = (message) => {
         }),
       });
       if (res.status === 429) {
-        setNotice(
-          (await errorDetail(res)) || 'The service is busy. Please try again in a minute.'
-        );
+        const busy = (await errorDetail(res)) || 'The service is busy. Please try again in a minute.';
+        setNotice(busy);
+        toast.error(busy);
         return;
       }
       if (!res.ok) throw new Error(`More results failed (${res.status})`);
@@ -616,11 +620,13 @@ const useMorePages = (message) => {
       const seen = new Set(citations.map((c) => c.judgment_id));
       const fresh = (data.judgments || []).filter((j) => !seen.has(j.judgment_id));
       setExtra((prev) => [...prev, ...fresh]);
+      if (fresh.length) toast.success(`${fresh.length} more relevant ${fresh.length === 1 ? 'case' : 'cases'} loaded.`);
       setHasMore(Boolean(data.has_more) && fresh.length > 0);
       if (fresh.length === 0) setNotice('No further relevant cases were found.');
     } catch (error) {
       console.error('More results failed:', error);
       setNotice('More cases could not be loaded. Please try again.');
+      toast.error('More cases could not be loaded. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -657,6 +663,7 @@ const ResultsPanel = ({ message }) => {
   const [compare, setCompare] = useState(null);
   const [comparing, setComparing] = useState(false);
   const [compareError, setCompareError] = useState('');
+  useToastOn(compareError, 'error');
   const more = useMorePages(message);
 
   const citations = more.citations;

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../../../lib/api';
+import { toast } from '../../../lib/toast';
+import useToastOn from '../../../lib/useToastOn';
 
 /**
  * Step 3: Reset / Change Password Component
@@ -16,6 +18,7 @@ const ResetPasswordStep = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  useToastOn(errorMsg, 'error');
 
   // Criteria validation
   const hasMinLength = newPassword.length >= 8;
@@ -97,6 +100,7 @@ const ResetPasswordStep = ({
       sessionStorage.removeItem('resetEmail');
       sessionStorage.removeItem('resetOtp');
       setLoading(false);
+      toast.success('Password changed successfully. You can now sign in.');
       onPasswordReset({ email: currentEmail, newPassword });
     } catch (err) {
       console.error('Reset password error:', err);

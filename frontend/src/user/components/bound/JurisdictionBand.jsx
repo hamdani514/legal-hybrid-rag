@@ -17,12 +17,13 @@ const FIGURES = [
   { value: 'Supreme Court', unit: 'of Pakistan', note: 'The only bench in the index' },
   { value: 'Six', unit: 'divisions', note: 'Marked on every judgment' },
   { value: 'Two', unit: 'passes', note: 'Judgment, then passage' },
-  { value: '384', unit: 'dimensions', note: 'Per embedded passage' },
+  // The embedding model (BAAI/bge-base-en-v1.5) gives each passage 768 numbers.
+  { value: '768', unit: 'dimensions', note: "Capture each passage's meaning" },
 ];
 
 const JurisdictionBand = () => {
   return (
-    <section aria-labelledby="jurisdiction-title" className="relative flex w-full items-center overflow-hidden bg-white py-16 sm:py-20 lg:py-24">
+    <section aria-labelledby="jurisdiction-title" className="relative flex w-full items-center overflow-hidden bg-white py-12 sm:py-14 lg:py-16">
       <div className="relative z-[1] mx-auto flex w-full max-w-[1200px] flex-col justify-center px-5 sm:px-8">
         <Reveal variant="fade">
           <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 font-ui text-[12.5px] font-semibold text-brand-700 shadow-2xs">
@@ -58,7 +59,7 @@ const JurisdictionBand = () => {
             <Reveal
               key={value + unit}
               delay={220 + index * 80}
-              className="lift-card group rounded-3xl border border-ash-200 bg-white p-5 shadow-soft transition-all duration-300 hover:border-brand-200 hover:shadow-card sm:p-6"
+              className="lift-card border-trace group rounded-3xl border border-ash-200 bg-white p-5 shadow-soft transition-all duration-300 hover:border-brand-200 hover:shadow-card sm:p-6"
             >
               <dt className="font-display text-[clamp(1.25rem,2.6vw,1.75rem)] font-bold leading-[1.15] tracking-[-0.03em] text-ash-900">
                 {value}

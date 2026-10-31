@@ -7,6 +7,8 @@ import AdminPagination from '../components/AdminPagination';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import SupportQueriesTable from '../components/SupportQueriesTable';
 import { apiFetch } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 
 const AdminSupportPage = () => {
   const [currentAdmin, setCurrentAdmin] = useState(null);
@@ -30,6 +32,7 @@ const AdminSupportPage = () => {
   const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0, urgent: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  useToastOn(error, 'error', { dedupeMs: 60000 });
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('1_to_n');
@@ -110,6 +113,7 @@ const AdminSupportPage = () => {
       setQueries((prev) =>
         prev.map((q) => (q.query_id === queryId ? { ...q, status: newStatus } : q))
       );
+      toast.success(`Query marked as ${newStatus}.`);
       fetchQueries(false);
     } catch (err) {
       setError(err.message);
@@ -126,6 +130,7 @@ const AdminSupportPage = () => {
         throw new Error(data?.detail || 'Failed to delete query.');
       }
       setQueries((prev) => prev.filter((q) => q.query_id !== queryId));
+      toast.success('Support query deleted.');
       fetchQueries(false);
     } catch (err) {
       setError(err.message);

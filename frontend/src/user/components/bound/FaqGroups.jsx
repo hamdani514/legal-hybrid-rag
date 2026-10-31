@@ -78,7 +78,7 @@ const Question = ({ q, a, open, onToggle }) => {
 
   return (
     <div
-      className={`overflow-hidden rounded-3xl border transition-all duration-300 ${
+      className={`border-trace overflow-hidden rounded-3xl border transition-all duration-300 ${
         open
           ? 'border-brand-200 bg-brand-50/60 shadow-card'
           : 'border-ash-200 bg-white shadow-soft hover:border-brand-200'
@@ -136,7 +136,7 @@ const FaqGroups = () => {
   const [openKey, setOpenKey] = useState(null);
 
   return (
-    <section aria-labelledby="faq-groups-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="faq-groups-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <div className="mx-auto max-w-[1200px]">
         <h2 id="faq-groups-title" className="sr-only">
           Frequently asked questions

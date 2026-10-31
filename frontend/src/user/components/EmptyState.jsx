@@ -49,7 +49,7 @@ const EmptyState = ({ onSelectCard }) => {
           <div
             key={idx}
             onClick={() => onSelectCard(card.prompt)}
-            className="lift-card group flex cursor-pointer flex-col justify-between overflow-hidden rounded-3xl border border-ash-200/70 bg-white shadow-soft transition-all duration-300 hover:border-brand-300/60 hover:shadow-card"
+            className="lift-card border-trace group flex cursor-pointer flex-col justify-between overflow-hidden rounded-3xl border border-ash-200/70 bg-white shadow-soft transition-all duration-300 hover:border-brand-300/60 hover:shadow-card"
           >
             {/* A thin photographic header. Short enough that the card is
                 still read as a control rather than a picture. */}

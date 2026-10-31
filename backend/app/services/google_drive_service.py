@@ -15,6 +15,13 @@ UPLOADS_DIR = BACKEND_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 USERS_DIR = UPLOADS_DIR / "users"
 USERS_DIR.mkdir(parents=True, exist_ok=True)
+BLOG_COVERS_DIR = UPLOADS_DIR / "blog_covers"
+BLOG_COVERS_DIR.mkdir(parents=True, exist_ok=True)
+
+BLOG_COVERS_FOLDER = "Verdict AI Blog Covers"
+# Local ids for covers stored without Drive. Distinct from avatars' "local_"
+# names so a cover id can never be resolved to another kind of file.
+LOCAL_COVER_PREFIX = "localcover_"
 
 
 class GoogleDriveService:
@@ -568,6 +575,134 @@ class GoogleDriveService:
         if not file_id.startswith("local_"):
             return await self.delete_file(file_id)
         return True
+
+
+    # ------------------------------------------------------------------
+    # Blog cover images: "Verdict AI Blog Covers" folder, cached locally
+    # ------------------------------------------------------------------
+
+    def _get_or_create_named_folder(self, folder_name: str) -> Optional[str]:
+        """Gets or creates a top-level Drive folder by name."""
+        service = self.get_service()
+        if not service:
+            return None
+        try:
+            safe_name = folder_name.replace("'", "\'")
+            query = f"mimeType='application/vnd.google-apps.folder' and name='{safe_name}' and trashed=false"
+            files = service.files().list(q=query, spaces="drive", fields="files(id, name)").execute().get("files", [])
+            if files:
+                return files[0]["id"]
+            folder = service.files().create(
+                body={"name": folder_name, "mimeType": "application/vnd.google-apps.folder"},
+                fields="id",
+            ).execute()
+            logger.info(f"Created Google Drive folder '{folder_name}' (id: {folder.get('id')})")
+            return folder.get("id")
+        except Exception as e:
+            logger.error(f"Error checking/creating Drive folder '{folder_name}': {e}")
+            return None
+
+    def _blog_covers_folder(self) -> Optional[str]:
+        if not getattr(self, "_covers_folder_id", None):
+            self._covers_folder_id = self._get_or_create_named_folder(BLOG_COVERS_FOLDER)
+        return self._covers_folder_id
+
+    @staticmethod
+    def _cover_cache_path(file_id: str) -> Optional[Path]:
+        """The local copy of a cover, whatever its extension, or None."""
+        if not file_id or "/" in file_id or "\\" in file_id or ".." in file_id:
+            return None
+        return next(BLOG_COVERS_DIR.glob(f"{file_id}.*"), None)
+
+    def _is_blog_cover(self, file_id: str) -> bool:
+        """True only for a Drive file inside the blog covers folder, so the
+        cover routes can never serve or delete a judgment PDF or an avatar."""
+        service = self.get_service()
+        folder_id = self._blog_covers_folder()
+        if not service or not folder_id:
+            return False
+        try:
+            meta = service.files().get(fileId=file_id, fields="parents").execute()
+            return folder_id in (meta.get("parents") or [])
+        except Exception:
+            return False
+
+    async def upload_blog_cover(self, content_bytes: bytes, original_filename: str, mime_type: str) -> Dict[str, Any]:
+        """
+        Uploads a blog cover image to the 'Verdict AI Blog Covers' Drive folder
+        and keeps a local copy for serving. Without Drive, the local copy is
+        the only one and gets a localcover_ id.
+        """
+        ext = (Path(original_filename).suffix or ".png").lower()
+        name = f"cover_{datetime.now(timezone.utc):%Y%m%d}_{secrets.token_hex(6)}{ext}"
+
+        service = self.get_service()
+        folder_id = self._blog_covers_folder() if service else None
+        if service and folder_id:
+            try:
+                from googleapiclient.http import MediaIoBaseUpload
+
+                drive_file = service.files().create(
+                    body={"name": name, "description": "Verdict AI blog cover image",
+                          "mimeType": mime_type, "parents": [folder_id]},
+                    media_body=MediaIoBaseUpload(io.BytesIO(content_bytes), mimetype=mime_type, resumable=False),
+                    fields="id",
+                ).execute()
+                file_id = drive_file["id"]
+                (BLOG_COVERS_DIR / f"{file_id}{ext}").write_bytes(content_bytes)
+                logger.info(f"✅ Blog cover uploaded to Google Drive (file_id: {file_id}, name: {name})")
+                return {"file_id": file_id, "file_name": name, "status": "uploaded"}
+            except Exception as e:
+                logger.error(f"❌ Failed to upload blog cover to Google Drive: {e}. Keeping a local copy.")
+
+        file_id = f"{LOCAL_COVER_PREFIX}{secrets.token_hex(8)}"
+        (BLOG_COVERS_DIR / f"{file_id}{ext}").write_bytes(content_bytes)
+        return {"file_id": file_id, "file_name": name, "status": "local"}
+
+    async def download_blog_cover(self, file_id: str) -> Tuple[bytes, str]:
+        """(bytes, mime type) of a cover: the local copy, else Drive (then cached)."""
+        import mimetypes
+
+        cached = self._cover_cache_path(file_id)
+        if cached:
+            return cached.read_bytes(), mimetypes.guess_type(cached.name)[0] or "image/png"
+        if file_id.startswith(LOCAL_COVER_PREFIX) or not self._is_blog_cover(file_id):
+            raise FileNotFoundError(f"Blog cover not found: {file_id}")
+
+        from googleapiclient.http import MediaIoBaseDownload
+
+        service = self.get_service()
+        meta = service.files().get(fileId=file_id, fields="name, mimeType").execute()
+        stream = io.BytesIO()
+        downloader = MediaIoBaseDownload(stream, service.files().get_media(fileId=file_id))
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        data = stream.getvalue()
+        ext = Path(meta.get("name", "")).suffix or mimetypes.guess_extension(meta.get("mimeType", "")) or ".png"
+        try:
+            (BLOG_COVERS_DIR / f"{file_id}{ext}").write_bytes(data)
+        except Exception:
+            pass
+        return data, meta.get("mimeType", "image/png")
+
+    async def delete_blog_cover(self, file_id: str) -> bool:
+        """Removes a cover from Drive and the local cache. Refuses any Drive
+        file that is not in the blog covers folder."""
+        if not file_id:
+            return False
+        cached = self._cover_cache_path(file_id)
+        if cached:
+            try:
+                cached.unlink()
+            except Exception as e:
+                logger.warning(f"Could not remove local blog cover {cached.name}: {e}")
+        if file_id.startswith(LOCAL_COVER_PREFIX):
+            return True
+        if not self._is_blog_cover(file_id):
+            logger.warning(f"Refusing to delete {file_id}: not a blog cover.")
+            return False
+        return await self.delete_file(file_id)
 
 
 google_drive_service = GoogleDriveService()

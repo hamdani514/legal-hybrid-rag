@@ -179,7 +179,7 @@ const ResultToolkit = () => {
   return (
     <section
       aria-labelledby="toolkit-title"
-      className="w-full px-5 py-20 sm:px-8 md:py-28"
+      className="w-full px-5 py-12 sm:px-8 md:py-16"
     >
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
@@ -191,14 +191,14 @@ const ResultToolkit = () => {
           className="mx-auto"
         />
 
-        <ul className="mt-14 grid grid-cols-1 gap-5 md:mt-20 lg:grid-cols-2">
+        <ul className="mt-10 grid grid-cols-1 gap-5 md:mt-12 lg:grid-cols-2">
           {TOOLS.map(({ icon, title, body, Figure }, index) => (
             <Reveal
               as="li"
               key={title}
               variant="tilt"
               delay={index * 110}
-              className="lift-card group flex flex-col rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-9"
+              className="lift-card border-trace group flex flex-col rounded-4xl border border-ash-200 bg-white p-8 shadow-card hover:border-brand-200 hover:shadow-card-lg sm:p-9"
             >
               <span
                 aria-hidden="true"

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch, clearToken } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 import { startCheckout, paymentStatus, cancelSubscription, reactivateSubscription } from '../lib/payments';
 import DeactivateModal from '../components/DeactivateModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -36,6 +38,9 @@ const SettingsPage = () => {
   const [cancellingSub, setCancellingSub] = useState(false);
   const [reactivatingSub, setReactivatingSub] = useState(false);
   const [subFeedback, setSubFeedback] = useState({ type: '', message: '' });
+  useToastOn(saveSuccess, 'success');
+  useToastOn(saveError, 'error');
+  useToastOn(subFeedback.message, subFeedback.type === 'error' ? 'error' : 'success');
 
   // Modals
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
@@ -368,6 +373,7 @@ const SettingsPage = () => {
     try {
       localStorage.removeItem('currentUser');
     } catch {}
+    toast.success('Signed out successfully.');
     navigate('/');
   };
 

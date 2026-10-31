@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../../../lib/api';
+import { toast } from '../../../lib/toast';
+import useToastOn from '../../../lib/useToastOn';
 
 /**
  * Step 1: Forgot Password / Request OTP
@@ -13,6 +15,7 @@ const ForgotPasswordStep = ({
 }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  useToastOn(errorMsg, 'error');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +50,7 @@ const ForgotPasswordStep = ({
       }
 
       setLoading(false);
+      toast.success(`OTP sent to ${trimmed}.`);
       onOtpSent(trimmed);
     } catch (err) {
       console.error('Forgot password error:', err);

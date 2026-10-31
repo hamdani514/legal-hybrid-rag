@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { clearToken } from '../../lib/api';
+import { toast } from '../../lib/toast';
 
 /**
  * The console page header. The primary action carries the brand gradient and
- * sign-out is a quiet bordered control — previously both were identical dark
+ * log-out is a quiet bordered control — previously both were identical dark
  * buttons, which gave a destructive action the same weight as the main one.
  */
 const AdminHeader = ({ title, subtitle, actionButtonText, onActionClick }) => {
@@ -12,6 +13,7 @@ const AdminHeader = ({ title, subtitle, actionButtonText, onActionClick }) => {
   const handleLogout = () => {
     localStorage.removeItem('currentAdmin');
     clearToken({ admin: true });
+    toast.success('Logged out successfully.');
     navigate('/admin-login');
   };
 
@@ -27,21 +29,6 @@ const AdminHeader = ({ title, subtitle, actionButtonText, onActionClick }) => {
       </div>
 
       <div className="flex shrink-0 items-center gap-2.5">
-        {/* Notifications — an icon-only control still needs a name. */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-ash-200 bg-white text-ash-500 transition-colors duration-250 hover:border-brand-300 hover:text-brand-700"
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-            notifications
-          </span>
-          <span
-            aria-hidden="true"
-            className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-red-600 ring-2 ring-white"
-          />
-        </button>
-
         {actionButtonText && onActionClick && (
           <button
             type="button"
@@ -60,7 +47,7 @@ const AdminHeader = ({ title, subtitle, actionButtonText, onActionClick }) => {
           <span aria-hidden="true" className="material-symbols-outlined text-[17px]">
             logout
           </span>
-          Sign out
+          Log out
         </button>
       </div>
     </header>

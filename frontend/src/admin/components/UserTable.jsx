@@ -1,5 +1,3 @@
-import React from 'react';
-
 const UserTable = ({
   loading,
   users,
@@ -10,8 +8,6 @@ const UserTable = ({
   sortBy,
   setSortBy,
   setCurrentPage,
-  handlePlanChange,
-  handleEditClick,
   handleDeleteClick,
   getInitials,
 }) => {
@@ -143,31 +139,18 @@ const UserTable = ({
                   </td>
 
                   <td className="px-8 py-6">
-                    <select
-                      value={user.plan || 'Standard'}
-                      onChange={(e) => handlePlanChange(user.id, e.target.value)}
-                      className={`appearance-none cursor-pointer px-3 py-1 font-prose font-bold text-[10px] leading-3 tracking-[1px] uppercase rounded-full outline-none border-0 transition-all ${
+                    {/* Read-only: admins can see a user's plan but not change it. */}
+                    <span
+                      className={`inline-block px-3 py-1 font-prose font-bold text-[10px] leading-3 tracking-[1px] uppercase rounded-full ${
                         user.plan === 'Premium' || user.plan === 'Pro' ? 'bg-brand-100 text-brand-800' : user.plan === 'Standard' ? 'bg-[#CFE6FF] text-[#0B3B6F]' : 'bg-[#E5E7EB] text-[#4B5563]'
                       }`}
-                      style={{ backgroundImage: 'none' }}
                     >
-                      <option value="Free">FREE</option>
-                      <option value="Standard">STANDARD</option>
-                      <option value="Premium">PREMIUM</option>
-                    </select>
+                      {user.plan || 'Free'}
+                    </span>
                   </td>
 
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-3">
-                      <button
-                        onClick={() => handleEditClick(user)}
-                        className="p-2 text-[#6B7280] hover:text-[#111827] transition-colors"
-                        title="Edit User"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                          edit_note
-                        </span>
-                      </button>
                       <button
                         onClick={() => handleDeleteClick(user)}
                         className="p-2 text-[#6B7280] hover:text-[#DC2626] transition-colors"

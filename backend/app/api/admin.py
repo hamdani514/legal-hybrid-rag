@@ -986,20 +986,6 @@ class UserCreate(BaseModel):
     created_at: Optional[str] = None
 
 
-class UserUpdate(BaseModel):
-    email: str
-    password: Optional[str] = ""  # blank keeps the current password
-    first_name: Optional[str] = ""
-    last_name: Optional[str] = ""
-    name: Optional[str] = ""
-    username: Optional[str] = ""
-    org: Optional[str] = ""
-    plan: Optional[str] = "Standard"
-    dob: Optional[str] = ""
-    gender: Optional[str] = "Male"
-    phone_no: Optional[str] = ""
-
-
 def validate_password_strength(password: str) -> None:
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters long.")
@@ -1219,75 +1205,10 @@ async def check_email_availability(email: str):
     return {"available": user is None}
 
 
-@router.put("/users/{user_id}")
-async def update_user(user_id: str, user: UserUpdate):
-    if db.database is None:
-        raise HTTPException(status_code=503, detail="Database is not connected.")
-        
-    existing_user = await db.database.users.find_one({"id": user_id})
-    if not existing_user:
-        raise HTTPException(status_code=404, detail="User not found.")
-        
-    # 1. Validate Email
-    try:
-        validate_email_domain(user.email)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-        
-    # 2. A new password, if one was typed (blank keeps the current one)
-    password_change = _password_change(user.password)
-
-    # 3. Validate DOB if provided
-    if user.dob:
-        reg_date = existing_user.get("created_at") or datetime.now(timezone.utc)
-        try:
-            validate_age_limit(user.dob, reg_date)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-            
-    clean_email = user.email.strip().lower()
-    if clean_email != existing_user.get("email"):
-        dup = await db.database.users.find_one({"email": clean_email})
-        if dup and dup.get("id") != user_id:
-            raise HTTPException(status_code=409, detail="Email is already registered.")
-
-    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-    if not full_name:
-        full_name = (user.name or "").strip() or existing_user.get("name") or clean_email.split("@")[0]
-
-    plan = user.plan or existing_user.get("plan") or "Standard"
-    plan_color = "bg-[#E9C176] text-[#261900]" if plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
-    
-    update_doc = {
-        "first_name": (user.first_name or "").strip(),
-        "last_name": (user.last_name or "").strip(),
-        "name": full_name,
-        "email": clean_email,
-        "plan": plan,
-        "planColor": plan_color,
-        **password_change,
-    }
-    if user.username:
-        update_doc["username"] = user.username
-    if user.org:
-        update_doc["org"] = user.org
-    if user.dob:
-        update_doc["dob"] = user.dob
-    if user.gender:
-        update_doc["gender"] = user.gender
-    if user.phone_no:
-        update_doc["phone_no"] = user.phone_no
-
-    await db.database.users.update_one({"id": user_id}, {"$set": update_doc})
-    
-    updated = await db.database.users.find_one({"id": user_id})
-    updated["_id"] = str(updated["_id"])
-    if "created_at" in updated and updated["created_at"]:
-        if isinstance(updated["created_at"], datetime):
-            updated["created_at"] = updated["created_at"].isoformat()
-    return _without_secrets(updated)
-
-
+# Admins can list and delete users but never edit them: there is no
+# PUT /users/{user_id} or PUT /users/{user_id}/plan. A user's own details are
+# changed only by that user (app/api/auth.py) and their plan only by Stripe
+# (app/api/payments.py).
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: str):
     if db.database is None:
@@ -1299,31 +1220,6 @@ async def delete_user(user_id: str):
         
     await db.database.users.delete_one({"id": user_id})
     return {"message": "User deleted successfully.", "id": user_id}
-
-class UserPlanUpdate(BaseModel):
-    plan: str
-
-@router.put("/users/{user_id}/plan")
-async def update_user_plan(user_id: str, body: UserPlanUpdate):
-    if db.database is None:
-        raise HTTPException(status_code=503, detail="Database is not connected.")
-    
-    # "Standard" is written by the Stripe webhook when a subscription starts
-    # (app/api/payments.py); the panel must not reject the plan it finds.
-    allowed_plans = {"Free", "Standard", "Premium"}
-    if body.plan not in allowed_plans:
-        raise HTTPException(status_code=400, detail=f"Plan must be one of: {', '.join(allowed_plans)}")
-
-    existing_user = await db.database.users.find_one({"id": user_id})
-    if not existing_user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    await db.database.users.update_one(
-        {"id": user_id},
-        {"$set": {"plan": body.plan}}
-    )
-    return {"message": "Plan updated successfully.", "id": user_id, "plan": body.plan}
-
 
 # ----------------------------
 # Support Query Management

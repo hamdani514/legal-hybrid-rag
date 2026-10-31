@@ -350,6 +350,70 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+/* A blue line that travels round a card's border while it is hovered.
+   A conic gradient (mostly transparent, one bright blue-to-cyan segment) is
+   masked down to a 2px ring and its start angle is animated, so the bright
+   segment runs along the rounded border. @property makes the angle
+   animatable; a browser without it shows the line standing still. */
+@property --trace-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* :where() keeps this at zero specificity, so a card's own position (sticky,
+   absolute) still wins; the line only needs the card to be positioned. */
+:where(.border-trace) {
+  position: relative;
+}
+.border-trace::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--trace-angle),
+    transparent 0deg,
+    transparent 210deg,
+    rgba(0, 133, 255, 0.18) 250deg,
+    #0085ff 315deg,
+    #22d3ee 350deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+@keyframes border-trace {
+  to {
+    --trace-angle: 360deg;
+  }
+}
+
+@media (hover: hover) {
+  .border-trace:hover::after {
+    opacity: 1;
+    animation: border-trace 2.8s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .border-trace:hover::after {
+    animation: none;
+  }
+}
+
 /* Gradient hairline border on a rounded card, without a wrapper element. */
 .ring-grad {
   position: relative;

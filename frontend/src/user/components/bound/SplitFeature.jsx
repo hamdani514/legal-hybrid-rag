@@ -53,7 +53,7 @@ const SplitFeature = ({
             photograph rather than sit against it. */}
         {overlay && (
           <div
-            className={`absolute -bottom-8 z-[3] hidden w-[19rem] rounded-3xl border border-ash-200 bg-white/95 p-5 shadow-card-lg backdrop-blur-md lg:block ${
+            className={`border-trace absolute -bottom-8 z-[3] hidden w-[19rem] rounded-3xl border border-ash-200 bg-white/95 p-5 shadow-card-lg backdrop-blur-md lg:block ${
               flip ? '-left-10' : '-right-10'
             }`}
           >

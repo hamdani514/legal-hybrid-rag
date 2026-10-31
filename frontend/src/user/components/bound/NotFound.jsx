@@ -67,7 +67,7 @@ const NotFound = () => {
               <li key={to}>
                 <Link
                   to={to}
-                  className="lift-card group flex items-center gap-3.5 rounded-2xl border border-ash-200 bg-white p-4 text-left shadow-soft transition-all hover:border-brand-200 hover:shadow-card"
+                  className="lift-card border-trace group flex items-center gap-3.5 rounded-2xl border border-ash-200 bg-white p-4 text-left shadow-soft transition-all hover:border-brand-200 hover:shadow-card"
                 >
                   <span
                     aria-hidden="true"

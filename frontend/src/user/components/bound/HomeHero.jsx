@@ -6,6 +6,14 @@ import useIsLoggedIn from '../../hooks/useIsLoggedIn';
  * Universal Hero Banner used across Home, About, Pricing, FAQ, and Contact pages.
  * Displays the Supreme Court photographic backdrop with page-specific messaging,
  * authority badge, primary/secondary action triggers, and highlight pills.
+ *
+ * Same size on every page: the banner is one screen tall MINUS the divisions
+ * ticker that follows it on every page (DivisionsTicker: 62px, 70px from sm),
+ * so banner and ticker are both on screen on arrival. Content is centred and
+ * every text block has a fixed maximum width. Without a fixed height the
+ * banner followed its copy — a three-line title or a four-line description
+ * made one page's banner taller than the next. Only a screen too short for the
+ * content lets the banner grow, so nothing is cut off.
  */
 const DEFAULT_HIGHLIGHTS = [
   { icon: '/assets/thunder.svg', label: 'Answers in seconds' },
@@ -34,7 +42,7 @@ const HomeHero = ({
         grain
         drift
         ratio={false}
-        className="relative w-full overflow-hidden"
+        className="relative flex min-h-[calc(100svh-62px)] w-full items-center overflow-hidden sm:min-h-[calc(100svh-70px)]"
       >
         {/* Decorative blooms. */}
         <span
@@ -46,7 +54,8 @@ const HomeHero = ({
           className="float-y pointer-events-none absolute -left-28 top-64 h-72 w-72 rounded-full bg-violet-600/25 blur-3xl"
         />
 
-        <div className="relative z-[1] mx-auto w-full max-w-[1200px] px-5 pb-28 pt-32 sm:px-8 sm:pt-36 lg:pb-36 lg:pt-44">
+        {/* Top padding clears the navigation bar, which sits over the banner. */}
+        <div className="relative z-[1] mx-auto w-full max-w-[1200px] px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:pb-20 lg:pt-32">
           {/* ── Claim ──────────────────────────────────────────────────── */}
           <div className="flex flex-col items-center text-center">
             {badge && (

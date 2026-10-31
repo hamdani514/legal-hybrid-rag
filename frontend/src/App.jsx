@@ -31,13 +31,17 @@ import AdminSettingsPage from './admin/settings/AdminSettingsPage';
 import AdminManagementPage from './admin/management/AdminManagementPage';
 
 import SessionTimeoutWatcher from './user/components/auth/SessionTimeoutWatcher';
+import Toaster from './components/Toaster';
+import ScrollToTop from './components/ScrollToTop';
 import './App.css';
 
 function App() {
   return (
     <Router>
       <div className="App">
+        <ScrollToTop />
         <SessionTimeoutWatcher />
+        <Toaster />
         <Routes>
           {/* User Routes */}
           <Route path="/" element={<HomePage />} />

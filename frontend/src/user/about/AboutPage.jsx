@@ -4,6 +4,8 @@ import HomeHero from '../components/bound/HomeHero';
 import DivisionsTicker from '../components/bound/DivisionsTicker';
 import OriginSection from '../components/bound/OriginSection';
 import PrincipleList from '../components/bound/PrincipleList';
+import UsageGuide from '../components/bound/UsageGuide';
+import FeatureShowcase from '../components/bound/FeatureShowcase';
 import MetricsBand from '../components/bound/MetricsBand';
 import ClosingCTA from '../components/bound/ClosingCTA';
 
@@ -31,6 +33,8 @@ const AboutPage = () => {
         <DivisionsTicker />
         <OriginSection />
         <PrincipleList />
+        <UsageGuide />
+        <FeatureShowcase />
         <MetricsBand />
         <ClosingCTA
           eyebrow="Try it"

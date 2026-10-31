@@ -173,7 +173,7 @@ const LegalPage = () => {
                     <li key={siblingSlug}>
                       <Link
                         to={`/${siblingSlug}`}
-                        className="group flex items-center gap-3 rounded-2xl border border-ash-200 bg-white px-4 py-3 transition-all duration-300 hover:border-brand-200 hover:shadow-soft"
+                        className="border-trace group flex items-center gap-3 rounded-2xl border border-ash-200 bg-white px-4 py-3 transition-all duration-300 hover:border-brand-200 hover:shadow-soft"
                       >
                         <span
                           aria-hidden="true"

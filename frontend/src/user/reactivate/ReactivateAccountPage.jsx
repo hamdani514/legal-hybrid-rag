@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import AuthShell from '../components/bound/AuthShell';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 export default function ReactivateAccountPage() {
   const { token } = useParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
   const [message, setMessage] = useState('');
+  useToastOn(status === 'loading' ? '' : message, status === 'success' ? 'success' : 'error');
 
   useEffect(() => {
     if (!token || token.length < 32) {

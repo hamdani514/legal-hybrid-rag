@@ -178,7 +178,7 @@ const PricingPage = () => {
         <AuthorityStrip />
 
         {/* Frequently Asked Questions */}
-        <section aria-labelledby="pricing-faq-title" className="w-full px-5 py-20 sm:px-8 sm:py-28">
+        <section aria-labelledby="pricing-faq-title" className="w-full px-5 py-12 sm:px-8 sm:py-16">
           <div className="mx-auto max-w-[840px]">
             <SectionOpener
               eyebrow="Billing Questions"
@@ -196,7 +196,7 @@ const PricingPage = () => {
                   <Reveal
                     key={faq.q}
                     delay={idx * 60}
-                    className="overflow-hidden rounded-3xl border border-ash-200 bg-white transition-all hover:border-brand-200 hover:shadow-soft"
+                    className="border-trace overflow-hidden rounded-3xl border border-ash-200 bg-white transition-all hover:border-brand-200 hover:shadow-soft"
                   >
                     <button
                       type="button"

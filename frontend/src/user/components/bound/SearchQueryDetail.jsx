@@ -99,7 +99,7 @@ const SearchQueryDetail = () => {
   return (
     <section
       aria-labelledby="search-detail-title"
-      className="relative w-full overflow-hidden bg-gradient-to-b from-white via-ash-50/40 to-white px-5 py-20 sm:px-8 sm:py-28"
+      className="relative w-full overflow-hidden bg-gradient-to-b from-white via-ash-50/40 to-white px-5 py-12 sm:px-8 sm:py-16"
     >
       <div className="mx-auto max-w-[1200px]">
         {/* Header */}
@@ -169,7 +169,7 @@ const SearchQueryDetail = () => {
 
           <Reveal
             delay={100}
-            className="relative overflow-hidden rounded-4xl border border-ash-200/90 bg-white shadow-card-lg"
+            className="border-trace relative overflow-hidden rounded-4xl border border-ash-200/90 bg-white shadow-card-lg"
           >
             {/* Search query input bar */}
             <div className="flex flex-col gap-3.5 border-b border-ash-200 bg-ash-50/90 px-5 py-4 sm:flex-row sm:items-center sm:px-7 sm:py-5">

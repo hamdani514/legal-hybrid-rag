@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { apiFetch, setToken } from '../../../lib/api';
+import { toast } from '../../../lib/toast';
 
 /**
  * Google sign-in, verified on the server.
@@ -55,10 +56,12 @@ const GoogleAuthButton = ({ text = 'Continue with Google', onSuccess, className 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setMessage(data.detail || 'Google sign-in failed.');
+        toast.error(data.detail || 'Google sign-in failed.');
         return;
       }
       setToken(data.token);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
+      toast.success('Signed in with Google successfully.');
       if (onSuccess) {
         onSuccess(data.user);
       } else {
@@ -67,6 +70,7 @@ const GoogleAuthButton = ({ text = 'Continue with Google', onSuccess, className 
     } catch (err) {
       console.error('Google sign-in error:', err);
       setMessage('Failed to communicate with the authentication server.');
+      toast.error('Failed to communicate with the authentication server.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +85,10 @@ const GoogleAuthButton = ({ text = 'Continue with Google', onSuccess, className 
         <GoogleOAuthProvider clientId={config.client_id}>
           <GoogleLogin
             onSuccess={handleCredential}
-            onError={() => setMessage('Google sign-in was cancelled or failed.')}
+            onError={() => {
+              setMessage('Google sign-in was cancelled or failed.');
+              toast.error('Google sign-in was cancelled or failed.');
+            }}
             text={googleText}
             shape="rectangular"
             logo_alignment="center"

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import Reveal from './Reveal';
 import { apiFetch } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 
 // A ruled entry line, as on a court form — no boxed inputs.
 const FIELD_CLASS =
@@ -18,6 +20,7 @@ const ContactForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  useToastOn(error, 'error');
 
   const fullNameRef = useRef(null);
   const emailRef = useRef(null);
@@ -60,6 +63,7 @@ const ContactForm = () => {
       ];
       const firstInvalid = focusOrder.find(([key]) => errors[key]);
       firstInvalid?.[1].current?.focus();
+      toast.error(Object.values(errors)[0]);
       return;
     }
 
@@ -81,6 +85,7 @@ const ContactForm = () => {
         throw new Error(data?.detail || 'Failed to submit inquiry.');
       }
       const refId = data?.query_id ? ` [Ref: ${data.query_id}]` : '';
+      toast.success('Thank you for reaching out! Your message was sent to our support team, and we will get back to you within 24 hours.');
       setSuccess(`Thank you! Your inquiry${refId} has been received. A confirmation has been sent to ${email.trim()}, and our support team will reply within 24 to 48 hours.`);
       setFullName('');
       setEmail('');
@@ -103,7 +108,7 @@ const ContactForm = () => {
   return (
     <Reveal
       variant="up"
-      className="relative z-10 overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card transition-shadow duration-500 hover:shadow-card-lg"
+      className="border-trace relative z-10 overflow-hidden rounded-4xl border border-ash-200 bg-white shadow-card transition-shadow duration-500 hover:shadow-card-lg"
     >
       {/* Form Content */}
       <div className="px-6 sm:px-10 lg:px-16 pt-10 sm:pt-14 lg:pt-16 pb-12 sm:pb-16 lg:pb-20">

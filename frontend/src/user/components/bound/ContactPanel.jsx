@@ -29,7 +29,7 @@ const CHANNELS = [
 
 const ContactPanel = () => {
   return (
-    <section aria-labelledby="contact-panel-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="contact-panel-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 lg:grid-cols-[1fr_23rem] lg:gap-12">
         {/* ── The enquiry form ───────────────────────────────────────── */}
         <div>
@@ -99,7 +99,7 @@ const ContactPanel = () => {
                 as="li"
                 key={label}
                 delay={index * 90}
-                className="lift-card group rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
+                className="lift-card border-trace group rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
               >
                 <span className="flex items-center gap-3">
                   <span

@@ -246,6 +246,9 @@ app.include_router(query_api_router)
 # app/routes/blogs.py. Must stay registered before the SPA catch-all below.
 from app.routes.blogs import router as blogs_router
 app.include_router(blogs_router)
+# Archive figures for the "How it works" page: public, counts only.
+from app.api.stats import router as stats_router
+app.include_router(stats_router)
 # Authoring the same articles. Separate router so the public one stays
 # read-only, and guarded like the rest of /api/admin.
 from app.routes.admin_blogs import router as admin_blogs_router

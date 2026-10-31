@@ -8,6 +8,7 @@ import AdminDeleteModal from '../components/AdminDeleteModal';
 import AdminTable from '../components/AdminTable';
 import AdminFormModal from '../components/AdminFormModal';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 const ADMINS_PER_PAGE = 5;
 
@@ -27,6 +28,8 @@ const AdminManagementPage = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  useToastOn(errorMsg, 'error');
+  useToastOn(successMsg, 'success');
 
   const [formData, setFormData] = useState({
     adminid: '',

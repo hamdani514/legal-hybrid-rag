@@ -32,7 +32,7 @@ const AuthorityStrip = () => {
   return (
     <section
       aria-label="How the archive behaves"
-      className="ground-tint w-full border-y border-ash-200 px-5 py-16 sm:px-8 sm:py-20"
+      className="ground-tint w-full border-y border-ash-200 px-5 py-12 sm:px-8 sm:py-14"
     >
       <ul className="mx-auto grid max-w-[1200px] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ASSURANCES.map(({ icon, title, note }, index) => (
@@ -40,7 +40,7 @@ const AuthorityStrip = () => {
             as="li"
             key={title}
             delay={index * 80}
-            className="lift-card group flex flex-col rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
+            className="lift-card border-trace group flex flex-col rounded-3xl border border-ash-200 bg-white p-6 shadow-soft hover:border-brand-200 hover:shadow-card"
           >
             <span
               aria-hidden="true"

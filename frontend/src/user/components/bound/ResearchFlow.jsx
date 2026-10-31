@@ -13,9 +13,9 @@ const ResearchFlow = () => {
   return (
     <section
       aria-labelledby="flow-title"
-      className="w-full overflow-hidden px-5 py-20 sm:px-8 md:py-28"
+      className="w-full overflow-hidden px-5 py-12 sm:px-8 md:py-16"
     >
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-24 md:gap-32">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-14 md:gap-20">
         <h2 id="flow-title" className="sr-only">
           From question to citation
         </h2>
@@ -32,7 +32,7 @@ const ResearchFlow = () => {
             {
               icon: 'psychology',
               title: 'Meaning, not string matching',
-              note: 'Your question is embedded into 384 dimensions and compared against every indexed passage.',
+              note: 'Your question is turned into 768 numbers that capture its meaning, and compared against every indexed passage.',
             },
             {
               icon: 'filter_alt',
@@ -94,7 +94,7 @@ const ResearchFlow = () => {
       <Reveal
         variant="fade"
         delay={120}
-        className="mx-auto mt-20 max-w-[46rem] rounded-3xl border border-ash-200 bg-ash-50 px-6 py-5 text-center md:mt-24"
+        className="mx-auto mt-12 max-w-[46rem] rounded-3xl border border-ash-200 bg-ash-50 px-6 py-5 text-center md:mt-14"
       >
         <p className="font-prose text-[13px] leading-[1.7] text-ash-500">
           <span

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 const SignupForm = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,8 @@ const SignupForm = () => {
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  useToastOn(errorMsg, 'error');
+  useToastOn(successMsg, 'success');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

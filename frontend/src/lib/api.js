@@ -13,13 +13,21 @@
  *   - Requests to /api/admin/* send the admin token; everything else sends the
  *     user token. A request with no token is still sent — the backend decides,
  *     and while AUTH_REQUIRED is off it accepts anonymous calls.
- *   - A 401 clears the stale token and sends the user to the right login page.
- *     The response is still returned, so callers keep their own error handling.
+ *   - A 401 signs the session out only when the server confirms the token
+ *     itself is no longer valid (sessionManager.confirmSessionEnded). Any other
+ *     401 is returned to the caller like an ordinary error, and the user stays
+ *     signed in. The response is always returned, so callers keep their own
+ *     error handling.
  *   - A 429 is returned untouched: it means a rate limit (per user, or the
  *     shared Gemini budget), which the caller shows as "busy, try again".
  */
 
-import { initSessionTimeout, clearSessionTimeout } from './sessionManager';
+import {
+  clearSessionTimeout,
+  confirmSessionEnded,
+  initSessionTimeout,
+  performLogout,
+} from './sessionManager';
 
 export const TOKEN_KEY = 'authToken';
 export const ADMIN_TOKEN_KEY = 'adminAuthToken';
@@ -76,18 +84,19 @@ export async function apiFetch(url, options = {}) {
   try {
     const response = await fetch(url, { ...options, headers });
 
-    if (response.status === 401 && token) {
-      clearToken({ admin });
-      if (!admin) {
-        try {
-          localStorage.removeItem('currentUser');
-        } catch {
-          /* ignore */
-        }
+    // Sign out only if the session itself is over. If it is still valid (or
+    // the server cannot say), the caller just sees this request's 401.
+    const key = admin ? ADMIN_TOKEN_KEY : TOKEN_KEY;
+    if (response.status === 401 && token && readToken(key) === token) {
+      if (await confirmSessionEnded({ admin })) {
+        performLogout({ expired: true, role: admin ? 'admin' : 'user' });
+        return response;
       }
-      const target = admin ? '/admin-login' : '/login?expired=true';
-      if (typeof window !== 'undefined' && window.location.pathname !== target) {
-        window.location.assign(target);
+      // The check renewed the token: send the request once more with it.
+      const renewed = readToken(key);
+      if (renewed && renewed !== token) {
+        headers.set('Authorization', `Bearer ${renewed}`);
+        return await fetch(url, { ...options, headers });
       }
     }
 

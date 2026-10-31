@@ -149,7 +149,7 @@ const BlogsPage = () => {
             className="mx-auto w-full max-w-[1200px] px-5 pb-16 sm:px-8"
           >
             <Reveal variant="rise">
-              <article className="grid grid-cols-1 overflow-hidden rounded-3xl border border-ash-200 bg-white shadow-card transition-shadow duration-300 hover:shadow-card-lg lg:grid-cols-12">
+              <article className="border-trace grid grid-cols-1 overflow-hidden rounded-3xl border border-ash-200 bg-white shadow-card transition-shadow duration-300 hover:shadow-card-lg lg:grid-cols-12">
                 <Link
                   to={`/blogs/${featured.slug}`}
                   className="group relative block min-h-[280px] overflow-hidden bg-ash-100 lg:col-span-5"

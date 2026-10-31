@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, clearToken } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 export default function DeleteAccountModal({ isOpen, onClose, userEmail }) {
   const [password, setPassword] = useState('');
@@ -8,6 +9,8 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  useToastOn(errorMsg, 'error');
+  useToastOn(successMsg, 'success');
   const navigate = useNavigate();
 
   if (!isOpen) return null;

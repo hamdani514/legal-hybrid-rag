@@ -5,6 +5,8 @@ import SectionOpener from './SectionOpener';
 import CardBubbles from './CardBubbles';
 import { startCheckout } from '../../lib/payments';
 import useIsLoggedIn from '../../hooks/useIsLoggedIn';
+import { toast } from '../../../lib/toast';
+import useToastOn from '../../../lib/useToastOn';
 
 const PLANS = [
   {
@@ -67,6 +69,7 @@ const PlansSection = () => {
   const isLoggedIn = useIsLoggedIn();
   const [busy, setBusy] = useState(false);
   const [payError, setPayError] = useState('');
+  useToastOn(payError, 'error');
 
   // The paid plan leaves for Stripe's hosted page; everything else is a link.
   const onSubscribe = async () => {
@@ -77,6 +80,7 @@ const PlansSection = () => {
     if (!result.ok) {
       setBusy(false);
       if (result.reason === 'signin') {
+        toast.error('Please sign in to subscribe.');
         navigate('/login', { state: { next: '/pricing' } });
         return;
       }
@@ -86,7 +90,7 @@ const PlansSection = () => {
   };
 
   return (
-    <section aria-labelledby="plans-title" className="w-full px-5 py-20 sm:px-8 md:py-28 overflow-x-hidden">
+    <section aria-labelledby="plans-title" className="w-full px-5 py-12 sm:px-8 md:py-16 overflow-x-hidden">
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
           eyebrow="Pricing"
@@ -98,7 +102,7 @@ const PlansSection = () => {
         />
 
         {/* Pricing Cards */}
-        <div className="pricing-deck relative mx-auto mt-14 max-w-[1140px] md:mt-20 lg:py-10">
+        <div className="pricing-deck relative mx-auto mt-10 max-w-[1140px] md:mt-12 lg:py-10">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-3 items-stretch">
             {PLANS.map(({ name, price, cadence, summary, features, cta, to, emphasis, checkout }, index) => {
               const cardPositionClass =
@@ -111,7 +115,7 @@ const PlansSection = () => {
               return (
                 <div
                   key={name}
-                  className={`pricing-card ${cardPositionClass} relative flex flex-col justify-between overflow-hidden rounded-4xl p-8 sm:p-9 ${
+                  className={`pricing-card border-trace ${cardPositionClass} relative flex flex-col justify-between overflow-hidden rounded-4xl p-8 sm:p-9 ${
                     emphasis
                       ? 'bg-gradient-to-br from-[#0066f6] via-[#004ecc] to-[#1f00db] text-white shadow-glow-lg'
                       : 'border border-ash-200 bg-white shadow-soft hover:border-brand-200'

@@ -40,7 +40,7 @@ const DIVISIONS = [
 
 const MethodSection = () => {
   return (
-    <section aria-labelledby="method-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="method-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
           eyebrow="How it works"
@@ -52,7 +52,7 @@ const MethodSection = () => {
         />
 
         {/* Step cards ---------------------------------------------------- */}
-        <div className="relative mt-14 md:mt-20">
+        <div className="relative mt-10 md:mt-12">
           {/* Connector running behind the numbers at desktop width. */}
           <span
             aria-hidden="true"
@@ -65,7 +65,7 @@ const MethodSection = () => {
                 as="li"
                 key={title}
                 delay={index * 90}
-                className="lift-card group flex flex-col rounded-3xl border border-ash-200 bg-white p-7 shadow-soft hover:border-brand-200 hover:shadow-card"
+                className="lift-card border-trace group flex flex-col rounded-3xl border border-ash-200 bg-white p-7 shadow-soft hover:border-brand-200 hover:shadow-card"
               >
                 <div className="flex items-center gap-3">
                   <span
@@ -123,7 +123,7 @@ const MethodSection = () => {
                 key={label}
                 variant="fade"
                 delay={180 + index * 60}
-                className="group flex items-start gap-3 rounded-2xl border border-ash-200 bg-white px-4 py-3.5 transition-all duration-300 hover:border-brand-200 hover:shadow-soft"
+                className="border-trace group flex items-start gap-3 rounded-2xl border border-ash-200 bg-white px-4 py-3.5 transition-all duration-300 hover:border-brand-200 hover:shadow-soft"
               >
                 <span
                   aria-hidden="true"

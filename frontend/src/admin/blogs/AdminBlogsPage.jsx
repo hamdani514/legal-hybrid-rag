@@ -3,9 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import AdminDeleteModal from '../components/AdminDeleteModal';
+import AdminPagination from '../components/AdminPagination';
 import { apiFetch } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 
 /** The article list: what exists, and the way in to the editor. */
+const BLOGS_PER_PAGE = 10;
+
 /** The stored admin, read once rather than in an effect, so there is no render
  *  with a signed-in admin showing as absent. */
 const readAdmin = () => {
@@ -21,8 +26,10 @@ const AdminBlogsPage = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  useToastOn(error, 'error');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const navigate = useNavigate();
@@ -68,6 +75,7 @@ const AdminBlogsPage = () => {
         throw new Error(data?.detail || 'Delete failed.');
       }
       setPendingDelete(null);
+      toast.success('Article deleted.');
       load();
     } catch (caught) {
       setError(caught.message);
@@ -92,6 +100,18 @@ const AdminBlogsPage = () => {
   const visible = blogs.filter((blog) => matchesSearch(blog) && matchesStatus(blog));
   const draftCount = blogs.filter((blog) => blog.status === 'draft').length;
 
+  // Ten rows a page. Clamped, so deleting the last row of the last page lands
+  // on the page before it rather than on an empty one.
+  const totalPages = Math.ceil(visible.length / BLOGS_PER_PAGE);
+  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
+  const firstIndex = (safeCurrentPage - 1) * BLOGS_PER_PAGE;
+  const pageBlogs = visible.slice(firstIndex, firstIndex + BLOGS_PER_PAGE);
+
+  const changePage = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-ash-50">
       <AdminSidebar activeRoute="blogs" currentAdmin={currentAdmin} />
@@ -111,7 +131,10 @@ const AdminBlogsPage = () => {
               <input
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search by title, slug, category or tag"
                 aria-label="Search articles"
                 className="w-full rounded-xl border border-ash-200 bg-white py-2.5 pl-10 pr-3 font-prose text-[14px] text-ash-900 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
@@ -128,7 +151,10 @@ const AdminBlogsPage = () => {
                   key={option.value}
                   type="button"
                   aria-pressed={statusFilter === option.value}
-                  onClick={() => setStatusFilter(option.value)}
+                  onClick={() => {
+                    setStatusFilter(option.value);
+                    setCurrentPage(1);
+                  }}
                   className={`rounded-lg px-3 py-1.5 font-ui text-[12.5px] font-semibold transition-colors ${
                     statusFilter === option.value
                       ? 'bg-brand-50 text-brand-700'
@@ -188,7 +214,7 @@ const AdminBlogsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((blog) => (
+                  {pageBlogs.map((blog) => (
                     <tr key={blog.slug} className="border-b border-ash-150 last:border-0 hover:bg-ash-50/60">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -269,11 +295,21 @@ const AdminBlogsPage = () => {
                 </tbody>
               </table>
             )}
+
+            {!loading && visible.length > 0 && (
+              <AdminPagination
+                currentPage={safeCurrentPage}
+                totalPages={totalPages}
+                onPageChange={changePage}
+              />
+            )}
           </div>
 
           {!loading && visible.length > 0 && (
             <p className="mt-4 font-ui text-[12.5px] text-ash-500">
-              {visible.length} of {blogs.length} {blogs.length === 1 ? 'article' : 'articles'}
+              Showing {firstIndex + 1}–{firstIndex + pageBlogs.length} of {visible.length}{' '}
+              {visible.length === 1 ? 'article' : 'articles'}
+              {visible.length !== blogs.length && ` (${blogs.length} in total)`}
             </p>
           )}
         </main>

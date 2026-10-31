@@ -107,7 +107,7 @@ const CorpusMosaic = () => {
   const [lead, ...rest] = PANELS;
 
   return (
-    <section aria-labelledby="corpus-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="corpus-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
           eyebrow="Inside the archive"
@@ -118,7 +118,7 @@ const CorpusMosaic = () => {
           className="mx-auto"
         />
 
-        <ul className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mt-20 lg:grid-cols-4">
+        <ul className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mt-12 lg:grid-cols-4">
           <Panel panel={lead} index={0} tall />
           {rest.map((panel, index) => (
             <Panel key={panel.name} panel={panel} index={index + 1} />

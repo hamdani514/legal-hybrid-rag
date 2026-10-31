@@ -33,6 +33,11 @@ const Reveal = ({
   useEffect(() => {
     const node = ref.current;
     if (!node || typeof IntersectionObserver === 'undefined') return undefined;
+    // 'mask' starts fully clipped (clip-path: inset(105% 0 0 0)), and the
+    // observer counts that clip: a fully clipped element never intersects, so
+    // headings using it stayed invisible for good. Watch the unclipped parent
+    // instead — it occupies the same place on the page.
+    const target = variant === 'mask' && node.parentElement ? node.parentElement : node;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -46,9 +51,9 @@ const Reveal = ({
       { threshold, rootMargin: '0px 0px -8% 0px' }
     );
 
-    observer.observe(node);
+    observer.observe(target);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [threshold, variant]);
 
   // `stagger` cascades the direct children instead of revealing the block as
   // one slab: each child is handed its index, and the CSS turns that into a

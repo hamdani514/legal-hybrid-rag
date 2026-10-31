@@ -2,13 +2,16 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from '../../../lib/api';
 import { validateSessionOrPurge } from '../../../lib/sessionManager';
+import { toast } from '../../../lib/toast';
 
 const LINKS = [
   { to: '/about', label: 'How it works' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/faq', label: 'FAQ' },
-  { to: '/blogs', label: 'Insights' },
   { to: '/contact', label: 'Contact' },
+  // Insights (/blogs) lives in the profile menu; signed-out visitors reach it
+  // from the footer and the home page's latest-articles section.
+
 ];
 
 /**
@@ -92,6 +95,7 @@ const SiteNav = () => {
     setCurrentUser(null);
     setUserDropdownOpen(false);
     setMenuOpen(false);
+    toast.success('Signed out successfully.');
     navigate('/');
   };
 
@@ -222,6 +226,15 @@ const SiteNav = () => {
                   >
                     <span className="material-symbols-outlined text-[19px] text-ash-500">settings</span>
                     <span>Settings</span>
+                  </Link>
+
+                  <Link
+                    to="/blogs"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 font-ui text-[13px] font-medium text-ash-700 transition-colors hover:bg-ash-100 hover:text-ash-900"
+                  >
+                    <span className="material-symbols-outlined text-[19px] text-ash-500">article</span>
+                    <span>Insights</span>
                   </Link>
 
                   <Link
@@ -360,6 +373,14 @@ const SiteNav = () => {
               >
                 <span className="material-symbols-outlined text-[19px]">settings</span>
                 Settings
+              </Link>
+              <Link
+                to="/blogs"
+                onClick={closeMenu}
+                className="flex items-center gap-2.5 rounded-xl px-4 py-3 font-ui text-[14.5px] font-medium text-ash-700 hover:bg-ash-50"
+              >
+                <span className="material-symbols-outlined text-[19px]">article</span>
+                Insights
               </Link>
               <Link
                 to="/terms"

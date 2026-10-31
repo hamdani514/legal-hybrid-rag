@@ -6,8 +6,8 @@ import AdminStatsCard from '../components/AdminStatsCard';
 import AdminPagination from '../components/AdminPagination';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import UserTable from '../components/UserTable';
-import UserFormModal from '../components/UserFormModal';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 const USERS_PER_PAGE = 10;
 
@@ -36,21 +36,12 @@ const AdminDashboardPage = () => {
   const [sortBy, setSortBy] = useState('id_asc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Modal State
-  const [modalOpen, setModalOpen] = useState(false);
+  // Admins can view and delete users, never edit them (see UserTable).
   const [deleteUserId, setDeleteUserId] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [formData, setFormData] = useState({
-    id: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    plan: 'Standard'
-  });
+  useToastOn(errorMsg, 'error');
+  useToastOn(successMsg, 'success');
 
   useEffect(() => {
     fetchUsers();
@@ -76,41 +67,6 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const handleAddClick = () => {
-    setIsEditMode(false);
-    setErrorMsg('');
-    setSuccessMsg('');
-    setFormData({
-      id: '',
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      plan: 'Standard'
-    });
-    setModalOpen(true);
-  };
-
-  const handleEditClick = (user) => {
-    setIsEditMode(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    const nameParts = (user.name || '').trim().split(' ');
-    const fName = user.first_name || nameParts[0] || '';
-    const lName = user.last_name || nameParts.slice(1).join(' ') || '';
-    setFormData({
-      id: user.id || '',
-      firstName: fName,
-      lastName: lName,
-      email: user.email || '',
-      password: '',
-      confirmPassword: '',
-      plan: user.plan || 'Standard'
-    });
-    setModalOpen(true);
-  };
-
   const handleDeleteClick = (user) => {
     setDeleteUserId(user.id);
   };
@@ -121,111 +77,20 @@ const AdminDashboardPage = () => {
       const res = await apiFetch(`/api/admin/users/${deleteUserId}`, {
         method: 'DELETE'
       });
+      setErrorMsg('');
+      setSuccessMsg('');
       if (res.ok) {
+        setSuccessMsg('User deleted successfully.');
         fetchUsers();
       } else {
-        const err = await res.json();
-        alert(`Error deleting user: ${err.detail || 'Unknown error'}`);
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(`Error deleting user: ${err.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Failed to connect to the backend server.');
+      setErrorMsg('Failed to connect to the backend server.');
     } finally {
       setDeleteUserId(null);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    if (!formData.firstName.trim()) {
-      setErrorMsg('First name is required.');
-      return;
-    }
-
-    if (!formData.lastName.trim()) {
-      setErrorMsg('Last name is required.');
-      return;
-    }
-
-    if (!formData.email.toLowerCase().endsWith('@gmail.com')) {
-      setErrorMsg('Email must contain @gmail.com domain.');
-      return;
-    }
-
-    if (!isEditMode && !formData.password) {
-      setErrorMsg('Password is required.');
-      return;
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setErrorMsg('Password and Confirm Password do not match.');
-      return;
-    }
-
-    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
-    if (formData.password && !pwRegex.test(formData.password)) {
-      setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
-      return;
-    }
-
-    try {
-      const url = isEditMode ? `/api/admin/users/${formData.id}` : '/api/admin/users';
-      const method = isEditMode ? 'PUT' : 'POST';
-
-      const payload = {
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
-        email: formData.email.trim(),
-        password: formData.password || '',
-        plan: formData.plan || 'Standard'
-      };
-
-      const res = await apiFetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        setSuccessMsg(isEditMode ? 'User profile updated successfully!' : 'User created successfully!');
-        setTimeout(() => {
-          setModalOpen(false);
-          fetchUsers();
-        }, 1000);
-      } else {
-        const err = await res.json();
-        setErrorMsg(err.detail || 'An error occurred during submission.');
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setErrorMsg('Failed to communicate with the backend server.');
-    }
-  };
-
-  const handlePlanChange = async (userId, newPlan) => {
-    try {
-      const res = await apiFetch(`/api/admin/users/${userId}/plan`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ plan: newPlan })
-      });
-      if (res.ok) {
-        setUsers(users.map(u => u.id === userId ? { ...u, plan: newPlan } : u));
-        fetchUsers();
-      } else {
-        const err = await res.json();
-        alert(`Error updating plan: ${err.detail || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error updating plan:', error);
-      alert('Failed to connect to the backend server.');
     }
   };
 
@@ -318,8 +183,6 @@ const AdminDashboardPage = () => {
             sortBy={sortBy}
             setSortBy={setSortBy}
             setCurrentPage={setCurrentPage}
-            handlePlanChange={handlePlanChange}
-            handleEditClick={handleEditClick}
             handleDeleteClick={handleDeleteClick}
             getInitials={getInitials}
           />
@@ -330,18 +193,6 @@ const AdminDashboardPage = () => {
           />
         </section>
       </main>
-
-      {/* User Form Modal */}
-      <UserFormModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        isEditMode={isEditMode}
-        errorMsg={errorMsg}
-        successMsg={successMsg}
-        formData={formData}
-        setFormData={setFormData}
-        handleSubmit={handleSubmit}
-      />
 
       {/* Delete Confirmation Modal */}
       <AdminDeleteModal

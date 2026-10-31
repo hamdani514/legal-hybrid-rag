@@ -10,9 +10,11 @@ Payment Controller endpoints:
 
 from __future__ import annotations
 
+import ipaddress
 import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from urllib.parse import urlsplit
 
 import stripe
 from bson import ObjectId
@@ -291,6 +293,48 @@ class CheckoutRequest(BaseModel):
     user_id: Optional[str] = None
 
 
+def _origin_of(url: str) -> str:
+    """scheme://host[:port] of a URL, lower-cased; "" if it is not http(s)."""
+    parts = urlsplit((url or "").strip())
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return ""
+    return f"{parts.scheme}://{parts.netloc}".lower()
+
+
+def _is_local_or_private(host: str) -> bool:
+    if host in ("localhost",):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_loopback or ip.is_private
+
+
+def _return_base(request: Request) -> str:
+    """Where Stripe sends the browser back to: the address the payer is using.
+
+    A login is stored per address (localStorage), so returning someone who
+    paid from http://192.168.1.5:5173 to FRONTEND_URL's http://localhost:5173
+    lands them on a site where they are not signed in — and "Go to your
+    research" opens the login page. The browser's Origin header names the
+    address the checkout was started from; it is used when it is FRONTEND_URL's
+    own, listed in FRONTEND_ORIGINS, or localhost / a private-network IP (the
+    dev server on a LAN). Anything else falls back to FRONTEND_URL, so this can
+    never redirect a payer to an unrelated site.
+    """
+    configured = (settings.FRONTEND_URL or "").rstrip("/") or "http://localhost:5173"
+    origin = _origin_of(request.headers.get("origin") or request.headers.get("referer") or "")
+    if not origin:
+        return configured
+    allowed = {_origin_of(configured)} | {
+        _origin_of(o) for o in (getattr(settings, "FRONTEND_ORIGINS", "") or "").split(",") if o.strip()
+    }
+    if origin in allowed or _is_local_or_private(urlsplit(origin).hostname or ""):
+        return origin
+    return configured
+
+
 @router.post("/create-checkout-session")
 async def create_checkout_session(request: Request, body: Optional[CheckoutRequest] = None):
     client = _stripe()
@@ -302,7 +346,7 @@ async def create_checkout_session(request: Request, body: Optional[CheckoutReque
     if _is_paid(user):
         raise HTTPException(status_code=400, detail="You are already on the Standard plan.")
 
-    base = (settings.FRONTEND_URL or "").rstrip("/") or "http://localhost:5173"
+    base = _return_base(request)
     params = {
         "mode": "subscription",
         "line_items": [{"price": price_id, "quantity": 1}],

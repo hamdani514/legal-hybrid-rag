@@ -4,6 +4,7 @@ import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
 import Reveal from '../components/Reveal';
 import { confirmCheckout, paymentStatus } from '../lib/payments';
+import { toast } from '../../lib/toast';
 
 /**
  * Where Stripe sends the browser back to: /payment/success and
@@ -30,6 +31,7 @@ const PaymentResultPage = () => {
   const applyPlan = (name) => {
     setPlan(name);
     setState('confirmed');
+    toast.success(`Payment successful! You are now on the ${name || 'Standard'} plan.`);
     try {
       const stored = JSON.parse(localStorage.getItem('currentUser') || 'null');
       if (stored) localStorage.setItem('currentUser', JSON.stringify({ ...stored, plan: name }));
@@ -39,7 +41,10 @@ const PaymentResultPage = () => {
   };
 
   useEffect(() => {
-    if (cancelled) return undefined;
+    if (cancelled) {
+      toast.error('Checkout was cancelled. No payment was taken.');
+      return undefined;
+    }
     let live = true;
     let attempts = 0;
 

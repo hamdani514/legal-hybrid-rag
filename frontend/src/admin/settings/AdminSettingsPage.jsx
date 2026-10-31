@@ -4,6 +4,7 @@ import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import AdminSettingsForm from '../components/AdminSettingsForm';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
 
 const AdminSettingsPage = () => {
   const [currentAdmin, setCurrentAdmin] = useState(null);
@@ -12,6 +13,8 @@ const AdminSettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  useToastOn(errorMsg, 'error');
+  useToastOn(successMsg, 'success');
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({

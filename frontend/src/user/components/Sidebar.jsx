@@ -27,6 +27,9 @@ const Sidebar = ({
   const [renamingId, setRenamingId] = useState('');
   const [draft, setDraft] = useState('');
   const renameRef = useRef(null);
+  // True once the open rename has been saved or cancelled, so the blur that
+  // follows Enter or Escape (the input leaving the page) does not act again.
+  const renameDone = useRef(true);
 
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
@@ -79,6 +82,7 @@ const Sidebar = ({
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       setMenuFor('');
+      renameDone.current = true;   // Escape cancels a rename
       setRenamingId('');
       setProfileMenuOpen(false);
     };
@@ -87,12 +91,15 @@ const Sidebar = ({
   }, [menuFor, renamingId, profileMenuOpen]);
 
   const startRename = (s) => {
+    renameDone.current = false;
     setMenuFor('');
     setDraft(s.title);
     setRenamingId(s.session_id);
   };
 
   const commitRename = async (s) => {
+    if (renameDone.current) return;
+    renameDone.current = true;
     const title = draft.trim();
     setRenamingId('');
     if (title && title !== s.title) await onRenameSession?.(s.session_id, title);
@@ -136,7 +143,8 @@ const Sidebar = ({
     );
   };
 
-  const ProfilePopup = ({ positionClasses = 'left-0 bottom-full mb-2 w-full' }) => {
+  // A render function for the same reason as renderRow below.
+  const renderProfilePopup = (positionClasses = 'left-0 bottom-full mb-2 w-full') => {
     const displayName =
       currentUser?.name ||
       currentUser?.username ||
@@ -277,13 +285,16 @@ const Sidebar = ({
     );
   };
 
-  const Row = ({ s }) => {
+  // Render functions, not components: a component defined inside Sidebar is a
+  // new type on every render, so React rebuilt the rename input after each
+  // keystroke and it lost focus after one character.
+  const renderRow = (s) => {
     const isActive = s.session_id === activeSessionId && activeTab === 'case';
     const isMenuOpen = menuFor === s.session_id;
 
     if (renamingId === s.session_id) {
       return (
-        <li>
+        <li key={s.session_id}>
           <input
             ref={renameRef}
             value={draft}
@@ -291,7 +302,10 @@ const Sidebar = ({
             onBlur={() => commitRename(s)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitRename(s);
-              if (e.key === 'Escape') setRenamingId('');
+              if (e.key === 'Escape') {
+                renameDone.current = true;
+                setRenamingId('');
+              }
             }}
             className="w-full rounded-lg border border-brand-500 bg-white px-3 py-2 font-prose text-[13px] text-ash-900 outline-none ring-2 ring-brand-100"
           />
@@ -300,7 +314,7 @@ const Sidebar = ({
     }
 
     return (
-      <li className="group relative">
+      <li key={s.session_id} className="group relative">
         <button
           onClick={() => onOpenSession?.(s.session_id)}
           title={`${s.title}\n${relativeTime(s.updated_at)}`}
@@ -367,16 +381,14 @@ const Sidebar = ({
     );
   };
 
-  const Group = ({ label, rows }) =>
+  const renderGroup = (label, rows) =>
     rows.length === 0 ? null : (
       <>
         <p className="px-3 pb-1 pt-3 font-ui text-[10px] font-bold uppercase tracking-[1.5px] text-ash-500">
           {label}
         </p>
         <ul className="flex flex-col gap-0.5">
-          {rows.map((s) => (
-            <Row key={s.session_id} s={s} />
-          ))}
+          {rows.map((s) => renderRow(s))}
         </ul>
       </>
     );
@@ -409,7 +421,7 @@ const Sidebar = ({
             </button>
 
             {profileMenuOpen && (
-              <ProfilePopup positionClasses="left-[74px] bottom-0 w-72" />
+              renderProfilePopup('left-[74px] bottom-0 w-72')
             )}
           </div>
         </aside>
@@ -472,8 +484,8 @@ const Sidebar = ({
             </p>
           ) : (
             <>
-              <Group label="Pinned" rows={pinned} />
-              <Group label={pinned.length ? 'Recent' : 'Research history'} rows={rest} />
+              {renderGroup('Pinned', pinned)}
+              {renderGroup(pinned.length ? 'Recent' : 'Research history', rest)}
             </>
           )}
         </div>
@@ -506,7 +518,7 @@ const Sidebar = ({
           </button>
 
           {profileMenuOpen && (
-            <ProfilePopup positionClasses="left-0 bottom-full mb-2 w-full" />
+            renderProfilePopup('left-0 bottom-full mb-2 w-full')
           )}
         </div>
       </aside>

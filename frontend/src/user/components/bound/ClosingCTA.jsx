@@ -25,7 +25,7 @@ const ClosingCTA = ({
     ? 'Access Verdict AI Research Workspace'
     : eyebrow;
   return (
-    <section aria-labelledby="closing-cta-title" className="w-full px-5 py-20 sm:px-8 md:py-28">
+    <section aria-labelledby="closing-cta-title" className="w-full px-5 py-12 sm:px-8 md:py-16">
       <Reveal className="mx-auto max-w-[1200px]">
         <div className="relative overflow-hidden rounded-4xl bg-gradient-to-br from-[#0066f6] via-[#004ecc] to-[#1f00db] px-6 py-16 text-center shadow-2xl sm:px-12 sm:py-20">
           {/* Animated randomly drifting glass bubbles */}

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/bound/AuthShell';
 import OtpVerificationStep from '../components/auth/OtpVerificationStep';
 import { setToken } from '../../lib/api';
+import { toast } from '../../lib/toast';
 
 const OtpVerificationPage = () => {
   const location = useLocation();
@@ -18,8 +19,10 @@ const OtpVerificationPage = () => {
       if (authData?.token) {
         setToken(authData.token);
         localStorage.setItem('currentUser', JSON.stringify(authData.user));
+        toast.success('Account created successfully. Welcome to Verdict AI!');
         navigate('/welcome');
       } else {
+        toast.success('Account created successfully. Please sign in.');
         navigate('/login');
       }
     } else {

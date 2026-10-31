@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import RichTextEditor from '../../components/editor/RichTextEditor';
 import { richTextToPlain } from '../../lib/richText';
-import { slugify } from '../../lib/slug';
+import { slugify, slugifyTyping } from '../../lib/slug';
 import { apiFetch } from '../../lib/api';
+import useToastOn from '../../lib/useToastOn';
+import { toast } from '../../lib/toast';
 
 const BLANK = {
   title: '',
@@ -27,6 +29,23 @@ const WORDS_PER_MINUTE = 225;
 const todayLabel = () =>
   new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Oct 29, 2026" -> "2026-10-29" for the date picker; '' if it does not parse. */
+const labelToIso = (label) => {
+  const match = /^([A-Za-z]{3})\s+(\d{1,2}),\s*(\d{4})$/.exec(String(label || '').trim());
+  const month = match ? MONTHS.indexOf(match[1][0].toUpperCase() + match[1].slice(1).toLowerCase()) : -1;
+  if (month < 0) return '';
+  return `${match[3]}-${String(month + 1).padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+};
+
+/** "2026-10-29" -> "Oct 29, 2026", the format the backend parses (%b %d, %Y). */
+const isoToLabel = (iso) => {
+  const [year, month, day] = String(iso || '').split('-');
+  if (!year || !month || !day) return '';
+  return `${MONTHS[Number(month) - 1]} ${day}, ${year}`;
+};
+
 /** Read once rather than in an effect, so there is no render with a signed-in
  *  admin showing as absent. */
 const readAdmin = () => {
@@ -47,6 +66,13 @@ const field =
   'w-full rounded-xl border border-ash-200 bg-white px-3.5 py-2.5 font-prose text-[14px] text-ash-900 transition-colors focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100';
 
 const label = 'mb-1.5 block font-ui text-[12.5px] font-semibold text-ash-700';
+
+// Covers uploaded here live on Google Drive and are served from this path
+// (backend/app/routes/admin_blogs.py); anything else is a pasted URL.
+const COVER_UPLOAD_PREFIX = '/api/blogs/cover/';
+const COVER_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const COVER_MAX_BYTES = 5 * 1024 * 1024;
+const isUploadedCover = (url) => String(url || '').startsWith(COVER_UPLOAD_PREFIX);
 
 /**
  * Write or edit one article.
@@ -76,6 +102,16 @@ const AdminBlogEditorPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  useToastOn(error, 'error');
+  useToastOn(notice, 'success');
+
+  // The cover the saved article has. An upload that replaces a different,
+  // unsaved upload deletes that one from Drive; the saved cover itself is only
+  // deleted by the server once the article is saved with a new one.
+  const [savedCover, setSavedCover] = useState('');
+  const coverInputRef = useRef(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverBroken, setCoverBroken] = useState(false);
 
   useEffect(() => {
     if (!currentAdmin) navigate('/admin-login');
@@ -90,7 +126,10 @@ const AdminBlogEditorPage = () => {
         const response = await apiFetch(`/api/admin/blogs/${encodeURIComponent(slug)}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data?.detail || 'Failed to load the article.');
-        if (!cancelled) setForm({ ...BLANK, ...data });
+        if (!cancelled) {
+          setSavedCover(data.coverImage || '');
+          setForm({ ...BLANK, ...data });
+        }
       } catch (caught) {
         if (!cancelled) setError(caught.message);
       } finally {
@@ -112,6 +151,49 @@ const AdminBlogEditorPage = () => {
       title,
       slug: slugTouched ? current.slug : slugify(title),
     }));
+
+  /** Swap the cover, deleting the outgoing one if it was an unsaved upload. */
+  const changeCover = (url) => {
+    const outgoing = form.coverImage;
+    if (isUploadedCover(outgoing) && outgoing !== savedCover) {
+      const fileId = outgoing.slice(COVER_UPLOAD_PREFIX.length).split('?')[0];
+      apiFetch(`/api/admin/blogs/cover/${encodeURIComponent(fileId)}`, { method: 'DELETE' }).catch(() => {});
+    }
+    setCoverBroken(false);
+    set('coverImage', url);
+  };
+
+  const uploadCover = async (file) => {
+    if (!file) return;
+    if (!COVER_TYPES.includes(file.type)) {
+      toast.error('Cover must be a PNG, JPG, WEBP or GIF image.');
+      return;
+    }
+    if (file.size > COVER_MAX_BYTES) {
+      toast.error('Cover image must be under 5 MB.');
+      return;
+    }
+
+    setCoverUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await apiFetch('/api/admin/blogs/cover', { method: 'POST', body });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.detail || 'Cover upload failed.');
+      changeCover(data.url);
+      toast.success(
+        data.status === 'uploaded'
+          ? 'Cover image uploaded to Google Drive.'
+          : 'Cover image saved on the server (Google Drive is not connected).'
+      );
+    } catch (caught) {
+      toast.error(caught.message || 'Cover upload failed.');
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  };
 
   const setAuthor = (key, value) =>
     setForm((current) => ({ ...current, author: { ...current.author, [key]: value } }));
@@ -169,11 +251,13 @@ const AdminBlogEditorPage = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.detail || 'Save failed.');
 
+      setSavedCover(data.coverImage || '');
       setForm({ ...BLANK, ...data });
-      setNotice('Saved.');
 
-      // A new article, or a renamed one, lives at a different URL now.
-      if (data.slug !== slug) navigate(`/admin/blogs/${data.slug}/edit`, { replace: true });
+      // Back to the article list once saved. The toast goes straight to the
+      // app-wide Toaster, since this page unmounts before an effect could run.
+      toast.success('Article saved successfully.');
+      navigate('/admin/blogs');
     } catch (caught) {
       setError(caught.message);
     } finally {
@@ -320,7 +404,7 @@ const AdminBlogEditorPage = () => {
                       value={form.slug}
                       onChange={(event) => {
                         setSlugTouched(true);
-                        set('slug', event.target.value);
+                        set('slug', slugifyTyping(event.target.value));
                       }}
                       placeholder="generated from the title"
                       className={`${field} font-mono !text-[13px]`}
@@ -334,16 +418,26 @@ const AdminBlogEditorPage = () => {
                     <label className={label} htmlFor="blog-published">
                       Date
                     </label>
+                    {/* Picked from a calendar; stored as the label articles
+                        print, e.g. "Oct 29, 2026". */}
                     <input
                       id="blog-published"
-                      type="text"
-                      value={form.publishedAt}
-                      onChange={(event) => set('publishedAt', event.target.value)}
-                      placeholder={todayLabel()}
-                      className={field}
+                      type="date"
+                      value={labelToIso(form.publishedAt)}
+                      onChange={(event) => set('publishedAt', isoToLabel(event.target.value))}
+                      onClick={(event) => {
+                        try {
+                          event.currentTarget.showPicker?.();
+                        } catch {
+                          // Older browsers open the picker from the icon only.
+                        }
+                      }}
+                      className={`${field} cursor-pointer`}
                     />
                     <span className="mt-1 block font-prose text-[11.5px] text-ash-500">
-                      Format: {todayLabel()}. Also sets the ordering on the hub.
+                      {form.publishedAt
+                        ? `Shown as ${form.publishedAt}. Also sets the ordering on the hub.`
+                        : `Leave empty to use today (${todayLabel()}).`}
                     </span>
                   </div>
                 </div>
@@ -488,23 +582,98 @@ const AdminBlogEditorPage = () => {
                     {/* The description lives with the title, where it is
                         written — this panel is only the card's imagery. */}
                     <div>
-                      <label className={label} htmlFor="blog-cover">
-                        Cover image URL
-                      </label>
+                      <span className={label}>Cover image</span>
                       <input
-                        id="blog-cover"
-                        type="text"
-                        value={form.coverImage}
-                        onChange={(event) => set('coverImage', event.target.value)}
-                        placeholder="https://"
-                        className={field}
+                        ref={coverInputRef}
+                        type="file"
+                        accept={COVER_TYPES.join(',')}
+                        className="hidden"
+                        onChange={(event) => uploadCover(event.target.files?.[0])}
                       />
+
+                      {form.coverImage ? (
+                        <div className="overflow-hidden rounded-xl border border-ash-200 bg-ash-100">
+                          {coverBroken ? (
+                            <div className="flex h-32 flex-col items-center justify-center gap-1 px-4 text-center font-prose text-[12.5px] text-ash-500">
+                              <span aria-hidden="true" className="material-symbols-outlined text-[22px] text-ash-400">
+                                broken_image
+                              </span>
+                              This image could not be loaded.
+                            </div>
+                          ) : (
+                            <img
+                              src={form.coverImage}
+                              alt="Cover preview"
+                              onError={() => setCoverBroken(true)}
+                              className="h-32 w-full object-cover"
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => coverInputRef.current?.click()}
+                          disabled={coverUploading}
+                          className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-ash-300 bg-ash-50 font-ui text-[13px] font-semibold text-ash-600 transition-colors hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined text-[24px]">
+                            {coverUploading ? 'progress_activity' : 'cloud_upload'}
+                          </span>
+                          {coverUploading ? 'Uploading…' : 'Upload cover image'}
+                          <span className="font-prose text-[11.5px] font-normal text-ash-500">
+                            PNG, JPG, WEBP or GIF, up to 5 MB
+                          </span>
+                        </button>
+                      )}
+
                       {form.coverImage && (
-                        <img
-                          src={form.coverImage}
-                          alt=""
-                          className="mt-2.5 h-28 w-full rounded-xl border border-ash-200 bg-ash-100 object-cover"
-                        />
+                        <div className="mt-2.5 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => coverInputRef.current?.click()}
+                            disabled={coverUploading}
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-ash-200 bg-white px-3 py-2 font-ui text-[12.5px] font-semibold text-ash-700 transition-colors hover:border-brand-300 hover:text-brand-700 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
+                              {coverUploading ? 'progress_activity' : 'swap_horiz'}
+                            </span>
+                            {coverUploading ? 'Uploading…' : 'Replace'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => changeCover('')}
+                            disabled={coverUploading}
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-ash-200 bg-white px-3 py-2 font-ui text-[12.5px] font-semibold text-ash-700 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
+                              delete
+                            </span>
+                            Remove
+                          </button>
+                        </div>
+                      )}
+
+                      {/* An uploaded cover is managed by the buttons above;
+                          a pasted URL stays editable. */}
+                      {!isUploadedCover(form.coverImage) && (
+                        <>
+                          <label className="mb-1 mt-3 block font-prose text-[11.5px] text-ash-500" htmlFor="blog-cover">
+                            or paste an image URL
+                          </label>
+                          <input
+                            id="blog-cover"
+                            type="text"
+                            value={form.coverImage}
+                            onChange={(event) => changeCover(event.target.value)}
+                            placeholder="https://"
+                            className={field}
+                          />
+                        </>
+                      )}
+                      {isUploadedCover(form.coverImage) && form.coverImage !== savedCover && (
+                        <p className="mt-2 font-prose text-[11.5px] text-ash-500">
+                          New cover. Save the article to publish it; the old cover is then deleted from Drive.
+                        </p>
                       )}
                     </div>
 

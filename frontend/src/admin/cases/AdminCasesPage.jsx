@@ -8,6 +8,8 @@ import IngestionProgress from '../components/IngestionProgress';
 import AdminPagination from '../components/AdminPagination';
 import UploadQueue, { isTerminalJob, isRowFinished, isRowProblem } from '../components/UploadQueue';
 import { apiFetch, ADMIN_TOKEN_KEY } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 
 // Files uploaded at the same time from the browser. The server queues them
 // anyway (ADMIN_INGEST_CONCURRENCY); this only bounds the upload requests.
@@ -127,6 +129,10 @@ const AdminCasesPage = () => {
   const [allJobs, setAllJobs] = useState([]);
   const [allJobsLoading, setAllJobsLoading] = useState(false);
   const [allJobsError, setAllJobsError] = useState('');
+  useToastOn(uploadError, 'error');
+  useToastOn(uploadNotice, 'success');
+  useToastOn(recentError, 'error', { dedupeMs: 60000 });
+  useToastOn(allJobsError, 'error', { dedupeMs: 60000 });
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
@@ -715,6 +721,7 @@ const AdminCasesPage = () => {
 
       // Re-uploading a PDF that failed before resumes that record.
       if (data.resumed) setUploadNotice(data.message || 'Resuming the earlier upload of this PDF.');
+      else toast.success(`${data.filename || 'Judgment'} uploaded. Processing has started.`);
       setUploadResult(data);
       setActiveJobId(data.job_id);
       setActiveJobStatus(data);
@@ -769,6 +776,7 @@ const AdminCasesPage = () => {
       if (!response.ok) {
         throw new Error(data?.detail || 'Failed to delete case.');
       }
+      toast.success('Case deleted.');
       await fetchRecentJobs(false);
       if (showAllModal) await fetchAllJobs();
     } catch (error) {

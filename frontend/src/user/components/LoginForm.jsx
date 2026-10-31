@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import { apiFetch, setToken } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import useToastOn from '../../lib/useToastOn';
 
 /**
  * User sign-in. POST /api/auth/login verifies the password with bcrypt and
@@ -24,9 +26,10 @@ const LoginForm = () => {
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
-  const sessionExpired = searchParams.get('expired') === 'true' || Boolean(location.state?.sessionExpired);
+  useToastOn(errorMsg, 'error');
+
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,6 +57,7 @@ const LoginForm = () => {
         const data = await res.json();
         setToken(data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
+        toast.success('Signed in successfully.');
         navigate('/welcome');
       } else {
         const err = await res.json();
@@ -67,11 +71,13 @@ const LoginForm = () => {
           setIsUnverified(false);
           setDeactivatedEmail(err.email || email.trim());
           setErrorMsg('');
+          toast.error('This account is deactivated. Request a reactivation link to sign in.');
         } else if (err.is_unverified || err.detail?.toLowerCase().includes('not verified')) {
           setIsDeactivated(false);
           setIsUnverified(true);
           setUnverifiedEmail(err.email || email.trim());
           setErrorMsg('');
+          toast.error('Your email is not verified yet. Verify it to sign in.');
         } else {
           setIsDeactivated(false);
           setIsUnverified(false);
@@ -108,6 +114,7 @@ const LoginForm = () => {
       const data = await res.json();
       if (res.ok) {
         setShowPopup(true);
+        toast.success('Reactivation link sent to your email.');
       } else {
         setErrorMsg(data.detail || data.message || 'Failed to dispatch reactivation email.');
       }
@@ -239,21 +246,6 @@ const LoginForm = () => {
                 <span>Enter 6-Digit Code →</span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Session Expired Banner */}
-      {sessionExpired && !errorMsg && !isDeactivated && (
-        <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-4 mb-5 shadow-xs flex items-start gap-3 animate-in fade-in duration-200">
-          <span className="material-symbols-outlined text-amber-600 text-xl mt-0.5">timer_off</span>
-          <div className="flex-1">
-            <h4 className="font-headline font-bold text-xs text-[#0D1C32] mb-0.5">
-              Session Timed Out
-            </h4>
-            <p className="font-body text-xs text-[#585F6A] leading-relaxed">
-              You were automatically logged out after 1 minute of session time. Please sign in again to continue.
-            </p>
           </div>
         </div>
       )}

@@ -12,9 +12,10 @@ the wire contract is pinned in one place:
                "Related articles".
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.models.blog import DRAFT, Blog
+from app.services.google_drive_service import google_drive_service
 
 router = APIRouter(prefix="/api/blogs", tags=["blogs"])
 
@@ -55,6 +56,23 @@ async def list_blogs():
     """Every published article, newest publication date first."""
     blogs = await Blog.find(VISIBLE).sort(-Blog.publishedOn).to_list()
     return [_card(blog) for blog in blogs]
+
+
+@router.get("/cover/{file_id}")
+async def get_blog_cover(file_id: str):
+    """A cover image uploaded in the editor, from Google Drive (cached locally).
+
+    Every upload gets a new id, so the response never changes and can be
+    cached for good."""
+    try:
+        data, mime_type = await google_drive_service.download_blog_cover(file_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Cover image not found")
+    return Response(
+        content=data,
+        media_type=mime_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @router.get("/{slug}")

@@ -12,6 +12,7 @@ import CapabilityGrid from '../components/bound/CapabilityGrid';
 import ResultToolkit from '../components/bound/ResultToolkit';
 import CorpusMosaic from '../components/bound/CorpusMosaic';
 import PlansSection from '../components/bound/PlansSection';
+import RecentBlogs from '../components/bound/RecentBlogs';
 import ClosingCTA from '../components/bound/ClosingCTA';
 
 /**
@@ -20,7 +21,8 @@ import ClosingCTA from '../components/bound/ClosingCTA';
  * mechanism, the two flow rows argue it, the bench quote lets the Court
  * speak, the workspace shows the tools, the result toolkit shows what you do
  * with the judgments once they arrive, the mosaic shows the corpus, pricing
- * closes the argument, and the CTA offers the way in.
+ * closes the argument, the three newest articles show the work continuing,
+ * and the CTA offers the way in.
  *
  * The rhythm alternates deliberately: white section, tinted section,
  * full-bleed photographic band. Three photographic bands on one page is the
@@ -46,6 +48,7 @@ const HomePage = () => {
         <ResultToolkit />
         <CorpusMosaic />
         <PlansSection />
+        <RecentBlogs />
         <ClosingCTA />
       </main>
       <SiteFoot />

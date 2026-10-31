@@ -36,6 +36,7 @@ from app.api.security import (
     create_access_token,
     decode_token,
     hash_password,
+    is_anonymous,
     require_user,
     verify_password,
 )
@@ -1233,6 +1234,16 @@ async def me(principal: TokenPayload = Depends(require_user)):
 # -------------------------------------------------------------
 @router.post("/refresh")
 async def refresh_session(principal: TokenPayload = Depends(require_user)):
+    """Swap a valid token for a fresh one. The frontend calls this silently once
+    half of a token's lifetime has passed, and to ask whether a session is still
+    valid after some request was refused: 401 here means the session is over.
+
+    Only a real signed-in token is renewed. While AUTH_REQUIRED is off a request
+    without one resolves to the anonymous principal, which must not be handed a
+    token of its own.
+    """
+    if is_anonymous(principal):
+        raise HTTPException(status_code=401, detail="Please sign in.")
     expires_minutes = int(getattr(settings, "JWT_EXPIRE_MINUTES", 1440) or 1440)
     new_token = create_access_token(
         sub=principal["sub"],

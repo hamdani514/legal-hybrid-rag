@@ -76,7 +76,7 @@ const BenchQuote = () => {
   return (
     <section
       aria-labelledby="bench-record-title"
-      className="relative w-full overflow-hidden bg-gradient-to-b from-white via-ash-50/50 to-white px-5 py-20 sm:px-8 sm:py-28"
+      className="relative w-full overflow-hidden bg-gradient-to-b from-white via-ash-50/50 to-white px-5 py-12 sm:px-8 sm:py-16"
     >
       <div className="mx-auto max-w-[1200px]">
         {/* Section Header */}
@@ -133,7 +133,7 @@ const BenchQuote = () => {
 
           <Reveal
             delay={120}
-            className="relative overflow-hidden rounded-4xl border border-ash-200 bg-white p-6 shadow-card-lg sm:p-9 md:p-11"
+            className="border-trace relative overflow-hidden rounded-4xl border border-ash-200 bg-white p-6 shadow-card-lg sm:p-9 md:p-11"
           >
             {/* Card Header: Jurisdiction and Certified Status */}
             <div className="flex flex-col gap-3.5 border-b border-ash-200 pb-6 sm:flex-row sm:items-center sm:justify-between">

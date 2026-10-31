@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
  * and read-time badges are still announced.
  */
 const BlogCard = ({ blog }) => (
-  <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-ash-200 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
+  <article className="border-trace group flex h-full flex-col overflow-hidden rounded-3xl border border-ash-200 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-card">
     <Link
       to={`/blogs/${blog.slug}`}
       tabIndex={-1}
@@ -45,19 +45,24 @@ const BlogCard = ({ blog }) => (
         </Link>
       </h3>
 
-      <p className="mt-3 line-clamp-3 font-prose text-[14px] leading-[1.7] text-ash-600">
+      <p className="mb-6 mt-3 line-clamp-3 font-prose text-[14px] leading-[1.7] text-ash-600">
         {blog.excerpt}
       </p>
 
-      <div className="mt-6 flex items-center justify-between border-t border-ash-150 pt-5">
-        <span className="font-ui text-[13.5px] font-bold text-brand-700">Read Insight</span>
+      {/* Pinned to the bottom, so cards of different lengths line up. */}
+      <Link
+        to={`/blogs/${blog.slug}`}
+        aria-label={`Read ${blog.title}`}
+        className="mt-auto flex items-center justify-between border-t border-ash-150 pt-5"
+      >
+        <span className="font-ui text-[13.5px] font-bold text-brand-700 hover:underline">Read Insight</span>
         <span
           aria-hidden="true"
           className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
         </span>
-      </div>
+      </Link>
     </div>
   </article>
 );
