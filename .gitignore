@@ -62,8 +62,15 @@ backend/test_and_verify.py
 # with ModuleNotFoundError. Do not re-add them.
 scratch/
 backend/scratch/
+# Search stores (ChromaDB vectors ~740 MB, BM25 keyword index ~140 MB). Built by
+# the ingestion pipeline and far over GitHub's 100 MB file limit: copy them to
+# the production server directly instead of pushing them.
 chroma_db/
 backend/chroma_db/
+backend/lexical.db
+backend/lexical.db-wal
+backend/lexical.db-shm
+backend/lexical.db-journal
 
 # Google Credentials & Secrets
 token.json
