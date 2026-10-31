@@ -37,7 +37,7 @@ async def expire_canceled_subscriptions():
     client = _stripe()
 
     cursor = db.database.users.find({
-        "plan": {"$regex": "^standard$", "$options": "i"},
+        "plan": {"$regex": "^(standard|premium|pro)$", "$options": "i"},
         "$or": [
             {"autoRenew": False},
             {"auto_renew": False},
@@ -80,7 +80,7 @@ async def expire_canceled_subscriptions():
 
         now_iso = now.isoformat()
         update = {
-            "plan": "free",
+            "plan": "Free",
             "planColor": "bg-[#E7E8EA] text-[#44474D]",
             "stripeSubscriptionId": None,
             "stripe_subscription_id": None,

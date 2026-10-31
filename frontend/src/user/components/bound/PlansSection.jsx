@@ -7,54 +7,62 @@ import { startCheckout } from '../../lib/payments';
 import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 import { toast } from '../../../lib/toast';
 import useToastOn from '../../../lib/useToastOn';
+import { usePlan } from '../../lib/plan';
 
+// The limits mirror backend/modules/payment/plans.py, which enforces them.
+// A feature with `locked: true` is listed so Free users see what they lack.
 const PLANS = [
   {
+    key: 'free',
     name: 'Free',
     price: 'Free',
     cadence: 'no card required',
-    summary: 'Essential precedent research for moot courts, seminars, and academic study.',
+    summary: 'Find the judgments that match your case, each summarised in a few lines.',
     features: [
-      '1 research query daily (resets 00:00 UTC)',
-      'Full text of every judgment',
-      'Division-level navigation',
-      'Export with citation',
+      { text: '2 research queries a day (resets 00:00 UTC)' },
+      { text: 'Up to 10 relevant judgments per search' },
+      { text: 'A short case summary of each judgment' },
+      { text: 'Analyse, summarise and filter', locked: true },
+      { text: 'Download, compare and copy', locked: true },
     ],
     cta: 'Create account',
     to: '/signup',
     emphasis: false,
   },
   {
+    key: 'standard',
     name: 'Standard',
     price: '$10',
     cadence: 'per month',
-    summary: 'For practitioners requiring high-throughput legal retrieval and reasoning.',
+    summary: 'Every research tool, for practitioners who search every day.',
     features: [
-      '20 research queries daily (resets 00:00 UTC)',
-      'Side-by-side precedent comparison',
-      'Saved research trails',
-      'Priority retrieval queue',
-      'Cancel anytime — access kept until period end',
+      { text: '20 research queries a day (resets 00:00 UTC)' },
+      { text: 'Every relevant judgment, ten at a time' },
+      { text: 'Analyse and summarise each case' },
+      { text: 'Filter, compare and see all judgments' },
+      { text: 'Download the PDF and copy the text' },
+      { text: 'Cancel anytime — access kept until period end' },
     ],
-    cta: 'Get started',
-    to: '/signup',
+    cta: 'Get Standard',
     emphasis: true,
     checkout: true,
   },
   {
+    key: 'premium',
     name: 'Premium',
-    price: 'On request',
-    cadence: 'per seat, billed annually',
-    summary: 'Shared archives and seat management for a firm or set of chambers.',
+    price: '$20',
+    cadence: 'per month',
+    summary: 'The same tools as Standard, with the headroom for heavy research days.',
     features: [
-      'Everything in Standard',
-      'Shared research trails',
-      'Private document ingestion',
-      'Named account contact',
+      { text: '50 research queries a day (resets 00:00 UTC)' },
+      { text: 'Everything in Standard' },
+      { text: 'Every relevant judgment, ten at a time' },
+      { text: 'All tools: analyse, compare, download, copy' },
+      { text: 'Cancel anytime — access kept until period end' },
     ],
-    cta: 'Talk to us',
-    to: '/contact',
+    cta: 'Get Premium',
     emphasis: false,
+    checkout: true,
   },
 ];
 
@@ -67,18 +75,24 @@ const PLANS = [
 const PlansSection = () => {
   const navigate = useNavigate();
   const isLoggedIn = useIsLoggedIn();
-  const [busy, setBusy] = useState(false);
+  const plan = usePlan();
+  // The signed-in user's plan, once the server has confirmed it.
+  const current = isLoggedIn && plan.confirmed ? plan.key : null;
+  const [busy, setBusy] = useState(null); // the plan whose checkout is opening
   const [payError, setPayError] = useState('');
   useToastOn(payError, 'error');
 
-  // The paid plan leaves for Stripe's hosted page; everything else is a link.
-  const onSubscribe = async () => {
+  // Every paid plan, including a switch between Standard and Premium, is
+  // bought on Stripe's hosted Checkout page: it shows the price and takes the
+  // payment, so no extra confirmation is needed here. After paying for the
+  // new plan, the server cancels the old subscription.
+  const onSubscribe = async (target) => {
     if (busy) return;
     setPayError('');
-    setBusy(true);
-    const result = await startCheckout();
+    setBusy(target);
+    const result = await startCheckout(target);
     if (!result.ok) {
-      setBusy(false);
+      setBusy(null);
       if (result.reason === 'signin') {
         toast.error('Please sign in to subscribe.');
         navigate('/login', { state: { next: '/pricing' } });
@@ -89,22 +103,29 @@ const PlansSection = () => {
     // On success the browser is already on its way to Stripe.
   };
 
+  const ctaLabel = (key, cta) => {
+    if (busy === key) return 'Opening secure checkout…';
+    if (current === key) return 'Your current plan';
+    if (current && current !== 'free') return `Switch to ${key === 'premium' ? 'Premium' : 'Standard'}`;
+    return cta;
+  };
+
   return (
     <section aria-labelledby="plans-title" className="w-full px-5 py-12 sm:px-8 md:py-16 overflow-x-hidden">
       <div className="mx-auto max-w-[1200px]">
         <SectionOpener
           eyebrow="Pricing"
           icon="sell"
-          title={<span id="plans-title">Students research free.</span>}
-          accent="Practitioners pay for throughput."
-          lede="No card required to start, and no tier that hides your own research behind an upgrade."
+          title={<span id="plans-title">Start free.</span>}
+          accent="Upgrade when the research gets serious."
+          lede="Free finds the judgments that match your case. Standard and Premium add every research tool — they differ only in how many searches you get each day."
           className="mx-auto"
         />
 
         {/* Pricing Cards */}
         <div className="pricing-deck relative mx-auto mt-10 max-w-[1140px] md:mt-12 lg:py-10">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-3 items-stretch">
-            {PLANS.map(({ name, price, cadence, summary, features, cta, to, emphasis, checkout }, index) => {
+            {PLANS.map(({ key, name, price, cadence, summary, features, cta, to, emphasis, checkout }, index) => {
               const cardPositionClass =
                 index === 0
                   ? 'pricing-card-left'
@@ -125,9 +146,9 @@ const PlansSection = () => {
                   <CardBubbles tone={emphasis ? 'light' : 'dark'} density="compact" />
 
                   <div className="relative z-[2]">
-                    {emphasis && (
-                      <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-1 font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand-800 shadow-card">
-                        Most popular
+                    {(emphasis || current === key) && (
+                      <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-4 py-1 font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand-800 shadow-card ring-1 ring-ash-200">
+                        {current === key ? 'Your plan' : 'Most popular'}
                       </span>
                     )}
 
@@ -165,22 +186,27 @@ const PlansSection = () => {
                     </p>
 
                     <ul className="mt-8 flex flex-col gap-3.5">
-                      {features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-3">
+                      {features.map(({ text, locked }) => (
+                        <li key={text} className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
                             className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                              emphasis ? 'bg-white/20 text-white' : 'bg-mint-400/20 text-mint-700'
+                              locked
+                                ? 'bg-ash-100 text-ash-400'
+                                : emphasis
+                                  ? 'bg-white/20 text-white'
+                                  : 'bg-mint-400/20 text-mint-700'
                             }`}
                           >
-                            <span className="material-symbols-outlined text-[13px]">check</span>
+                            <span className="material-symbols-outlined text-[13px]">{locked ? 'lock' : 'check'}</span>
                           </span>
                           <span
                             className={`font-prose text-[14px] leading-[1.6] ${
-                              emphasis ? 'text-white/90' : 'text-ash-700'
+                              locked ? 'text-ash-400' : emphasis ? 'text-white/90' : 'text-ash-700'
                             }`}
                           >
-                            {feature}
+                            {locked && <span className="sr-only">Not included: </span>}
+                            {text}
                           </span>
                         </li>
                       ))}
@@ -190,15 +216,15 @@ const PlansSection = () => {
                   {checkout ? (
                     <button
                       type="button"
-                      onClick={onSubscribe}
-                      disabled={busy}
+                      onClick={() => onSubscribe(key)}
+                      disabled={Boolean(busy) || current === key}
                       className={`relative z-[2] mt-9 inline-flex items-center justify-center rounded-full px-6 py-3.5 font-ui text-[14.5px] font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70 ${
                         emphasis
                           ? 'bg-white text-brand-800 hover:-translate-y-0.5 hover:shadow-card-lg'
                           : 'border border-ash-300 text-ash-800 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
                       }`}
                     >
-                      {busy ? 'Opening secure checkout…' : cta}
+                      {ctaLabel(key, cta)}
                     </button>
                   ) : (
                     <Link
@@ -233,8 +259,8 @@ const PlansSection = () => {
           delay={200}
           className="mx-auto mt-9 max-w-[40rem] text-center font-prose text-[13px] leading-6 text-ash-500"
         >
-          Billed in US dollars, exclusive of applicable tax. Premium is arranged with us
-          directly.
+          Billed monthly in US dollars, exclusive of applicable tax. Switch between Standard and
+          Premium, or cancel, at any time.
         </Reveal>
       </div>
     </section>

@@ -28,7 +28,7 @@ const STEPS = [
     icon: 'edit_note',
     title: 'Describe your case or ask a question',
     body: 'Write in plain words: what happened, what each side claims, and what the courts decided so far. A short legal question works too. Press Enter for a new line and Ctrl + Enter to send.',
-    points: ['Free plan: 1 search a day', 'Standard plan: 20 searches a day'],
+    points: ['Free plan: 2 searches a day', 'Standard plan: 20 searches a day', 'Premium plan: 50 searches a day'],
   },
   {
     icon: 'gavel',

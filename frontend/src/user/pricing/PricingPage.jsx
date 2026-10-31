@@ -9,6 +9,9 @@ import ClosingCTA from '../components/bound/ClosingCTA';
 import Reveal from '../components/Reveal';
 import SectionOpener from '../components/bound/SectionOpener';
 import { paymentStatus, cancelSubscription, reactivateSubscription } from '../lib/payments';
+import { PLANS, planKey, refreshPlan } from '../lib/plan';
+import CancelSubscriptionDialog from '../components/CancelSubscriptionDialog';
+import { toast } from '../../lib/toast';
 
 /**
  * Frequently Asked Billing & Enrolment Questions.
@@ -24,7 +27,15 @@ const PRICING_FAQS = [
   },
   {
     q: 'Can I upgrade, downgrade or cancel anytime?',
-    a: 'Yes, with a single click in your account settings. Subscriptions can be managed or canceled anytime with zero hidden fees or lock-ins.',
+    a: 'Yes. Move between Standard and Premium from this page: you pay for the new plan on Stripe’s secure checkout, your old plan is cancelled at once, and its unused days are credited to your next invoice. Cancel anytime from your account settings and keep access until the period ends.',
+  },
+  {
+    q: 'What is the difference between Standard and Premium?',
+    a: 'Only the number of searches. Both unlock every research tool — every relevant judgment, case analysis, summaries, filters, comparison, PDF downloads and copying. Standard gives 20 searches a day for $10/month; Premium gives 50 a day for $20/month.',
+  },
+  {
+    q: 'What does the Free plan include?',
+    a: 'Two searches a day. Each search returns up to 10 relevant judgments, each shown as a short case summary. The research tools are visible but locked until you subscribe.',
   },
   {
     q: 'Do you offer custom chamber packages for law firms?',
@@ -40,6 +51,7 @@ const PricingPage = () => {
   const [openFaq, setOpenFaq] = useState(null);
   const [status, setStatus] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [reactivating, setReactivating] = useState(false);
 
   useEffect(() => {
@@ -48,32 +60,28 @@ const PricingPage = () => {
     });
   }, []);
 
+  // Runs once the user confirms in CancelSubscriptionDialog.
   const handleCancel = async () => {
-    const ends = status?.subscriptionEndsAt
-      ? new Date(status.subscriptionEndsAt).toLocaleDateString()
-      : 'period end';
-    if (
-      !window.confirm(
-        `Are you sure? You'll keep access until ${ends}, then downgrade to Free (1 query/day). Your payment card will be removed automatically.`
-      )
-    )
-      return;
-
     setCancelling(true);
     const res = await cancelSubscription();
-    alert(res?.message || 'Subscription cancelled.');
+    if (res?.ok) toast.success(res.message || 'Subscription cancelled.');
+    else toast.error(res?.message || 'Could not cancel the subscription.');
     setCancelling(false);
+    setConfirmCancel(false);
     const updated = await paymentStatus();
     if (updated) setStatus(updated);
+    refreshPlan();
   };
 
   const handleReactivate = async () => {
     setReactivating(true);
     const res = await reactivateSubscription();
-    alert(res?.message || 'Subscription reactivated.');
+    if (res?.ok) toast.success(res.message || 'Subscription reactivated.');
+    else toast.error(res?.message || 'Could not reactivate the subscription.');
     setReactivating(false);
     const updated = await paymentStatus();
     if (updated) setStatus(updated);
+    refreshPlan();
   };
 
   const toggleFaq = (idx) => {
@@ -92,13 +100,13 @@ const PricingPage = () => {
           badge="Transparent Subscription Plans · Zero Hidden Tiers"
           title="Predictable pricing for students and"
           accent="chambers of every size"
-          description="Full unrestricted access to indexed Supreme Court precedents. Completely free for law students, simple monthly plans for advocates, and pooled seats for chambers."
+          description="Start free with summaries of the judgments that match your case. Standard and Premium unlock every research tool, and differ only in how many searches you get each day."
           primaryCta={{ to: '/signup', label: 'Get started free', icon: 'arrow_forward' }}
           secondaryCta={{ to: '/contact', label: 'Chamber bulk onboarding', icon: 'corporate_fare' }}
           highlights={[
-            { icon: 'school', label: 'Free for verified students' },
-            { icon: 'balance', label: '$10 / mo standard' },
-            { icon: 'groups', label: 'Pooled seats for chambers' },
+            { icon: 'search', label: 'Free · 2 searches a day' },
+            { icon: 'balance', label: 'Standard · $10 / mo' },
+            { icon: 'workspace_premium', label: 'Premium · $20 / mo' },
           ]}
         />
         <DivisionsTicker />
@@ -106,24 +114,25 @@ const PricingPage = () => {
         {/* User Active Subscription State Banner */}
         {status && (
           <div className="mx-auto max-w-4xl px-5 pt-10">
-            {status.plan === 'standard' && !status.cancelAtPeriodEnd && (
+            {status.is_paid && !status.cancelAtPeriodEnd && (
               <div className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <h3 className="font-display font-bold text-base text-emerald-950">Current Plan: Standard</h3>
+                    <h3 className="font-display font-bold text-base text-emerald-950">Current Plan: {status.plan_name}</h3>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                       Active
                     </span>
                   </div>
                   <p className="text-xs font-prose text-emerald-800 mt-2">
-                    ✅ <strong>20 queries/day</strong> · Used today: <strong>{status.dailyQueriesUsed}/{status.dailyQueriesLimit}</strong> · Renews on {status.subscriptionEndsAt ? new Date(status.subscriptionEndsAt).toLocaleDateString() : 'next cycle'}
+                    ✅ <strong>{status.dailyQueriesLimit} queries/day</strong> · Used today: <strong>{status.dailyQueriesUsed}/{status.dailyQueriesLimit}</strong> · Renews on {status.subscriptionEndsAt ? new Date(status.subscriptionEndsAt).toLocaleDateString() : 'next cycle'}
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={handleCancel}
+                  onClick={() => setConfirmCancel(true)}
                   disabled={cancelling}
+                  aria-haspopup="dialog"
                   className="shrink-0 px-4 py-2.5 rounded-xl border border-rose-300 text-rose-700 bg-white hover:bg-rose-50 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">cancel</span>
@@ -132,7 +141,7 @@ const PricingPage = () => {
               </div>
             )}
 
-            {status.plan === 'standard' && status.cancelAtPeriodEnd && (
+            {status.is_paid && status.cancelAtPeriodEnd && (
               <div className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-sm">
                 <div>
                   <div className="flex items-center gap-2">
@@ -140,7 +149,7 @@ const PricingPage = () => {
                     <h3 className="font-display font-bold text-base text-amber-950">Subscription Ending</h3>
                   </div>
                   <p className="text-xs font-prose text-amber-900 mt-2 leading-relaxed">
-                    Your access remains active until <strong>{status.subscriptionEndsAt ? new Date(status.subscriptionEndsAt).toLocaleDateString() : 'period end'}</strong>. On that date, you'll downgrade to Free (1 query/day) and your payment card will be removed automatically.
+                    Your access remains active until <strong>{status.subscriptionEndsAt ? new Date(status.subscriptionEndsAt).toLocaleDateString() : 'period end'}</strong>. On that date, you'll downgrade to Free ({PLANS.free.dailyLimit} queries/day) and your payment card will be removed automatically.
                   </p>
                 </div>
                 <button
@@ -160,11 +169,11 @@ const PricingPage = () => {
                 <div>
                   <h3 className="font-display font-bold text-base text-ash-900">Current Plan: Free Tier</h3>
                   <p className="text-xs font-prose text-ash-600 mt-1">
-                    1 query/day · Used today: <strong>{status.dailyQueriesUsed}/{status.dailyQueriesLimit}</strong> · Quota resets every 24h at 00:00 UTC
+                    {status.dailyQueriesLimit} queries/day · Used today: <strong>{status.dailyQueriesUsed}/{status.dailyQueriesLimit}</strong> · Quota resets every 24h at 00:00 UTC
                   </p>
                 </div>
                 <span className="text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-3.5 py-1.5 rounded-xl">
-                  Standard plan available below
+                  Standard and Premium below
                 </span>
               </div>
             )}
@@ -239,6 +248,25 @@ const PricingPage = () => {
       </main>
 
       <SiteFoot />
+
+      {confirmCancel && status && (
+        <CancelSubscriptionDialog
+          planName={PLANS[planKey(status.plan)].name}
+          dailyLimit={status.dailyQueriesLimit}
+          endsLabel={
+            status.subscriptionEndsAt
+              ? new Date(status.subscriptionEndsAt).toLocaleDateString(undefined, {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : 'the end of this billing period'
+          }
+          busy={cancelling}
+          onConfirm={handleCancel}
+          onClose={() => setConfirmCancel(false)}
+        />
+      )}
     </div>
   );
 };

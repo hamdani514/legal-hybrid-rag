@@ -31,6 +31,8 @@ PROCESSED_COLLECTION = "processed_events"
 EVENT_TTL_SECONDS = 86400 * 30  # 30 days
 
 
+from modules.payment import plans
+
 def _stripe():
     key = (settings.STRIPE_SECRET_KEY or "").strip()
     if not key:
@@ -86,6 +88,21 @@ def _extract_period_end(subscription) -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=30)
 
 
+def _current_subscription(user: dict) -> Optional[str]:
+    return user.get("stripeSubscriptionId") or user.get("stripe_subscription_id")
+
+
+def _is_replaced(user: dict, subscription_id: Optional[str]) -> bool:
+    """An event about a subscription the user has since replaced.
+
+    Switching Standard <-> Premium opens a new subscription and cancels the
+    old one. Stripe then reports the old one as updated and deleted; those
+    events must not move the user back to the old plan or down to Free.
+    """
+    current = _current_subscription(user)
+    return bool(subscription_id and current and subscription_id != current)
+
+
 # ============================================================
 # HANDLER 1 — checkout.session.completed (initial subscribe)
 # ============================================================
@@ -119,12 +136,19 @@ async def handle_checkout_completed(session: dict) -> None:
     subscription_id = session.get("subscription")
 
     period_end = None
+    # The plan bought: named in the session metadata by create_checkout_session;
+    # else read from the subscription's price; else Standard (older sessions).
+    bought = plans.plan_key((session.get("metadata") or {}).get("plan"))
     if subscription_id:
         try:
             sub = client.Subscription.retrieve(subscription_id)
             period_end = _extract_period_end(sub)
+            bought = plans.plan_of_subscription(sub) or bought
         except Exception as e:
             logger.warning(f"Could not retrieve subscription {subscription_id}: {e}")
+    if bought not in plans.PAID_PLANS:
+        bought = plans.STANDARD
+    bought_plan = plans.plan(bought)
 
     if not period_end:
         period_end = datetime.now(timezone.utc) + timedelta(days=30)
@@ -149,8 +173,8 @@ async def handle_checkout_completed(session: dict) -> None:
 
     now = datetime.now(timezone.utc)
     update = {
-        "plan": "Standard",
-        "planColor": "bg-[#CFE6FF] text-[#0B3B6F]",
+        "plan": bought_plan["name"],
+        "planColor": bought_plan["color"],
         "stripeCustomerId": customer_id,
         "stripe_customer_id": customer_id,
         "stripeSubscriptionId": subscription_id,
@@ -170,11 +194,17 @@ async def handle_checkout_completed(session: dict) -> None:
         "dailyQueries": {"count": 0, "date": now},
     }
 
+    # A plan switch: the subscription this one replaces (named at checkout,
+    # else the one on record). It is cancelled once the new one is in place.
+    replaced = (session.get("metadata") or {}).get("replaces_subscription") or _current_subscription(user)
+    if replaced == subscription_id:
+        replaced = None
+
     history_item = {
         "id": f"sub_hist_{session.get('id', 'pay')[-8:]}",
-        "plan": "Standard",
-        "tier_name": "Standard Plan",
-        "amount": "$10.00 / month",
+        "plan": bought_plan["name"],
+        "tier_name": f"{bought_plan['name']} Plan",
+        "amount": plans.price_label(bought),
         "status": "Active",
         "started_at": now.isoformat(),
         "ended_at": None,
@@ -182,14 +212,33 @@ async def handle_checkout_completed(session: dict) -> None:
         "reference": subscription_id or session.get("id"),
     }
 
+    # Close the history entries of earlier subscriptions, then record this one
+    # once (the browser's confirm and the webhook may both deliver it).
+    if subscription_id and isinstance(user.get("subscription_history"), list):
+        await _users().update_one(
+            {"_id": user["_id"]},
+            {"$set": {"subscription_history.$[old].status": "Changed",
+                      "subscription_history.$[old].ended_at": now.isoformat()}},
+            array_filters=[{"old.status": "Active", "old.reference": {"$ne": subscription_id}}],
+        )
+    await _users().update_one({"_id": user["_id"]}, {"$set": update})
     await _users().update_one(
-        {"_id": user["_id"]},
-        {
-            "$set": update,
-            "$push": {"subscription_history": history_item}
-        }
+        {"_id": user["_id"], "subscription_history.reference": {"$ne": history_item["reference"]}},
+        {"$push": {"subscription_history": history_item}},
     )
-    logger.info(f"✅ Activated Standard plan for user {user.get('email')}")
+    logger.info(f"✅ Activated {bought_plan['name']} plan for user {user.get('email')}")
+
+    if replaced:
+        # The new subscription is recorded first, so the deletion event this
+        # triggers is recognised as a replaced subscription and ignored.
+        # Prorated: the unused days of the old plan become a credit on the
+        # customer's balance, taken off their next invoice.
+        try:
+            client.Subscription.cancel(replaced, prorate=True)
+            logger.info(f"Cancelled replaced subscription {replaced} for {user.get('email')}")
+        except Exception as e:
+            # Already cancelled (a repeat delivery) or not found: nothing to do.
+            logger.warning(f"Could not cancel replaced subscription {replaced}: {e}")
 
 
 # ============================================================
@@ -210,15 +259,26 @@ async def handle_subscription_updated(subscription: dict) -> None:
     if not user:
         return
 
+    if _is_replaced(user, subscription.get("id")):
+        logger.info(f"Ignoring update for replaced subscription {subscription.get('id')}")
+        return
+
     cancel_at_period_end = bool(
         subscription.get("cancel_at_period_end")
         or subscription.get("cancel_at")
     )
     period_end = _extract_period_end(subscription)
 
+    # A price change (Standard <-> Premium) moves the user to that plan.
+    changes = {}
+    moved_to = plans.plan_of_subscription(subscription)
+    if moved_to:
+        changes = {"plan": plans.plan(moved_to)["name"], "planColor": plans.plan(moved_to)["color"]}
+
     await _users().update_one(
         {"_id": user["_id"]},
         {"$set": {
+            **changes,
             "cancelAtPeriodEnd": cancel_at_period_end,
             "cancel_at_period_end": cancel_at_period_end,
             "subscriptionEndsAt": period_end,
@@ -252,6 +312,10 @@ async def handle_subscription_deleted(subscription: dict) -> None:
     if not user:
         return
 
+    if _is_replaced(user, subscription.get("id")):
+        logger.info(f"Ignoring deletion for replaced subscription {subscription.get('id')}")
+        return
+
     card_purged = False
     pm_id = user.get("stripePaymentMethodId")
 
@@ -272,8 +336,8 @@ async def handle_subscription_deleted(subscription: dict) -> None:
     now_iso = now.isoformat()
 
     update = {
-        "plan": "free",
-        "planColor": "bg-[#E7E8EA] text-[#44474D]",
+        "plan": plans.PLANS[plans.FREE]["name"],
+        "planColor": plans.PLANS[plans.FREE]["color"],
         "stripeSubscriptionId": None,
         "stripe_subscription_id": None,
         "cancelAtPeriodEnd": False,
@@ -326,14 +390,22 @@ async def handle_invoice_paid(invoice: dict) -> None:
         return
 
     sub_id = invoice.get("subscription")
+    if _is_replaced(user, sub_id):
+        logger.info(f"Ignoring renewal for replaced subscription {sub_id}")
+        return
     period_end = None
+    # The plan renewed: the subscription's price, else what the user is on.
+    renewed = plans.plan_key(user.get("plan"))
     if sub_id:
         try:
             client = _stripe()
             sub = client.Subscription.retrieve(sub_id)
             period_end = _extract_period_end(sub)
+            renewed = plans.plan_of_subscription(sub) or renewed
         except Exception as e:
             logger.warning(f"Could not retrieve subscription {sub_id} on invoice paid: {e}")
+    if renewed not in plans.PAID_PLANS:
+        renewed = plans.STANDARD
 
     if not period_end:
         period_end = datetime.now(timezone.utc) + timedelta(days=30)
@@ -342,7 +414,7 @@ async def handle_invoice_paid(invoice: dict) -> None:
     await _users().update_one(
         {"_id": user["_id"]},
         {"$set": {
-            "plan": "Standard",
+            "plan": plans.plan(renewed)["name"],
             "subscriptionEndsAt": period_end,
             "subscription_ends_at": period_end,
             "planActivatedAt": now,
@@ -365,6 +437,8 @@ async def handle_invoice_failed(invoice: dict) -> None:
         "$or": [{"stripeCustomerId": customer_id}, {"stripe_customer_id": customer_id}]
     })
     if not user:
+        return
+    if _is_replaced(user, invoice.get("subscription")):
         return
 
     now = datetime.now(timezone.utc)
@@ -415,6 +489,11 @@ async def stripe_webhook(
     except Exception as e:
         logger.warning(f"Stripe signature verification failed: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid webhook signature: {e}")
+
+    # The signature is verified, so the body is Stripe's. Work on it as plain
+    # dicts: from stripe-python 8 on, an Event is not a dict and has no .get(),
+    # and every handler below reads its object with .get().
+    event = json.loads(raw_body)
 
     # Idempotency check with processed_events collection
     events_col = _processed_events()

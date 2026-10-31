@@ -264,9 +264,9 @@ app.include_router(
 
 
 @app.get("/api/judgments/{judgment_id}/download", dependencies=[Depends(require_user_download)])
-async def download_judgment_alias(judgment_id: str):
+async def download_judgment_alias(judgment_id: str, request: Request):
     from app.api.admin import download_judgment
-    return await download_judgment(judgment_id)
+    return await download_judgment(judgment_id, request)
 
 
 @app.get("/{full_path:path}")

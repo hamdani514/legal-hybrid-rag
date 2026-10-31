@@ -285,6 +285,9 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_PRICE_ID: str = ""
+    # The Premium plan's recurring price ($20/month). Limits and features of
+    # each plan live in modules/payment/plans.py.
+    STRIPE_PREMIUM_PRICE_ID: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
     PAID_PLAN: str = "Standard"
     FREE_PLAN: str = "Free"

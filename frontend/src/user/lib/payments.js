@@ -78,13 +78,16 @@ export async function paymentStatus() {
 }
 
 /**
- * Begin a subscription.
+ * Subscribe to a paid plan: "standard" ($10/month) or "premium" ($20/month).
  *
- * Resolves to { ok: true } only after the browser has been sent to Stripe;
+ * Switching between the two paid plans uses the same Checkout page; the
+ * server cancels the old subscription once the new one is paid.
+ *
+ * Resolves to { ok: true } after the browser has been sent to Stripe;
  * otherwise { ok: false, reason, message } so the caller can show the
  * server's own words rather than a generic failure.
  */
-export async function startCheckout() {
+export async function startCheckout(plan = 'standard') {
   const id = currentUserId();
   if (!id) return { ok: false, reason: 'signin', message: 'Please sign in first.' };
 
@@ -93,7 +96,7 @@ export async function startCheckout() {
     res = await apiFetch('/api/payments/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id }),
+      body: JSON.stringify({ user_id: id, plan }),
     });
   } catch {
     return { ok: false, reason: 'network', message: 'Could not reach the payment service.' };
@@ -133,7 +136,7 @@ export async function cancelSubscription() {
       return { ok: false, message: data?.detail || 'Could not cancel subscription.' };
     }
     return { ok: true, data, message: data?.message || 'Subscription cancelled.' };
-  } catch (err) {
+  } catch {
     return { ok: false, message: 'Network error communicating with payment service.' };
   }
 }
@@ -156,7 +159,7 @@ export async function reactivateSubscription() {
       return { ok: false, message: data?.detail || 'Could not reactivate subscription.' };
     }
     return { ok: true, data, message: data?.message || 'Subscription reactivated.' };
-  } catch (err) {
+  } catch {
     return { ok: false, message: 'Network error communicating with payment service.' };
   }
 }

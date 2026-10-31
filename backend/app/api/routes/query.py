@@ -40,7 +40,8 @@ from app.api.schemas import (
 from app.retrieval.comparator import compare_judgments
 from app.retrieval.llm_responder import status_of
 from app.retrieval.orchestrator import answer_for_judgment, more_results, retrieve_and_answer, summarize_judgment
-from modules.payment.plan_guard import plan_guard, refund_query
+from modules.payment import plans
+from modules.payment.plan_guard import plan_guard, refund_query, require_feature
 
 router = APIRouter()
 
@@ -72,15 +73,24 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
     started = time.perf_counter()
     await _await_warmup(request)
 
-    # Enforce tier-based daily rate limits (1/day Free, 20/day Standard)
+    # Daily search limit (Free 2, Standard 20, Premium 50 — modules/payment/plans.py)
     await plan_guard(request)
+    plan_key = getattr(request.state, "effective_plan", plans.FREE)
+    plan = plans.describe(plan_key)
+
+    # Free retrieves and summarises from the case cards only: no analysis, so
+    # no Gemini call; analysing a case is a paid feature.
+    mode = body.mode if plans.has_feature(plan_key, "analyse") else "retrieve_only"
+    top_k = body.top_k_judgments
+    if plan["max_results"]:
+        top_k = min(top_k, plan["max_results"])
 
     try:
         result = await retrieve_and_answer(
             raw_query=body.query,
-            top_k_judgments=body.top_k_judgments,
+            top_k_judgments=top_k,
             top_k_sections=body.top_k_sections,
-            mode=body.mode,
+            mode=mode,
             user_id=_user_id(request),
         )
     except Exception as e:
@@ -88,6 +98,14 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
         # Refund query counter on pipeline failure
         await refund_query(request)
         raise HTTPException(status_code=500, detail=str(e))
+
+    judgments = result["judgments"]
+    has_more = result.get("has_more", False)
+    if plan["max_results"]:
+        judgments = judgments[: plan["max_results"]]
+        # Further pages are a paid feature; Free is told more exist, so the
+        # UI can show the locked "More relevant cases" button.
+    more_locked = bool(has_more) and not plans.has_feature(plan_key, "see_all")
 
     return SearchResponse(
         query=result["query"],
@@ -99,9 +117,12 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
         no_results=result.get("no_results", False),
         message=result.get("message", ""),
         notice=result.get("notice", ""),
-        judgments=[JudgmentResult(**j) for j in result["judgments"]],
+        judgments=[JudgmentResult(**j) for j in judgments],
         top_judgment_answer=result["top_judgment_answer"],
-        has_more=result.get("has_more", False),
+        has_more=has_more,
+        more_locked=more_locked,
+        plan=plan["plan"],
+        features=plan["features"],
         latency_ms=int((time.perf_counter() - started) * 1000),
     )
 
@@ -116,9 +137,14 @@ async def more(body: MoreRequest, request: Request) -> MoreResponse:
     because each page runs the cross-encoder.
     """
     started = time.perf_counter()
+    filters = body.filters.as_dict() if body.filters else None
+    # Filtering every candidate is the "filter" feature; plain paging is "see all".
+    await require_feature(request, "filter" if filters else "see_all")
     await _await_warmup(request)
     try:
-        result = await more_results(body.query, body.shown, top_k_sections=body.top_k_sections)
+        result = await more_results(
+            body.query, body.shown, top_k_sections=body.top_k_sections, filters=filters
+        )
     except Exception as e:
         logger.exception("Error in /query/more")
         raise HTTPException(status_code=500, detail=str(e))
@@ -139,6 +165,7 @@ async def answer(body: AnswerRequest, request: Request) -> AnswerResponse:
     so the client renders a state, never provider error text. 404 for an
     unknown judgment.
     """
+    await require_feature(request, "analyse")
     await _await_warmup(request)
     try:
         result = await answer_for_judgment(body.query, body.judgment_id)
@@ -157,8 +184,9 @@ async def answer(body: AnswerRequest, request: Request) -> AnswerResponse:
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
-async def summarize(body: SummarizeRequest) -> SummarizeResponse:
+async def summarize(body: SummarizeRequest, request: Request) -> SummarizeResponse:
     """Summarise one judgment, named directly rather than searched for."""
+    await require_feature(request, "summarize")
     try:
         filename, summary = await summarize_judgment(body.judgment_id)
     except Exception as e:
@@ -174,8 +202,9 @@ async def summarize(body: SummarizeRequest) -> SummarizeResponse:
 
 
 @router.post("/compare", response_model=CompareResponse)
-async def compare(body: CompareRequest) -> CompareResponse:
+async def compare(body: CompareRequest, request: Request) -> CompareResponse:
     """Line several judgments up side by side on the same fields."""
+    await require_feature(request, "compare")
     if not body.judgment_ids:
         raise HTTPException(status_code=400, detail="No judgments to compare.")
 

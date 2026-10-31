@@ -6,9 +6,15 @@ import { caseJudges, prettyOutcome } from '../lib/answerFormat';
  * and judge.
  *
  * Every field is optional and they combine with AND, so leaving one empty
- * simply does not constrain that dimension. The work happens on data already
- * on screen - no request, no AI call.
+ * simply does not constrain that dimension. Applied, they run on the server
+ * over every case the search found (ResultsPanel's useFilteredPages, backed by
+ * orchestrator.matches_filters, which mirrors matchesFilters below); only a
+ * conversation saved without its query narrows the cases on screen instead.
+ * No AI call either way.
  */
+
+// Every final decision a case card can record (case_card.py).
+const OUTCOMES = ['allowed', 'partly_allowed', 'dismissed', 'disposed', 'remanded'];
 
 export const EMPTY_FILTERS = { outcome: '', judge: '', from: '', to: '', query: '' };
 
@@ -32,15 +38,33 @@ export const caseDate = (card) => {
   return null;
 };
 
-/** Does one result match the active filters? Empty fields never exclude. */
+// Titles that are not part of a judge's name (see orchestrator._JUDGE_TITLES).
+const JUDGE_TITLES = new Set(['justice', 'mr', 'mrs', 'ms', 'miss', 'j', 'cj', 'hcj', 'acj', 'chief',
+  'the', 'hon', 'honourable', 'honorable', 'sir', 'dr']);
+
+/** Lower-case letters and digits only: "C_P_L_A_3031" -> "cpla3031". */
+const compact = (text) => String(text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** A field's words, dots removed first so "C.P.L.A." stays one word. */
+const words = (text, drop) =>
+  String(text || '').toLowerCase().replace(/\./g, '').split(/[^a-z0-9]+/)
+    .filter((w) => w && !(drop && drop.has(w)));
+
+/**
+ * Does one result match the active filters? Empty fields never exclude.
+ * Mirrors orchestrator.matches_filters, which applies the same rules on the
+ * server: every word typed must appear, ignoring spaces, dots, underscores
+ * and (for judges) titles such as "Justice" or "HCJ".
+ */
 export const matchesFilters = (cite, f) => {
   const card = cite.card || {};
 
   if (f.outcome && String(card.outcome || '') !== f.outcome) return false;
 
-  if (f.judge?.trim()) {
-    const needle = f.judge.trim().toLowerCase();
-    if (!caseJudges(card).some((j) => j.toLowerCase().includes(needle))) return false;
+  const judgeWords = words(f.judge, JUDGE_TITLES);
+  if (judgeWords.length) {
+    const found = caseJudges(card).some((j) => judgeWords.every((w) => compact(j).includes(w)));
+    if (!found) return false;
   }
 
   if (f.from || f.to) {
@@ -51,12 +75,11 @@ export const matchesFilters = (cite, f) => {
     if (f.to && when > new Date(`${f.to}T23:59:59`)) return false;
   }
 
-  if (f.query?.trim()) {
-    const needle = f.query.trim().toLowerCase();
-    const hay = [card.case_display, cite.filename, cite.judgment_id, card.appellant,
-                 card.respondent, card.subject]
-      .filter(Boolean).join(' ').toLowerCase();
-    if (!hay.includes(needle)) return false;
+  const queryWords = words(f.query);
+  if (queryWords.length) {
+    const hay = compact([card.case_display, cite.filename, cite.judgment_id, card.appellant,
+                         card.respondent, card.subject].filter(Boolean).join(' '));
+    if (!queryWords.every((w) => hay.includes(w))) return false;
   }
   return true;
 };
@@ -78,12 +101,16 @@ const inputCls =
  * The filter dialog. Edits a local draft so nothing changes behind the reader
  * until Apply is pressed; Reset clears every field at once.
  */
-const FilterDialog = ({ cases, filters, onApply, onClose, Modal }) => {
+const FilterDialog = ({ cases, filters, onApply, onClose, Modal, searchesAll = false }) => {
   const [draft, setDraft] = useState(filters);
   const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
 
   const uniq = (v) => [...new Set(v.filter(Boolean))].sort();
-  const outcomes = uniq(cases.map((c) => c.card?.outcome));
+  // Filtering covers every case found, so offer every decision, not only
+  // those among the cases on screen.
+  const outcomes = searchesAll
+    ? OUTCOMES
+    : uniq(cases.map((c) => c.card?.outcome)).filter((o) => o !== 'unknown');
   const judges = uniq(cases.flatMap((c) => caseJudges(c.card)));
 
   const preview = cases.filter((c) => matchesFilters(c, draft)).length;
@@ -120,13 +147,13 @@ const FilterDialog = ({ cases, filters, onApply, onClose, Modal }) => {
           </span>
         </div>
 
-        <Field label="Case number or party" hint="Matches part of a case number, a filename or a party name.">
-          <input type="search" value={draft.query} placeholder="e.g. 26-K, or Federation of Pakistan"
+        <Field label="Case number or party" hint="Spacing and dots do not matter: C.P.L.A. 3031 2021 and CPLA 3031/2021 both work.">
+          <input type="search" value={draft.query} placeholder="e.g. C.P.L.A. 3031 2021, or Federation of Pakistan"
                  onChange={(e) => set('query', e.target.value)} className={inputCls} />
         </Field>
 
-        <Field label="Judge" hint="Part of a name is enough.">
-          <input type="search" list="filter-judges" value={draft.judge} placeholder="e.g. Munib Akhtar"
+        <Field label="Judge name" hint="Part of the name is enough; titles like Justice or CJ are optional.">
+          <input type="search" list="filter-judges" value={draft.judge} placeholder="e.g. Justice Munib Akhtar"
                  onChange={(e) => set('judge', e.target.value)} className={inputCls} />
           <datalist id="filter-judges">
             {judges.map((j) => <option key={j} value={j} />)}
@@ -134,8 +161,17 @@ const FilterDialog = ({ cases, filters, onApply, onClose, Modal }) => {
         </Field>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-ash-200 pt-4">
-          <span className="font-prose text-[13px] text-ash-600">
-            {preview} of {cases.length} judgment{cases.length === 1 ? '' : 's'} match
+          <span className="max-w-[18rem] font-prose text-[12.5px] leading-snug text-ash-600">
+            {searchesAll ? (
+              <>
+                <span aria-hidden="true" className="material-symbols-outlined mr-1 align-[-3px] text-[15px] text-brand-500">
+                  travel_explore
+                </span>
+                Applies to every case found for this search — not only the {cases.length} on screen.
+              </>
+            ) : (
+              `${preview} of ${cases.length} judgment${cases.length === 1 ? '' : 's'} match`
+            )}
           </span>
           <span className="ml-auto flex items-center gap-2">
             <button type="button" onClick={() => setDraft({ ...EMPTY_FILTERS })}

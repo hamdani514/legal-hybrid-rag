@@ -69,6 +69,12 @@ class SearchResponse(BaseModel):
     top_judgment_answer: str | None = None
     # More judgments than these can be fetched with POST /query/more.
     has_more: bool = False
+    # More exist, but the caller's plan cannot page to them (Free).
+    more_locked: bool = False
+    # The caller's plan and what it unlocks (modules/payment/plans.py), so the
+    # client shows locked tools as locked rather than letting them fail.
+    plan: str = "free"
+    features: dict[str, bool] = Field(default_factory=dict)
     latency_ms: int
 
 
@@ -77,12 +83,31 @@ class SearchResponse(BaseModel):
 MAX_SHOWN = 100
 
 
+class ResultFilters(BaseModel):
+    """The filter dialog's fields. Every one is optional; they combine with AND.
+    Dates are YYYY-MM-DD, as the date inputs send them."""
+    outcome: str = Field(default="", max_length=40)
+    from_: str = Field(default="", alias="from", max_length=10)
+    to: str = Field(default="", max_length=10)
+    query: str = Field(default="", max_length=200)
+    judge: str = Field(default="", max_length=120)
+
+    model_config = {"populate_by_name": True}
+
+    def as_dict(self) -> dict:
+        return {"outcome": self.outcome, "from": self.from_, "to": self.to,
+                "query": self.query, "judge": self.judge}
+
+
 class MoreRequest(BaseModel):
     """The next page of a search: the query as searched, and every judgment
-    already on screen for it."""
+    already on screen for it. With ``filters``, the next judgments that match
+    them, from every candidate the search found; ``shown`` is then what the
+    filtered list already shows (empty for its first page)."""
     query: str = Field(min_length=3, max_length=MAX_QUERY_CHARS)
     shown: list[str] = Field(default_factory=list, max_length=MAX_SHOWN)
     top_k_sections: int = Field(default=3, ge=1, le=6)
+    filters: ResultFilters | None = None
 
 
 class MoreResponse(BaseModel):

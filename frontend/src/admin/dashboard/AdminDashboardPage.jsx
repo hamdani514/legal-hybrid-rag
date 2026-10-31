@@ -30,7 +30,7 @@ const AdminDashboardPage = () => {
     }
   }, [navigate]);
 
-  const [stats, setStats] = useState({ total_users: 0, pro_users: 0, standard_users: 0 });
+  const [stats, setStats] = useState({ total_users: 0, premium_users: 0, standard_users: 0 });
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState('');
   const [sortBy, setSortBy] = useState('id_asc');
@@ -56,7 +56,7 @@ const AdminDashboardPage = () => {
         setUsers(data.users || []);
         setStats({
           total_users: data.total_users || 0,
-          pro_users: data.pro_users || 0,
+          premium_users: data.premium_users || 0,
           standard_users: data.standard_users || 0
         });
       }
@@ -156,17 +156,17 @@ const AdminDashboardPage = () => {
             loading={loading}
           />
           <AdminStatsCard
-            label="Total Pro Plan"
-            value={stats.pro_users}
-            subtext="active pro subscribers"
-            icon="workspace_premium"
+            label="Total Standard Plan"
+            value={stats.standard_users}
+            subtext="$10 / month subscribers"
+            icon="grade"
             loading={loading}
           />
           <AdminStatsCard
-            label="Total Standard Plan"
-            value={stats.standard_users}
-            subtext="active basic plan users"
-            icon="grade"
+            label="Total Premium Plan"
+            value={stats.premium_users}
+            subtext="$20 / month subscribers"
+            icon="workspace_premium"
             loading={loading}
           />
         </section>

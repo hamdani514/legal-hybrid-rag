@@ -2,6 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- A reload starts at the top of the page. Browsers restore the old
+         scroll position on reload; that is switched off until the page has
+         loaded, then handed back so Back / Forward still return you to where
+         you were. Runs first, before anything can be scrolled. -->
+    <script>
+      (function () {
+        try {
+          if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+          window.scrollTo(0, 0);
+          window.addEventListener('load', function () {
+            setTimeout(function () {
+              window.scrollTo(0, 0);
+              if ('scrollRestoration' in history) history.scrollRestoration = 'auto';
+            }, 0);
+          });
+        } catch (e) { /* scrolling is a nicety */ }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=verdict-blue" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=verdict-blue" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=verdict-blue" />
@@ -17,8 +35,154 @@
          to Inter any more, so it is no longer requested. -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Loading skeleton. Plain HTML and CSS, so it paints the instant the
+         page is requested — before the JavaScript bundle has even arrived.
+         Grey blocks in the shape of the page, with a light sweeping across
+         them (the "shimmer"). src/main.jsx fades it out once React has drawn
+         the real page and the fonts are ready. -->
+    <style>
+      #boot-skeleton {
+        position: fixed; inset: 0; z-index: 9999; overflow: hidden;
+        background: #ffffff;
+        transition: opacity 320ms ease, visibility 320ms ease;
+        --sk-base: #edf0f4; --sk-shine: #f8f9fb;
+      }
+      #boot-skeleton.boot-done { opacity: 0; visibility: hidden; }
+      #boot-skeleton .sk {
+        border-radius: 12px;
+        background: linear-gradient(100deg, var(--sk-base) 30%, var(--sk-shine) 50%, var(--sk-base) 70%);
+        background-size: 300% 100%;
+        animation: sk-shimmer 1.4s ease-in-out infinite;
+      }
+      @keyframes sk-shimmer {
+        0% { background-position: 100% 0; }
+        100% { background-position: 0 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-skeleton .sk { animation: none; background: var(--sk-base); }
+      }
+      .sk-brand { background: linear-gradient(100deg, #d6e6ff 30%, #eef5ff 50%, #d6e6ff 70%) !important; background-size: 300% 100% !important; }
+      .sk-pill { border-radius: 999px !important; }
+
+      /* Public pages: top bar, hero, three cards. */
+      .sk-site { display: block; }
+      .sk-app { display: none; }
+      #boot-skeleton[data-layout="app"] .sk-site { display: none; }
+      #boot-skeleton[data-layout="app"] .sk-app { display: flex; }
+
+      .sk-nav { height: 76px; border-bottom: 1px solid #f0f2f5; }
+      .sk-wrap { max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+      .sk-nav .sk-wrap { height: 100%; display: flex; align-items: center; gap: 28px; }
+      .sk-logo { display: flex; align-items: center; gap: 10px; }
+      .sk-links { display: flex; gap: 26px; margin: 0 auto; }
+      .sk-hero { padding: 72px 0 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+      .sk-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding-bottom: 40px; }
+      .sk-card { border: 1px solid #f0f2f5; border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+
+      /* Workspace and admin: sidebar and a main column. */
+      .sk-app { height: 100%; }
+      .sk-side { width: 272px; flex-shrink: 0; border-right: 1px solid #f0f2f5; padding: 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+      .sk-main { flex: 1; padding: 28px 40px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+      @media (max-width: 860px) {
+        .sk-links, .sk-side { display: none !important; }
+        .sk-cards { grid-template-columns: 1fr; }
+        .sk-hero { padding-top: 48px; }
+        .sk-main { padding: 24px 16px; }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-skeleton" aria-hidden="true">
+      <div class="sk-site">
+        <div class="sk-nav">
+          <div class="sk-wrap">
+            <div class="sk-logo">
+              <div class="sk sk-brand" style="width:40px;height:40px"></div>
+              <div class="sk" style="width:110px;height:20px"></div>
+            </div>
+            <div class="sk-links">
+              <div class="sk" style="width:86px;height:14px"></div>
+              <div class="sk" style="width:58px;height:14px"></div>
+              <div class="sk" style="width:40px;height:14px"></div>
+              <div class="sk" style="width:62px;height:14px"></div>
+            </div>
+            <div class="sk sk-pill" style="width:120px;height:40px;margin-left:auto"></div>
+          </div>
+        </div>
+        <div class="sk-wrap">
+          <div class="sk-hero">
+            <div class="sk sk-pill sk-brand" style="width:250px;height:30px"></div>
+            <div class="sk" style="width:min(680px,92%);height:46px;margin-top:10px"></div>
+            <div class="sk" style="width:min(520px,80%);height:46px"></div>
+            <div class="sk" style="width:min(600px,90%);height:15px;margin-top:10px"></div>
+            <div class="sk" style="width:min(460px,72%);height:15px"></div>
+            <div style="display:flex;gap:14px;margin-top:18px">
+              <div class="sk sk-pill sk-brand" style="width:168px;height:50px"></div>
+              <div class="sk sk-pill" style="width:150px;height:50px"></div>
+            </div>
+          </div>
+          <div class="sk-cards">
+            <div class="sk-card">
+              <div class="sk" style="width:46px;height:46px"></div>
+              <div class="sk" style="width:70%;height:20px"></div>
+              <div class="sk" style="width:100%;height:12px"></div>
+              <div class="sk" style="width:85%;height:12px"></div>
+            </div>
+            <div class="sk-card">
+              <div class="sk" style="width:46px;height:46px"></div>
+              <div class="sk" style="width:62%;height:20px"></div>
+              <div class="sk" style="width:100%;height:12px"></div>
+              <div class="sk" style="width:78%;height:12px"></div>
+            </div>
+            <div class="sk-card">
+              <div class="sk" style="width:46px;height:46px"></div>
+              <div class="sk" style="width:74%;height:20px"></div>
+              <div class="sk" style="width:100%;height:12px"></div>
+              <div class="sk" style="width:82%;height:12px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sk-app">
+        <div class="sk-side">
+          <div class="sk-logo" style="margin-bottom:14px">
+            <div class="sk sk-brand" style="width:36px;height:36px"></div>
+            <div class="sk" style="width:100px;height:18px"></div>
+          </div>
+          <div class="sk sk-brand" style="width:100%;height:42px"></div>
+          <div class="sk" style="width:60%;height:11px;margin-top:12px"></div>
+          <div class="sk" style="width:100%;height:34px"></div>
+          <div class="sk" style="width:100%;height:34px"></div>
+          <div class="sk" style="width:100%;height:34px"></div>
+          <div class="sk" style="width:100%;height:34px"></div>
+          <div class="sk" style="width:100%;height:52px;margin-top:auto"></div>
+        </div>
+        <div class="sk-main">
+          <div class="sk" style="width:220px;height:26px"></div>
+          <div class="sk" style="width:min(420px,80%);height:14px"></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;margin-top:12px">
+            <div class="sk" style="height:110px;border-radius:18px"></div>
+            <div class="sk" style="height:110px;border-radius:18px"></div>
+            <div class="sk" style="height:110px;border-radius:18px"></div>
+          </div>
+          <div class="sk" style="width:100%;height:220px;border-radius:18px;margin-top:6px"></div>
+          <div class="sk" style="width:100%;height:56px;border-radius:18px;margin-top:auto"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // The research workspace and the admin pages use the sidebar layout.
+      (function () {
+        var p = location.pathname;
+        if (/^\/(welcome|chat|admin)(\/|$)/.test(p)) {
+          document.getElementById('boot-skeleton').setAttribute('data-layout', 'app');
+        }
+      })();
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

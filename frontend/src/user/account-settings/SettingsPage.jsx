@@ -7,8 +7,10 @@ import useToastOn from '../../lib/useToastOn';
 import { startCheckout, paymentStatus, cancelSubscription, reactivateSubscription } from '../lib/payments';
 import DeactivateModal from '../components/DeactivateModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
+import CancelSubscriptionDialog from '../components/CancelSubscriptionDialog';
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
+import { PLANS, planKey, refreshPlan } from '../lib/plan';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -32,10 +34,12 @@ const SettingsPage = () => {
     cardLast4: null,
     cardBrand: null,
     dailyQueriesUsed: 0,
-    dailyQueriesLimit: 1,
+    dailyQueriesLimit: PLANS.free.dailyLimit,
     autoRenew: true,
   });
   const [cancellingSub, setCancellingSub] = useState(false);
+  // The cancel confirmation dialog.
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [reactivatingSub, setReactivatingSub] = useState(false);
   const [subFeedback, setSubFeedback] = useState({ type: '', message: '' });
   useToastOn(saveSuccess, 'success');
@@ -289,11 +293,11 @@ const SettingsPage = () => {
     }
   };
 
-  const handleUpgradeToStandard = async () => {
-    setUpgrading(true);
+  const handleUpgrade = async (target) => {
+    setUpgrading(target);
     setSaveError('');
     try {
-      const result = await startCheckout();
+      const result = await startCheckout(target);
       if (!result?.ok) {
         setSaveError(result?.message || 'Could not initiate checkout session.');
         setUpgrading(false);
@@ -306,19 +310,8 @@ const SettingsPage = () => {
     }
   };
 
+  // Runs once the user confirms in CancelSubscriptionDialog.
   const handleCancelSubscription = async () => {
-    const endsFormatted = subStatus.subscriptionEndsAt
-      ? formatDate(subStatus.subscriptionEndsAt)
-      : 'the end of your current billing period';
-
-    if (
-      !window.confirm(
-        `Are you sure you want to cancel your Standard subscription?\n\nYou will keep full Standard access (20 queries/day) until ${endsFormatted}.\nAfter that, your account will downgrade to Free (1 query/day), and your card will be automatically detached.`
-      )
-    ) {
-      return;
-    }
-
     setCancellingSub(true);
     setSubFeedback({ type: '', message: '' });
     try {
@@ -330,14 +323,18 @@ const SettingsPage = () => {
         });
         const updated = await paymentStatus();
         if (updated) setSubStatus(updated);
+        refreshPlan();
+        setConfirmCancel(false);
       } else {
         setSubFeedback({
           type: 'error',
           message: res.message || 'Could not cancel subscription.',
         });
+        setConfirmCancel(false);
       }
-    } catch (err) {
+    } catch {
       setSubFeedback({ type: 'error', message: 'Failed to communicate with payment server.' });
+      setConfirmCancel(false);
     } finally {
       setCancellingSub(false);
     }
@@ -355,6 +352,7 @@ const SettingsPage = () => {
         });
         const updated = await paymentStatus();
         if (updated) setSubStatus(updated);
+        refreshPlan();
       } else {
         setSubFeedback({
           type: 'error',
@@ -393,7 +391,21 @@ const SettingsPage = () => {
     }
   };
 
-  const isPaid = (subStatus.plan || profile.plan || '').toLowerCase() === 'standard' || (profile.plan || '').toLowerCase() === 'advocate';
+  // The server's view of the plan wins; the stored profile is the fallback.
+  const currentPlan = PLANS[planKey(subStatus.plan !== 'free' ? subStatus.plan : profile.plan)];
+  const isPaid = currentPlan.key !== 'free';
+  // What the current plan includes, as listed in the subscription panel.
+  const capabilities = [
+    { text: `${currentPlan.dailyLimit} queries / day (resets 00:00 UTC)`, on: true },
+    {
+      text: isPaid ? 'Every relevant judgment, ten at a time' : `Up to ${PLANS.free.maxResults} judgments per search, summarised`,
+      on: true,
+    },
+    { text: 'Case analysis & summaries', on: isPaid },
+    { text: 'Filter & compare judgments', on: isPaid },
+    { text: 'PDF download & copy text', on: isPaid },
+    { text: isPaid ? 'Cancel anytime, access kept to period end' : 'No card needed', on: true },
+  ];
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-ash-900 flex flex-col font-ui selection:bg-brand-500 selection:text-white">
@@ -402,27 +414,40 @@ const SettingsPage = () => {
 
       {/* Main Content Container with spacing below fixed SiteNav */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 pt-28 sm:pt-32 pb-16 flex flex-col gap-8">
-        {/* Breadcrumb Navigation & Back Link */}
-        <div className="flex items-center justify-between pb-1">
+        {/* Back link first, then where you are. Back sits top-left, where the
+            eye starts and where the browser's own Back is, so the left arrow
+            points the way it moves; the breadcrumb follows it on the same line. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pb-1">
+          <Link
+            to="/welcome"
+            className="group inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-ash-200 bg-white py-2 pl-2.5 pr-4 font-ui text-[13px] font-semibold text-ash-700 shadow-xs transition-all duration-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
+          >
+            <span
+              aria-hidden="true"
+              className="flex h-6 w-6 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-all duration-200 group-hover:-translate-x-0.5 group-hover:bg-brand-600 group-hover:text-white"
+            >
+              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            </span>
+            Back to research
+          </Link>
+
+          <span aria-hidden="true" className="hidden h-5 w-px bg-ash-200 sm:block" />
+
           <nav aria-label="Breadcrumb">
             <ol className="flex items-center gap-2 font-prose text-[13px] text-ash-500">
               <li>
-                <Link to="/" className="transition-colors hover:text-brand-700">
+                <Link to="/" className="rounded transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30">
                   Home
                 </Link>
               </li>
-              <li aria-hidden="true">/</li>
-              <li className="font-semibold text-ash-800">Account Settings</li>
+              <li aria-hidden="true">
+                <span className="material-symbols-outlined align-[-3px] text-[16px] text-ash-400">chevron_right</span>
+              </li>
+              <li aria-current="page" className="font-semibold text-ash-800">
+                Account settings
+              </li>
             </ol>
           </nav>
-
-          <Link
-            to="/welcome"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-            <span>Back to Research</span>
-          </Link>
         </div>
         {/* Profile Card Header Banner */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-ash-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
@@ -533,20 +558,16 @@ const SettingsPage = () => {
                 Subscription Plan
               </span>
               <span className="font-display text-lg font-bold text-ash-900">
-                {isPaid ? '$10.00 / month' : 'Free Forever'}
+                {isPaid ? `$${currentPlan.price}.00 / month` : 'Free Forever'}
               </span>
             </div>
-            {!isPaid && (
-              <button
-                onClick={() => {
-                  setActiveSection('subscription');
-                  handleUpgradeToStandard();
-                }}
-                disabled={upgrading}
+            {currentPlan.key !== 'premium' && (
+              <Link
+                to="/pricing"
                 className="grad-btn text-white text-xs font-bold px-4 py-2 rounded-xl shadow-glow hover:shadow-glow-lg transition-all"
               >
-                {upgrading ? 'Connecting Stripe...' : 'Upgrade Plan'}
-              </button>
+                {isPaid ? 'Compare plans' : 'Upgrade Plan'}
+              </Link>
             )}
           </div>
         </div>
@@ -782,7 +803,7 @@ const SettingsPage = () => {
                       <span className="font-bold underline">
                         {formatDate(subStatus.subscriptionEndsAt)}
                       </span>
-                      . On that date, your plan will downgrade to Free (1 query/day), and your card{' '}
+                      . On that date, your plan will downgrade to Free ({PLANS.free.dailyLimit} queries/day), and your card{' '}
                       {subStatus.cardLast4 ? `(•••• ${subStatus.cardLast4})` : ''} will be permanently detached.
                     </p>
                   </div>
@@ -827,7 +848,7 @@ const SettingsPage = () => {
                   {isPaid
                     ? subStatus.cancelAtPeriodEnd
                       ? '● Canceling at Period End'
-                      : '● Active Standard'
+                      : `● Active ${currentPlan.name}`
                     : '● Active Free Tier'}
                 </span>
               </div>
@@ -840,18 +861,18 @@ const SettingsPage = () => {
                       Current Tier
                     </span>
                     <h3 className="font-display text-2xl font-bold mt-1">
-                      {isPaid ? 'Standard' : 'Free'} Plan
+                      {currentPlan.name} Plan
                     </h3>
                     <p className="font-prose text-xs text-ash-300 mt-2 leading-relaxed">
                       {isPaid
-                        ? 'Full practitioner access with 20 daily queries, comparative analysis, and priority queue.'
-                        : 'Essential moot and academic research with 1 daily query quota (resets midnight UTC).'}
+                        ? `Every research tool with ${currentPlan.dailyLimit} queries a day: analysis, summaries, filters, comparison, downloads and copying.`
+                        : `${PLANS.free.dailyLimit} queries a day, each returning summaries of up to ${PLANS.free.maxResults} relevant judgments (resets midnight UTC).`}
                     </p>
                   </div>
 
                   <div className="pt-6 border-t border-white/10 mt-6 flex items-baseline justify-between">
                     <span className="font-display text-2xl font-extrabold text-white">
-                      {isPaid ? '$10.00' : '$0.00'}
+                      {`$${currentPlan.price}.00`}
                     </span>
                     <span className="text-xs text-ash-400">
                       {isPaid ? '/ billed monthly' : 'no card needed'}
@@ -893,32 +914,20 @@ const SettingsPage = () => {
                     <h4 className="font-ui font-bold text-xs uppercase tracking-wider text-ash-600 mb-3">
                       Included Capabilities:
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-prose text-ash-700">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>{isPaid ? '20 queries / day (Atomic limiter)' : '1 query / day (Atomic limiter)'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>Full judgment text indexing</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>Division & bench filtering</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>Precision citation export</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>{isPaid ? 'Priority retrieval queue' : 'Standard retrieval queue'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-                        <span>{isPaid ? 'Next-business-day support' : 'Community helpdesk'}</span>
-                      </div>
-                    </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-prose text-ash-700">
+                      {capabilities.map(({ text, on }) => (
+                        <li key={text} className={`flex items-center gap-2 ${on ? '' : 'text-ash-400'}`}>
+                          <span
+                            aria-hidden="true"
+                            className={`material-symbols-outlined text-[18px] ${on ? 'text-emerald-600' : 'text-ash-400'}`}
+                          >
+                            {on ? 'check_circle' : 'lock'}
+                          </span>
+                          {!on && <span className="sr-only">Not included: </span>}
+                          <span>{text}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   {/* Payment Card & Renewal Info */}
@@ -946,14 +955,24 @@ const SettingsPage = () => {
 
                     <div className="flex items-center gap-2">
                       {!isPaid ? (
-                        <button
-                          type="button"
-                          onClick={handleUpgradeToStandard}
-                          disabled={upgrading}
-                          className="grad-btn text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-glow hover:shadow-glow-lg transition-all"
-                        >
-                          {upgrading ? 'Connecting Stripe...' : 'Upgrade to Standard ($10/mo)'}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpgrade('standard')}
+                            disabled={Boolean(upgrading)}
+                            className="px-4 py-2.5 rounded-xl border border-brand-300 bg-white text-brand-700 text-xs font-bold transition-all hover:bg-brand-50 disabled:opacity-60"
+                          >
+                            {upgrading === 'standard' ? 'Connecting Stripe...' : 'Standard · $10/mo'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpgrade('premium')}
+                            disabled={Boolean(upgrading)}
+                            className="grad-btn text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-glow hover:shadow-glow-lg transition-all disabled:opacity-60"
+                          >
+                            {upgrading === 'premium' ? 'Connecting Stripe...' : 'Premium · $20/mo'}
+                          </button>
+                        </div>
                       ) : subStatus.cancelAtPeriodEnd ? (
                         <button
                           type="button"
@@ -967,8 +986,9 @@ const SettingsPage = () => {
                       ) : (
                         <button
                           type="button"
-                          onClick={handleCancelSubscription}
+                          onClick={() => setConfirmCancel(true)}
                           disabled={cancellingSub}
+                          aria-haspopup="dialog"
                           className="px-4 py-2 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 font-ui text-xs font-bold transition-all flex items-center gap-1.5"
                         >
                           <span className="material-symbols-outlined text-[16px]">cancel</span>
@@ -1030,7 +1050,10 @@ const SettingsPage = () => {
                             )}
                           </td>
                           <td className="py-4 px-4 font-mono font-medium text-ash-800">
-                            {record.amount || (record.plan === 'Standard' ? '$10.00 / mo' : '$0.00')}
+                            {record.amount ||
+                              (PLANS[planKey(record.plan)].price
+                                ? `$${PLANS[planKey(record.plan)].price}.00 / mo`
+                                : '$0.00')}
                           </td>
                           <td className="py-4 px-4 text-ash-600">
                             <span className="inline-flex items-center gap-1.5">
@@ -1092,6 +1115,21 @@ const SettingsPage = () => {
 
       {/* Footer */}
       <SiteFoot />
+
+      {confirmCancel && (
+        <CancelSubscriptionDialog
+          planName={currentPlan.name}
+          dailyLimit={currentPlan.dailyLimit}
+          endsLabel={
+            subStatus.subscriptionEndsAt
+              ? formatDate(subStatus.subscriptionEndsAt)
+              : 'the end of this billing period'
+          }
+          busy={cancellingSub}
+          onConfirm={handleCancelSubscription}
+          onClose={() => setConfirmCancel(false)}
+        />
+      )}
     </div>
   );
 };

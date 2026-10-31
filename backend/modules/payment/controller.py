@@ -13,7 +13,7 @@ from __future__ import annotations
 import ipaddress
 import secrets
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlsplit
 
 import stripe
@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from app.api.security import require_user
 from app.config import settings
 from app.database import db
+from modules.payment import plans
 from modules.payment.webhook import _extract_period_end
 
 router = APIRouter()
@@ -78,8 +79,7 @@ async def _current_user(request: Request, supplied_id: Optional[str] = None) -> 
 
 
 def _is_paid(user: dict) -> bool:
-    plan = str(user.get("plan") or "").strip().lower()
-    return plan in ("standard", "pro", "premium")
+    return plans.effective_plan(user) in plans.PAID_PLANS
 
 
 # ============================================================
@@ -99,7 +99,7 @@ async def cancel_subscription(request: Request, body: Optional[CancelRequest] = 
     user = await _current_user(request, body.user_id if body else None)
 
     if not _is_paid(user):
-        raise HTTPException(status_code=400, detail="Not on an active Standard plan.")
+        raise HTTPException(status_code=400, detail="You are not on an active paid plan.")
 
     subscription_id = user.get("stripeSubscriptionId") or user.get("stripe_subscription_id")
     if not subscription_id:
@@ -217,41 +217,13 @@ async def get_status(request: Request, user_id: Optional[str] = None):
     """
     user = await _current_user(request, user_id)
     now = datetime.now(timezone.utc)
-
-    raw_ends = (
-        user.get("subscriptionEndsAt")
-        or user.get("subscription_ends_at")
-        or user.get("plan_cancels_at")
-    )
-    if isinstance(raw_ends, str):
-        try:
-            raw_ends = datetime.fromisoformat(raw_ends.replace("Z", "+00:00"))
-        except Exception:
-            raw_ends = None
-    if isinstance(raw_ends, datetime) and raw_ends.tzinfo is None:
-        raw_ends = raw_ends.replace(tzinfo=timezone.utc)
-
-    plan_name = str(user.get("plan") or "free").strip().lower()
-    is_standard = (
-        plan_name in ("standard", "pro", "premium")
-        and (raw_ends is None or raw_ends > now)
-    )
+    raw_ends = plans.subscription_end(user)
 
     # Lazy downgrade
-    if plan_name in ("standard", "pro", "premium") and raw_ends and raw_ends <= now:
-        await _users().update_one(
-            {"_id": user["_id"]},
-            {"$set": {
-                "plan": "free",
-                "planColor": "bg-[#E7E8EA] text-[#44474D]",
-                "subscriptionEndsAt": None,
-                "subscription_ends_at": None,
-                "autoRenew": False,
-                "cancelAtPeriodEnd": False
-            }}
-        )
-        is_standard = False
-        plan_name = "free"
+    if plans.is_expired(user, now):
+        await _users().update_one({"_id": user["_id"]}, {"$set": dict(plans.DOWNGRADE_FIELDS)})
+    plan_key = plans.effective_plan(user, now)
+    is_paid = plan_key in plans.PAID_PLANS
 
     # Daily reset calculation
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -270,17 +242,17 @@ async def get_status(request: Request, user_id: Optional[str] = None):
     else:
         current_count = int(dq.get("count", 0))
 
-    daily_limit = 20 if is_standard else 1
+    described = plans.describe(plan_key)
 
     return {
-        "plan": "standard" if is_standard else "free",
-        "is_paid": is_standard,
+        **described,
+        "is_paid": is_paid,
         "cancelAtPeriodEnd": bool(user.get("cancelAtPeriodEnd") or user.get("cancel_at_period_end")),
         "subscriptionEndsAt": raw_ends.isoformat() if raw_ends else None,
         "cardLast4": user.get("cardLast4"),
         "cardBrand": user.get("cardBrand"),
         "dailyQueriesUsed": current_count,
-        "dailyQueriesLimit": daily_limit,
+        "dailyQueriesLimit": described["daily_limit"],
         "autoRenew": bool(user.get("autoRenew", True) if user.get("autoRenew") is not None else user.get("auto_renew", True)),
         "subscription_history": user.get("subscription_history") or [],
     }
@@ -291,6 +263,8 @@ async def get_status(request: Request, user_id: Optional[str] = None):
 # ============================================================
 class CheckoutRequest(BaseModel):
     user_id: Optional[str] = None
+    # Which paid plan to subscribe to.
+    plan: Literal["standard", "premium"] = "standard"
 
 
 def _origin_of(url: str) -> str:
@@ -338,20 +312,43 @@ def _return_base(request: Request) -> str:
 @router.post("/create-checkout-session")
 async def create_checkout_session(request: Request, body: Optional[CheckoutRequest] = None):
     client = _stripe()
-    price_id = (settings.STRIPE_PRICE_ID or "").strip()
+    target = (body.plan if body else plans.STANDARD) or plans.STANDARD
+    target_name = plans.plan(target)["name"]
+    price_id = plans.price_id_for(target)
+    if not price_id and target == plans.PREMIUM:
+        # No STRIPE_PREMIUM_PRICE_ID: use (or create once) the account's
+        # Premium price, found by its lookup key.
+        try:
+            price_id = plans.ensure_premium_price(client)
+        except Exception as e:
+            logger.error(f"Could not find or create the Premium price in Stripe: {e}")
     if not price_id:
-        raise HTTPException(status_code=503, detail="No subscription price is configured.")
+        raise HTTPException(status_code=503, detail=f"The {target_name} plan is not available for checkout yet.")
 
     user = await _current_user(request, body.user_id if body else None)
-    if _is_paid(user):
-        raise HTTPException(status_code=400, detail="You are already on the Standard plan.")
+    current = plans.effective_plan(user)
+    if current == target:
+        raise HTTPException(status_code=400, detail=f"You are already on the {target_name} plan.")
+    # Switching between the paid plans goes through Checkout like a first
+    # subscription: the payer sees the new price on Stripe's page and pays it
+    # there. Once paid, the webhook cancels the subscription named here, so
+    # there are never two at once (modules/payment/webhook.py).
+    replaces = ""
+    if current in plans.PAID_PLANS:
+        replaces = str(user.get("stripeSubscriptionId") or user.get("stripe_subscription_id") or "")
 
     base = _return_base(request)
     params = {
         "mode": "subscription",
         "line_items": [{"price": price_id, "quantity": 1}],
         "client_reference_id": str(user.get("id") or user.get("_id")),
-        "metadata": {"user_id": str(user.get("id") or user.get("_id")), "email": user.get("email") or ""},
+        "metadata": {
+            "user_id": str(user.get("id") or user.get("_id")),
+            "email": user.get("email") or "",
+            "plan": target,
+            "replaces_subscription": replaces,
+        },
+        "subscription_data": {"metadata": {"plan": target}},
         "success_url": f"{base}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base}/payment/cancel",
     }
@@ -412,5 +409,11 @@ async def payment_config():
         "enabled": bool((settings.STRIPE_SECRET_KEY or "").strip() and (settings.STRIPE_PRICE_ID or "").strip()),
         "publishable_key": settings.STRIPE_PUBLISHABLE_KEY or "",
         "paid_plan": settings.PAID_PLAN,
+        # Which paid plans can be bought right now (each needs its Stripe price).
+        "plans": {
+            # Premium's price is created on first checkout when not configured.
+            key: bool((settings.STRIPE_SECRET_KEY or "").strip() and (plans.price_id_for(key) or key == plans.PREMIUM))
+            for key in plans.PAID_PLANS
+        },
         "test_mode": (settings.STRIPE_SECRET_KEY or "").startswith("sk_test_"),
     }

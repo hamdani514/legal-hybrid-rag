@@ -549,13 +549,119 @@ def _describe(parent_results, expanded, assembled, docs_meta, cards, reasons,
     ]
 
 
-async def more_results(raw_query: str, shown: list[str], top_k_sections: int = 3) -> dict:
+def _card_date(raw) -> "date | None":
+    """A case card's decision date ("28.12.2021", DD.MM.YYYY; or ISO) as a date."""
+    import re
+    from datetime import date
+
+    text = str(raw or "").strip()
+    m = re.fullmatch(r"(\d{1,2})[./-](\d{1,2})[./-](\d{4})", text)
+    try:
+        if m:
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", text)
+        if m:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return None
+    return None
+
+
+# Titles that are not part of a judge's name: "Justice Mian Saqib Nisar, HCJ"
+# is found by "Saqib Nisar", "Mian Saqib Nisar" or "Justice Saqib Nisar".
+_JUDGE_TITLES = {"justice", "mr", "mrs", "ms", "miss", "j", "cj", "hcj", "acj", "chief",
+                 "the", "hon", "honourable", "honorable", "sir", "dr"}
+
+
+def _compact(text) -> str:
+    """Lower-case letters and digits only: "judgement_C_P_L_A_3031_2021" ->
+    "judgementcpla30312021"."""
+    import re
+    return re.sub(r"[^a-z0-9]", "", str(text or "").lower())
+
+
+def _words(text, drop: set[str] = frozenset()) -> list[str]:
+    """The words of a filter field. Dots are removed first, so an abbreviation
+    stays one word: "C.P.L.A. 3031 2021" -> ["cpla", "3031", "2021"]."""
+    import re
+    flat = str(text or "").lower().replace(".", "")
+    return [w for w in re.split(r"[^a-z0-9]+", flat) if w and w not in drop]
+
+
+def filters_active(filters: dict | None) -> bool:
+    return bool(filters) and any(str(v or "").strip() for v in filters.values())
+
+
+def matches_filters(judgment_id: str, card: dict, filename: str, filters: dict) -> bool:
+    """Whether one judgment matches the researcher's filters. Empty fields never
+    exclude; the fields combine with AND. Mirrors matchesFilters in
+    frontend/src/user/components/ResultsFilter.jsx."""
+    from datetime import date
+
+    outcome = str(filters.get("outcome") or "").strip()
+    if outcome and str(card.get("outcome") or "") != outcome:
+        return False
+
+    judge_words = _words(filters.get("judge"), _JUDGE_TITLES)
+    if judge_words:
+        bench = card.get("bench")
+        judges = [str(j) for j in bench if j] if isinstance(bench, list) else ([str(bench)] if bench else [])
+        # One judge on the bench must carry every word typed.
+        if not any(all(w in _compact(j) for w in judge_words) for j in judges):
+            return False
+
+    start, end = str(filters.get("from") or "").strip(), str(filters.get("to") or "").strip()
+    if start or end:
+        when = _card_date(card.get("decision_date"))
+        if when is None:   # no usable date cannot be shown to fall inside a range
+            return False
+        try:
+            if start and when < date.fromisoformat(start):
+                return False
+            if end and when > date.fromisoformat(end):
+                return False
+        except ValueError:
+            return False
+
+    # Case number or party: every word typed must appear, ignoring spaces, dots
+    # and underscores — "C.P.L.A. 3031 2021" finds judgement_C_P_L_A_3031_2021,
+    # "3031 of 2021" finds "Civil Petition No. 3031 of 2021".
+    query_words = _words(filters.get("query"))
+    if query_words:
+        hay = _compact(" ".join(str(x) for x in (card.get("case_display"), filename, judgment_id,
+                                                card.get("appellant"), card.get("respondent"),
+                                                card.get("subject")) if x))
+        if not all(w in hay for w in query_words):
+            return False
+    return True
+
+
+def _filter_matcher(filters: dict):
+    """An async ``ids -> matching ids`` for pipeline_v2.more_v2, from case cards
+    and document filenames (two indexed lookups, whatever the candidate count)."""
+    async def matcher(judgment_ids: list[str]) -> set[str]:
+        cards = await _cards_for(judgment_ids)
+        meta = await _documents_meta_for(judgment_ids)
+        return {
+            jid for jid in judgment_ids
+            if matches_filters(jid, cards.get(jid, {}), meta.get(jid, {}).get("filename", ""), filters)
+        }
+    return matcher
+
+
+async def more_results(
+    raw_query: str, shown: list[str], top_k_sections: int = 3, filters: dict | None = None
+) -> dict:
     """The next page of judgments for a search ("More relevant cases").
 
     ``shown`` is every judgment already on screen for this query. The pipeline
     scores the next part of the same candidate list (pipeline_v2.more_v2), so
     nothing here repeats the search. No analysis is generated: every result is
     ``on_demand`` and spends Gemini quota only if the user opens it.
+
+    With ``filters`` (outcome, from, to, query, judge), the page is the next
+    judgments that match them, drawn from every candidate the query found —
+    not only from those already on screen.
 
     Returns:
         ``{"judgments": [...], "has_more": bool}`` — empty on the v1 pipeline,
@@ -566,7 +672,8 @@ async def more_results(raw_query: str, shown: list[str], top_k_sections: int = 3
 
     from app.retrieval.pipeline_v2 import more_v2
 
-    page = await more_v2(raw_query, shown, top_k_sections=top_k_sections)
+    matcher = _filter_matcher(filters) if filters_active(filters) else None
+    page = await more_v2(raw_query, shown, top_k_sections=top_k_sections, matcher=matcher)
     parent_results = page.get("parent_results") or []
     if not parent_results:
         return {"judgments": [], "has_more": False}

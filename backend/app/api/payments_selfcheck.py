@@ -120,6 +120,20 @@ async def run():
         check("an already-paid user cannot start a second subscription",
               r.status_code == 400, str(r.status_code))
 
+        # --- a plan switch: the replaced subscription's events are ignored
+        # Switching Standard <-> Premium opens a new subscription and cancels
+        # the old one; Stripe's update/deletion events for the old one must
+        # not move the user back or down to Free.
+        old_sub = {"id": "sub_replaced_old", "object": "subscription", "customer": "cus_selfcheck"}
+        for kind, eid in (("customer.subscription.updated", "evt_sc_old_1"),
+                          ("customer.subscription.deleted", "evt_sc_old_2")):
+            body = json.dumps(event(kind, old_sub, eid)).encode()
+            await c.post("/api/payments/webhook", content=body, headers=signed_headers(body))
+        doc = await users.find_one({"id": "USr-9001"})
+        check("events for a replaced subscription leave the plan alone",
+              doc["plan"] == settings.PAID_PLAN and doc.get("stripeSubscriptionId") == "sub_selfcheck",
+              doc["plan"])
+
         # --- cancellation returns the user to free --------------------
         sub_obj = {"id": "sub_selfcheck", "object": "subscription", "customer": "cus_selfcheck"}
         payload2 = json.dumps(event("customer.subscription.deleted", sub_obj, "evt_sc_2")).encode()

@@ -4,6 +4,7 @@ import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
 import Reveal from '../components/Reveal';
 import { confirmCheckout, paymentStatus } from '../lib/payments';
+import { PLANS, planKey, refreshPlan, setPlanFromServer } from '../lib/plan';
 import { toast } from '../../lib/toast';
 
 /**
@@ -27,17 +28,15 @@ const PaymentResultPage = () => {
   const [state, setState] = useState(cancelled ? 'cancelled' : 'confirming');
   const [plan, setPlan] = useState('');
 
-  // Shows the confirmed plan and keeps the stored account label in step.
-  const applyPlan = (name) => {
+  // Shows the confirmed plan and updates it everywhere at once: the shared
+  // plan store (tools unlock), the stored user and the header badge.
+  const applyPlan = (raw) => {
+    const name = PLANS[planKey(raw)].name;
     setPlan(name);
     setState('confirmed');
-    toast.success(`Payment successful! You are now on the ${name || 'Standard'} plan.`);
-    try {
-      const stored = JSON.parse(localStorage.getItem('currentUser') || 'null');
-      if (stored) localStorage.setItem('currentUser', JSON.stringify({ ...stored, plan: name }));
-    } catch {
-      /* a stale label is not worth failing over */
-    }
+    toast.success(`Payment successful! You are now on the ${name} plan.`);
+    setPlanFromServer(raw);
+    refreshPlan();
   };
 
   useEffect(() => {

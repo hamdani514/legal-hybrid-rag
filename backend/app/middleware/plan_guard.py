@@ -4,8 +4,12 @@ from bson import ObjectId
 from app.models.user import User
 from app.middleware.auth import get_current_user
 
-FREE_DAILY_LIMIT = 1
-STANDARD_DAILY_LIMIT = 20
+from modules.payment.plans import PLANS, PREMIUM, STANDARD, FREE
+
+# The limits live in modules/payment/plans.py (the guard the search UI uses).
+FREE_DAILY_LIMIT = PLANS[FREE]["daily_limit"]
+STANDARD_DAILY_LIMIT = PLANS[STANDARD]["daily_limit"]
+PREMIUM_DAILY_LIMIT = PLANS[PREMIUM]["daily_limit"]
 
 
 async def plan_guard(user = Depends(get_current_user)):
@@ -35,7 +39,12 @@ async def plan_guard(user = Depends(get_current_user)):
             {"$set": {"plan": "Free"}}
         )
 
-    daily_limit = STANDARD_DAILY_LIMIT if is_standard else FREE_DAILY_LIMIT
+    if not is_standard:
+        daily_limit = FREE_DAILY_LIMIT
+    elif str(user_doc.plan).lower() == "premium":
+        daily_limit = PREMIUM_DAILY_LIMIT
+    else:
+        daily_limit = STANDARD_DAILY_LIMIT
 
     # Reset counter if it's a new day
     dq = user_doc.dailyQueries or {"count": 0, "date": now}

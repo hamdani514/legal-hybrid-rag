@@ -1,8 +1,10 @@
 """
 Tier-based rate limiting (Plan Guard).
-Enforces daily query quotas:
-  - Free plan: 1 query/day
+Enforces daily query quotas (limits in modules/payment/plans.py):
+  - Free plan: 2 queries/day
   - Standard plan: 20 queries/day (only while subscription is valid)
+  - Premium plan: 50 queries/day (only while subscription is valid)
+and the paid-only features (require_feature).
 Features:
   - Daily reset at midnight UTC
   - Lazy downgrade for expired subscriptions
@@ -19,9 +21,11 @@ from fastapi import HTTPException, Request, Depends
 from loguru import logger
 
 from app.database import db
+from modules.payment import plans
 
-FREE_DAILY_LIMIT = 1
-STANDARD_DAILY_LIMIT = 20
+FREE_DAILY_LIMIT = plans.PLANS[plans.FREE]["daily_limit"]
+STANDARD_DAILY_LIMIT = plans.PLANS[plans.STANDARD]["daily_limit"]
+PREMIUM_DAILY_LIMIT = plans.PLANS[plans.PREMIUM]["daily_limit"]
 
 
 def _users():
@@ -72,7 +76,8 @@ async def get_current_user_from_request(request: Request) -> Optional[dict]:
 async def plan_guard(request: Request):
     """
     Enforce daily query limits.
-    Free: 1/day. Standard: 20/day (only while subscription is active and not expired).
+    Free: 2/day. Standard: 20/day. Premium: 50/day (paid plans only while the
+    subscription is active and not expired).
     Atomic increment prevents race conditions.
     """
     user = await get_current_user_from_request(request)
@@ -80,7 +85,7 @@ async def plan_guard(request: Request):
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     if not user:
-        # Anonymous users: apply Free tier limit (1/day) tracked by IP
+        # Anonymous users: apply the Free tier limit, tracked by IP
         client_ip = request.client.host if request.client else "unknown"
         anon_key = f"anon_{client_ip}"
         anon_doc = await _users().find_one({"id": anon_key})
@@ -95,46 +100,18 @@ async def plan_guard(request: Request):
             anon_doc = await _users().find_one({"id": anon_key})
         user = anon_doc
 
-    # Check expiration date
-    raw_ends = (
-        user.get("subscriptionEndsAt")
-        or user.get("subscription_ends_at")
-        or user.get("plan_cancels_at")
-    )
-    if isinstance(raw_ends, str):
-        try:
-            raw_ends = datetime.fromisoformat(raw_ends.replace("Z", "+00:00"))
-        except Exception:
-            raw_ends = None
-    if isinstance(raw_ends, datetime) and raw_ends.tzinfo is None:
-        raw_ends = raw_ends.replace(tzinfo=timezone.utc)
-
-    plan_name = str(user.get("plan") or "free").strip().lower()
-
-    # Determine effective plan
-    is_standard = (
-        plan_name in ("standard", "pro", "premium")
-        and (raw_ends is None or raw_ends > now)
-    )
-
-    # Lazy downgrade: if subscription has expired, revert to Free
-    if plan_name in ("standard", "pro", "premium") and raw_ends and raw_ends <= now:
-        await _users().update_one(
-            {"_id": user["_id"]},
-            {"$set": {
-                "plan": "free",
-                "planColor": "bg-[#E7E8EA] text-[#44474D]",
-                "subscriptionEndsAt": None,
-                "subscription_ends_at": None,
-                "autoRenew": False,
-                "cancelAtPeriodEnd": False
-            }}
-        )
-        is_standard = False
-        plan_name = "free"
+    # Effective plan. A paid plan past its end date is Free: downgrade it
+    # here too, in case the expiry job has not run yet.
+    if plans.is_expired(user, now):
+        await _users().update_one({"_id": user["_id"]}, {"$set": dict(plans.DOWNGRADE_FIELDS)})
         logger.info(f"Lazy downgrade applied for user {user.get('email') or user.get('id')}")
-
-    daily_limit = STANDARD_DAILY_LIMIT if is_standard else FREE_DAILY_LIMIT
+    plan_key = plans.effective_plan(user, now)
+    daily_limit = plans.plan(plan_key)["daily_limit"]
+    limit_message = (
+        f"You have used all {daily_limit} searches on the {plans.plan(plan_key)['name']} plan today. "
+        + ("Upgrade for more searches, or try again after midnight UTC."
+           if plan_key != plans.PREMIUM else "Your searches reset at midnight UTC.")
+    )
 
     # Daily reset check
     dq = user.get("dailyQueries") or {"count": 0, "date": now}
@@ -164,8 +141,9 @@ async def plan_guard(request: Request):
         raise HTTPException(
             status_code=403,
             detail={
-                "message": f"Daily limit reached ({daily_limit}/day).",
-                "requiresUpgrade": not is_standard,
+                "message": limit_message,
+                "requiresUpgrade": plan_key != plans.PREMIUM,
+                "plan": plan_key,
                 "dailyLimit": daily_limit,
                 "queriesUsed": current_count,
                 "resetAt": reset_time
@@ -186,8 +164,9 @@ async def plan_guard(request: Request):
         raise HTTPException(
             status_code=403,
             detail={
-                "message": f"Daily limit reached ({daily_limit}/day).",
-                "requiresUpgrade": not is_standard,
+                "message": limit_message,
+                "requiresUpgrade": plan_key != plans.PREMIUM,
+                "plan": plan_key,
                 "dailyLimit": daily_limit,
                 "queriesUsed": daily_limit,
                 "resetAt": reset_time
@@ -197,9 +176,47 @@ async def plan_guard(request: Request):
     # Save state on request for refund-on-failure
     request.state.plan_guard_incremented = True
     request.state.plan_guard_user_id = user["_id"]
-    request.state.effective_plan = "standard" if is_standard else "free"
+    request.state.effective_plan = plan_key
 
     return user
+
+
+async def current_plan(request: Request) -> str:
+    """The caller's effective plan, without counting a search."""
+    cached = getattr(request.state, "effective_plan", None)
+    if cached:
+        return cached
+    principal = getattr(request.state, "principal", None)
+    role = principal.get("role") if isinstance(principal, dict) else getattr(principal, "role", None)
+    sub = principal.get("sub") if isinstance(principal, dict) else getattr(principal, "sub", None)
+    # Admins are not on a plan; a signed-in admin token may use every tool.
+    if role == "admin" and sub and sub != "anonymous":
+        key = plans.PREMIUM
+    else:
+        key = plans.effective_plan(await get_current_user_from_request(request))
+    request.state.effective_plan = key
+    return key
+
+
+async def require_feature(request: Request, feature: str) -> str:
+    """403 unless the caller's plan includes ``feature``; returns the plan.
+
+    The detail is a dict the frontend reads to show the upgrade prompt:
+    ``{"message", "requiresUpgrade": true, "feature", "plan"}``.
+    """
+    key = await current_plan(request)
+    if not plans.has_feature(key, feature):
+        label = plans.FEATURE_LABELS.get(feature, "This feature")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": f"{label} is part of the Standard and Premium plans. Upgrade to unlock it.",
+                "requiresUpgrade": True,
+                "feature": feature,
+                "plan": key,
+            },
+        )
+    return key
 
 
 async def refund_query(request: Request) -> None:

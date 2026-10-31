@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from loguru import logger
 
@@ -670,11 +670,16 @@ async def get_tree(pdf_id: str):
 
 
 @router.get("/judgments/{judgment_id}/download")
-async def download_judgment(judgment_id: str):
+async def download_judgment(judgment_id: str, request: Request):
     """
     Downloads the original PDF judgment from Google Drive (or local fallback).
     Streams binary content directly with appropriate Content-Disposition header.
+
+    Downloading is a paid feature (modules/payment/plans.py); a signed-in
+    admin always may.
     """
+    from modules.payment.plan_guard import require_feature
+    await require_feature(request, "download")
     if db.documents is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
@@ -1095,14 +1100,19 @@ async def get_users():
         users.append(_without_secrets(doc))
 
     total_users = len(users)
-    pro_users = sum(1 for u in users if u.get("plan") == "Pro")
-    standard_users = sum(1 for u in users if u.get("plan") == "Standard")
-    
+    # Counted by plan as modules/payment/plans.py reads it ("Pro" is Standard).
+    from modules.payment import plans
+    by_plan = [plans.plan_key(u.get("plan")) for u in users]
+    premium_users = by_plan.count(plans.PREMIUM)
+    standard_users = by_plan.count(plans.STANDARD)
+
     return {
         "users": users,
         "total_users": total_users,
-        "pro_users": pro_users,
-        "standard_users": standard_users
+        "premium_users": premium_users,
+        # Kept for older dashboards that still read it.
+        "pro_users": premium_users,
+        "standard_users": standard_users,
     }
 
 

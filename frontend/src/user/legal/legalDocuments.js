@@ -98,7 +98,7 @@ export const LEGAL_DOCUMENTS = {
         id: 'plans',
         heading: 'Plans and billing',
         body: [
-          'A free account includes 10 research sessions per month. The Individual tier is $10/month for 50 sessions; the Professional tier is $20/month for unlimited research.',
+          'A free account includes 2 searches a day, each returning short summaries of up to 10 relevant judgments; analysis, summaries, filters, comparison, downloads and copying are not included. The Standard plan is $10/month for 20 searches a day and the Premium plan is $20/month for 50 searches a day; both include every research tool.',
           'Plans renew monthly and can be changed or cancelled at any time. Cancellation takes effect at the end of the current billing period.',
         ],
       },

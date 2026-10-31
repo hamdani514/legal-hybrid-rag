@@ -11,6 +11,7 @@ import apiFetch, { clearToken } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { toast } from '../../lib/toast';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
+import { refreshPlan, setPlanFromServer } from '../lib/plan';
 import {
   appendMessages,
   createSession,
@@ -30,11 +31,15 @@ const MAX_QUERY_CHARS = 4000;
 // size come from POST /query/more ("More relevant cases" in ResultsPanel).
 const PAGE_SIZE = 10;
 
-/** The `detail` of an error response, when it is a plain string. */
+/**
+ * The server's explanation of an error: a plain-string `detail`, or the
+ * `message` of a structured one (the plan guard's daily-limit 403).
+ */
 const errorDetail = async (res) => {
   try {
     const body = await res.json();
-    return typeof body?.detail === 'string' ? body.detail : '';
+    if (typeof body?.detail === 'string') return body.detail;
+    return typeof body?.detail?.message === 'string' ? body.detail.message : '';
   } catch {
     return '';
   }
@@ -315,19 +320,27 @@ const WelcomeContent = () => {
         console.error('Search API returned status', res.status, detail);
         // 429 is a rate limit (per user, or the shared service): say "busy",
         // with the server's own explanation when it gave one.
+        // 403 with a message is the plan's daily search limit.
+        const limitReached = res.status === 403 && Boolean(detail);
         const text =
           res.status === 429
             ? detail || 'The service is busy right now. Please try again in a minute.'
-            : res.status === 401
-              ? 'Your session has expired. Please sign in again.'
-              : `The search service returned an error (${res.status}). Please try again.`;
+            : limitReached
+              ? detail
+              : res.status === 401
+                ? 'Your session has expired. Please sign in again.'
+                : `The search service returned an error (${res.status}). Please try again.`;
         toast.error(text);
-        addAiReply(userMessage, { sender: 'ai', text });
+        if (limitReached) refreshPlan();
+        addAiReply(userMessage, { sender: 'ai', text, limitReached });
         return;
       }
 
       const data = await res.json();
       const citations = data.judgments || [];
+      // Each search reports the plan it ran under, so the result's tools
+      // lock or unlock to match without a separate request.
+      setPlanFromServer(data.plan, data.features);
 
       // The backend decides whether anything in the archive answers the
       // query. When it says nothing does, that verdict is shown as-is: no

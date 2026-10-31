@@ -881,12 +881,78 @@ async def _next_page(session: dict, shown: set[str]) -> list[str]:
     return page
 
 
-async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3) -> dict:
+# ── Filtered paging ──────────────────────────────────────────────────────────
+#
+# The researcher's filters (final decision, date range, case number or party,
+# judge) apply to EVERY candidate the query found — the whole fused list — not
+# only to the judgments already on screen. A filtered page is the next
+# PAGE_SIZE judgments that both match the filters and are relevant, in the
+# same order as unfiltered results.
+#
+# Relevance is the same verdict as for unfiltered pages, and it does not depend
+# on the filters, so verdicts are kept on the session and reused by every
+# filter: a judgment is relevant if it is in `order` (first page, or passed in
+# an unfiltered slice), or passed a filtered slice (`filter_pass`). Judgments
+# in the unfiltered scanned prefix that are not in `order` were judged not
+# relevant. Only matching judgments nobody has judged yet are scored, in slices
+# of SCAN_SLICE, so a filter that matches few judgments costs few scorings.
+# A scored slice in which nothing passes means relevance has run out.
+FILTER_SCAN_BUDGET = 40   # most judgments one filtered request scores
+
+
+async def _filtered_page(session: dict, shown: set[str], allowed: set[str]) -> tuple[list[str], bool]:
+    """The next filtered page, and whether more filtered results may exist."""
+    size = min(PAGE_SIZE, MAX_RESULTS - len(shown))
+    if size <= 0:
+        return [], False
+    passed = session.setdefault("filter_pass", set())
+    judged = session.setdefault("judged", set())
+    scanned = {item["judgment_id"] for item in session["fused"][: session["scanned"]]}
+    in_order = set(session["order"])
+
+    def ranked() -> list[str]:
+        out = [jid for jid in session["order"] if jid in allowed]
+        seen = set(out)
+        out += [item["judgment_id"] for item in session["fused"]
+                if item["judgment_id"] in passed and item["judgment_id"] in allowed
+                and item["judgment_id"] not in seen]
+        return out
+
+    def unseen() -> list[str]:
+        return [jid for jid in ranked() if jid not in shown]
+
+    pending = [item for item in session["fused"]
+               if item["judgment_id"] in allowed and item["judgment_id"] not in scanned
+               and item["judgment_id"] not in judged and item["judgment_id"] not in in_order]
+    budget = FILTER_SCAN_BUDGET
+    exhausted = False
+    while len(unseen()) < size and pending and budget > 0:
+        batch, pending = pending[:SCAN_SLICE], pending[SCAN_SLICE:]
+        ok = await _with_key_terms(session, await _score_slice(session, batch))
+        judged.update(item["judgment_id"] for item in batch)
+        passed.update(ok)
+        budget -= len(batch)
+        if not ok:
+            exhausted = True   # relevance has run out for this filter
+            break
+
+    remaining = unseen()
+    page = remaining[:size]
+    more = (len(remaining) > len(page) or (bool(pending) and not exhausted)) \
+        and len(shown) + len(page) < MAX_RESULTS
+    return page, more
+
+
+async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3, matcher=None) -> dict:
     """The next page of judgments for a query whose first page was ``shown``.
 
     Returns parent_results / stage2_results / candidates / reasons in
     retrieve_v2's shapes, plus ``has_more``. Every judgment is labelled
     "related": only the first page's top result is ever a "match".
+
+    ``matcher``, when given, is an async ``ids -> set of ids`` that keeps the
+    judgments matching the researcher's filters; the page is then drawn from
+    every candidate of the query that matches (see "Filtered paging").
     """
     raw_query = raw_query or ""
     if opt("NORMALISE_SPELLING", True):
@@ -903,8 +969,15 @@ async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3) -> 
             return empty
     _sessions.move_to_end(_session_key(raw_query))
 
+    filtered_more = None
     async with session["lock"]:
-        page = await _next_page(session, shown_set)
+        if matcher is None:
+            page = await _next_page(session, shown_set)
+        else:
+            candidates_ids = list(dict.fromkeys(
+                session["order"] + [item["judgment_id"] for item in session["fused"]]))
+            allowed = set(await matcher(candidates_ids))
+            page, filtered_more = await _filtered_page(session, shown_set, allowed)
     if not page:
         return empty
 
@@ -925,7 +998,7 @@ async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3) -> 
         "stage2_results": stage2,
         "candidates": candidates,
         "reasons": {jid: session["reasons"][jid] for jid in page if jid in session["reasons"]},
-        "has_more": _has_more(session, shown_set | set(page)),
+        "has_more": filtered_more if matcher is not None else _has_more(session, shown_set | set(page)),
     }
 
 

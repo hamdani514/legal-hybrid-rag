@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePlan } from '../lib/plan';
 import { useNavigate, Link } from 'react-router-dom';
 import { relativeTime } from '../lib/chatHistory';
 import DeactivateModal from './DeactivateModal';
@@ -22,6 +23,8 @@ const Sidebar = ({
   onToggleSidebar,
   onLogout,
 }) => {
+  // The server-confirmed plan (lib/plan.js), not a guess from the stored user.
+  const plan = usePlan();
   const navigate = useNavigate();
   const [menuFor, setMenuFor] = useState('');
   const [renamingId, setRenamingId] = useState('');
@@ -151,7 +154,7 @@ const Sidebar = ({
       (userEmail ? userEmail.split('@')[0] : 'Legal Counsel');
     const displayEmail =
       userEmail || currentUser?.email || currentUser?.user?.email || 'Authenticated User';
-    const planName = currentUser?.plan || currentUser?.user?.plan || 'STANDARD';
+    const planName = plan.name;
 
     return (
       <div
