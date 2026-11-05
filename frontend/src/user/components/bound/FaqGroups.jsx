@@ -46,12 +46,12 @@ const GROUPS = [
     heading: 'Access and billing',
     items: [
       {
-        q: 'How is student access verified?',
-        a: 'By institutional email. Write from your university address and the account is confirmed for the academic year, with 25 research sessions each month at no cost.',
+        q: 'What does the Free plan include?',
+        a: 'Two searches a day. Each shows short summaries of up to 10 relevant judgments. Analysis, summaries, filters, comparison, downloads and copying come with Standard and Premium.',
       },
       {
-        q: 'What counts as one research session?',
-        a: 'One question and everything you read from its results — opening the authorities, moving between divisions, exporting a passage. Re-reading results you already have does not consume another session.',
+        q: 'What counts as one search?',
+        a: 'Each question you send. Opening its results, loading more relevant cases, filtering them and analysing a case do not use another search.',
       },
     ],
   },
@@ -60,11 +60,11 @@ const GROUPS = [
     items: [
       {
         q: 'Who can see my research?',
-        a: 'You, and on a chambers account the seats you share a trail with. Queries and saved trails are not used to train the underlying model and are not sold or shared with third parties.',
+        a: 'Only you: conversations belong to your account. To analyse a judgment, your question and passages from that judgment are sent to Google’s Gemini service, which processes them under Google’s API terms. We do not sell your data.',
       },
       {
         q: 'Can I delete my history?',
-        a: 'Yes. A research trail can be deleted from the workspace, and deleting your account removes the stored queries with it.',
+        a: 'Yes. Delete a conversation from the workspace sidebar. Deleting your account deletes all of them.',
       },
     ],
   },

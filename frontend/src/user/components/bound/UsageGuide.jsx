@@ -16,7 +16,7 @@ const STEPS = [
     icon: 'person_add',
     title: 'Create your account',
     body: 'Sign up with your Gmail address, or continue with Google. We email you a 6-digit code to verify the address, and your account is ready.',
-    points: ['Free for law students', 'Sign in once, stay signed in'],
+    points: ['Free plan, no card needed', 'Sign in once, stay signed in'],
   },
   {
     icon: 'balance',
@@ -27,7 +27,7 @@ const STEPS = [
   {
     icon: 'edit_note',
     title: 'Describe your case or ask a question',
-    body: 'Write in plain words: what happened, what each side claims, and what the courts decided so far. A short legal question works too. Press Enter for a new line and Ctrl + Enter to send.',
+    body: 'Write in plain words: what happened, what each side claims, and what the courts decided so far. A short legal question works too. Press Enter to send, and Shift + Enter for a new line.',
     points: ['Free plan: 2 searches a day', 'Standard plan: 20 searches a day', 'Premium plan: 50 searches a day'],
   },
   {

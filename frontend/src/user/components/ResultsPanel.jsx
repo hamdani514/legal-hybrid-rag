@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import apiFetch, { TOKEN_KEY } from '../../lib/api';
 import CopyButton from './CopyButton';
+import Modal from './Modal';
+import FilterIcon from './FilterIcon';
 import { toast } from '../../lib/toast';
 import useToastOn from '../../lib/useToastOn';
 import FilterDialog, { EMPTY_FILTERS, activeFilterCount, matchesFilters } from './ResultsFilter';
 import { FreePlanNote, LockedButton, UpgradeDialog } from './LockedFeature';
 import { refreshPlan, upgradeDetail, usePlan } from '../lib/plan';
+import { filterChips } from '../lib/filterSummary';
 import {
   ANSWER_STATUS,
   answerStatusOf,
@@ -154,42 +157,6 @@ const CiteRow = ({ cite, can, onLocked }) => (
     </div>
     <div className="flex-shrink-0 self-end sm:self-center">
       <DownloadButton cite={cite} can={can} onLocked={onLocked} />
-    </div>
-  </div>
-);
-
-/** A dialog. Closes on the backdrop, on Escape and on the explicit control. */
-const Modal = ({ title, subtitle, onClose, children, wide = false }) => (
-  <div
-    className="fixed inset-0 z-50 flex items-end justify-center bg-ash-900/45 p-0 backdrop-blur-sm sm:items-center sm:p-6"
-    onClick={onClose}
-    onKeyDown={(e) => e.key === 'Escape' && onClose()}
-    role="presentation"
-  >
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      className={`flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-card-lg sm:rounded-3xl ${
-        wide ? 'sm:max-w-5xl' : 'sm:max-w-2xl'
-      }`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-start justify-between gap-4 border-b border-ash-200 px-6 py-5">
-        <div>
-          <h2 className="font-display text-lg font-bold text-ash-900">{title}</h2>
-          {subtitle && <p className="mt-1 font-prose text-xs text-ash-500">{subtitle}</p>}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-ash-500 transition-colors hover:bg-ash-100 hover:text-ash-900"
-        >
-          <span className="material-symbols-outlined text-[20px]">close</span>
-        </button>
-      </div>
-      <div className="flex-1 overflow-auto px-6 py-5">{children}</div>
     </div>
   </div>
 );
@@ -682,11 +649,19 @@ const useMorePages = (message, onLocked) => {
  * (`shown` = what the filtered list already holds). `view` is null while no
  * filter is applied, and the unfiltered list is kept untouched underneath, so
  * clearing the filters returns to it at once.
+ *
+ * `initialFilters` are those chosen with the query in the query box. The search
+ * itself ran without them; the panel opens already filtering, showing the
+ * "applying" state rather than a flash of the unfiltered list.
  */
-const useFilteredPages = (message, onLocked) => {
-  const [view, setView] = useState(null);
+const useFilteredPages = (message, onLocked, initialFilters) => {
+  const [view, setView] = useState(() =>
+    initialFilters
+      ? { filters: initialFilters, citations: [], hasMore: false, loading: true, notice: '' }
+      : null
+  );
 
-  const request = async (filters, shown) => {
+  const request = async (filters, shown, silent = false) => {
     const res = await apiFetch('/query/more', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -694,7 +669,7 @@ const useFilteredPages = (message, onLocked) => {
     });
     if (await upgradeDetail(res)) {
       refreshPlan();
-      onLocked?.('filter');
+      if (!silent) onLocked?.('filter');
       return { locked: true };
     }
     if (res.status === 429) {
@@ -704,31 +679,44 @@ const useFilteredPages = (message, onLocked) => {
     return { data: await res.json() };
   };
 
-  const start = async (filters) => {
-    setView({ filters, citations: [], hasMore: false, loading: true, notice: '' });
+  // The first filtered page. `silent`: filters that came with the conversation,
+  // not a click, so no toast and no upgrade prompt. Resolves to true when the
+  // plan does not include filtering.
+  const firstPage = async (filters, silent = false) => {
     // Ignore the answer if the filters changed while it was on its way.
     const settle = (patch) =>
       setView((v) => (v && v.filters === filters ? { ...v, loading: false, ...patch } : v));
     try {
-      const out = await request(filters, []);
-      if (out.locked) return setView(null);
+      const out = await request(filters, [], silent);
+      if (out.locked) {
+        setView(null);
+        return true;
+      }
       if (out.notice) {
         toast.error(out.notice);
-        return settle({ notice: out.notice });
+        settle({ notice: out.notice });
+        return false;
       }
       const found = out.data.judgments || [];
       settle({ citations: found, hasMore: Boolean(out.data.has_more) });
-      toast.success(
-        found.length
-          ? `Filters applied: ${found.length}${out.data.has_more ? '+' : ''} matching ${found.length === 1 ? 'case' : 'cases'}.`
-          : 'No case found for this search matches these filters.'
-      );
+      if (!silent) {
+        toast.success(
+          found.length
+            ? `Filters applied: ${found.length}${out.data.has_more ? '+' : ''} matching ${found.length === 1 ? 'case' : 'cases'}.`
+            : 'No case found for this search matches these filters.'
+        );
+      }
     } catch (error) {
       console.error('Filtering failed:', error);
       toast.error('The filters could not be applied. Please try again.');
       settle({ notice: 'The filters could not be applied. Please try again.' });
     }
-    return undefined;
+    return false;
+  };
+
+  const start = (filters) => {
+    setView({ filters, citations: [], hasMore: false, loading: true, notice: '' });
+    return firstPage(filters);
   };
 
   const loadMore = async () => {
@@ -767,7 +755,7 @@ const useFilteredPages = (message, onLocked) => {
     return undefined;
   };
 
-  return { view, start, loadMore, clear: () => setView(null) };
+  return { view, start, firstPage, loadMore, clear: () => setView(null) };
 };
 
 /** The bar under the list: how many cases are shown, and the button for more. */
@@ -823,13 +811,31 @@ const ResultsPanel = ({ message }) => {
   // it narrows the cases on screen instead. Compare, "See all" and "Copy all"
   // keep working on the unfiltered results, so a filter cannot silently
   // change what they cover.
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const initialFilters =
+    message.query && message.citations?.length && activeFilterCount(message.filters) > 0
+      ? message.filters
+      : null;
+  const [filters, setFilters] = useState(initialFilters || EMPTY_FILTERS);
   const [showFilter, setShowFilter] = useState(false);
-  const filtering = useFilteredPages(message, onLocked);
+  const filtering = useFilteredPages(message, onLocked, initialFilters);
+  const restored = useRef(false);
+  useEffect(() => {
+    // Once per message (StrictMode runs effects twice). A plan that no longer
+    // includes filtering simply shows the plain results.
+    if (!initialFilters || restored.current) return;
+    restored.current = true;
+    filtering.firstPage(initialFilters, true).then((locked) => {
+      if (locked) setFilters(EMPTY_FILTERS);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const serverFiltered = Boolean(filtering.view);
   const filterOn = activeFilterCount(filters) > 0;
+  // A case also on the first page keeps what it has there: its analysis and
+  // its match label.
+  const firstById = new Map(citations.map((c) => [c.judgment_id, c]));
   const visible = serverFiltered
-    ? filtering.view.citations
+    ? filtering.view.citations.map((c) => firstById.get(c.judgment_id) || c)
     : many
       ? citations.filter((c) => matchesFilters(c, filters))
       : citations;
@@ -890,24 +896,18 @@ const ResultsPanel = ({ message }) => {
               'No relevant case is available in our data centre for this query.'}
           </p>
         </div>
-        <div className="mt-2 flex items-center justify-end gap-2">
-          {message.limitReached && (
+        {/* Nothing was retrieved, so there is nothing worth copying. */}
+        {message.limitReached && (
+          <div className="mt-3">
             <Link
               to="/pricing"
-              className="mr-auto inline-flex items-center gap-1 rounded-full bg-brand-600 px-3.5 py-1.5 font-ui text-[12px] font-bold text-white shadow-xs transition-all hover:-translate-y-0.5 hover:bg-brand-700"
+              className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-3.5 py-1.5 font-ui text-[12px] font-bold text-white shadow-xs transition-all hover:-translate-y-0.5 hover:bg-brand-700"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[15px]">workspace_premium</span>
               See plans
             </Link>
-          )}
-          <CopyButton
-            text={
-              message.text ||
-              'No relevant case is available in our data centre for this query.'
-            }
-            title="Copy this reply"
-          />
-        </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -934,9 +934,9 @@ const ResultsPanel = ({ message }) => {
 
       {/* A filter is in force: say so above the list, since the control that
           set it is at the bottom and may be scrolled out of view. */}
-      {many && filterOn && (
+      {(many || serverFiltered) && filterOn && (
         <div className="mb-5 flex flex-wrap items-center gap-2.5 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-2.5">
-          <span className="material-symbols-outlined text-[17px] text-brand-500">filter_list</span>
+          <FilterIcon size={15} className="text-brand-500" />
           <span className="font-prose text-[13px] text-ash-700">
             {serverFiltered ? (
               filtering.view.loading && visible.length === 0 ? (
@@ -958,8 +958,18 @@ const ResultsPanel = ({ message }) => {
             onClick={clearFilters}
             className="ml-auto rounded-full border border-ash-300 bg-white px-3 py-1 font-ui text-[11px] font-bold text-ash-600 transition-colors hover:border-brand-300 hover:text-brand-700"
           >
-            Clear
+            Reset filters
           </button>
+          <div className="flex w-full flex-wrap gap-1.5">
+            {filterChips(filters).map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full bg-white px-2.5 py-0.5 font-ui text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -974,7 +984,7 @@ const ResultsPanel = ({ message }) => {
         </div>
       )}
 
-      {many && visible.length === 0 && !(serverFiltered && filtering.view.loading) && (
+      {(many || serverFiltered) && visible.length === 0 && !(serverFiltered && filtering.view.loading) && (
         <div className="rounded-2xl border border-ash-200 bg-ash-50 px-5 py-4 font-prose text-sm text-ash-600">
           {serverFiltered
             ? filtering.view.notice || 'No case found for this search matches these filters.'
@@ -1026,10 +1036,10 @@ const ResultsPanel = ({ message }) => {
             />
           )}
 
-      {many && (
+      {(many || filterOn) && (
         <div className="mt-7 flex flex-wrap items-center gap-2.5 border-t border-ash-200 pt-5">
           {!can('filter') ? (
-            <LockedButton feature="filter" icon="filter_list" label="Filter" onLocked={onLocked} />
+            <LockedButton feature="filter" icon={<FilterIcon size={15} />} label="Filter" onLocked={onLocked} />
           ) : (
           <button
             type="button"
@@ -1040,7 +1050,7 @@ const ResultsPanel = ({ message }) => {
                 : 'border-ash-300 bg-white text-ash-700 hover:border-brand-300 hover:text-brand-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">filter_list</span>
+            <FilterIcon size={15} />
             Filter
             {activeFilterCount(filters) > 0 && (
               <span className="ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1 font-ui text-[10px] font-bold text-white">

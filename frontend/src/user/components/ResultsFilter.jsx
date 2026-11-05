@@ -99,16 +99,16 @@ const inputCls =
 
 /**
  * The filter dialog. Edits a local draft so nothing changes behind the reader
- * until Apply is pressed; Reset clears every field at once.
+ * until Apply is pressed; Reset removes every filter at once and closes.
  */
-const FilterDialog = ({ cases, filters, onApply, onClose, Modal, searchesAll = false }) => {
+const FilterDialog = ({ cases = [], filters, onApply, onClose, Modal, searchesAll = false, beforeSearch = false }) => {
   const [draft, setDraft] = useState(filters);
   const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
 
   const uniq = (v) => [...new Set(v.filter(Boolean))].sort();
   // Filtering covers every case found, so offer every decision, not only
   // those among the cases on screen.
-  const outcomes = searchesAll
+  const outcomes = searchesAll || beforeSearch
     ? OUTCOMES
     : uniq(cases.map((c) => c.card?.outcome)).filter((o) => o !== 'unknown');
   const judges = uniq(cases.flatMap((c) => caseJudges(c.card)));
@@ -118,7 +118,7 @@ const FilterDialog = ({ cases, filters, onApply, onClose, Modal, searchesAll = f
   return (
     <Modal
       title="Filter results"
-      subtitle="Every field is optional — leave one blank and it will not narrow anything."
+      subtitle="Every field is optional — leave one blank and it will not narrow anything. A case whose decision, date or judges could not be read from the judgment is left out when you filter on that field."
       onClose={onClose}
     >
       <div className="flex flex-col gap-5">
@@ -162,7 +162,14 @@ const FilterDialog = ({ cases, filters, onApply, onClose, Modal, searchesAll = f
 
         <div className="flex flex-wrap items-center gap-3 border-t border-ash-200 pt-4">
           <span className="max-w-[18rem] font-prose text-[12.5px] leading-snug text-ash-600">
-            {searchesAll ? (
+            {beforeSearch ? (
+              <>
+                <span aria-hidden="true" className="material-symbols-outlined mr-1 align-[-3px] text-[15px] text-brand-500">
+                  travel_explore
+                </span>
+                Applied to the results of your next search. You can change or reset it afterwards without using another search.
+              </>
+            ) : searchesAll ? (
               <>
                 <span aria-hidden="true" className="material-symbols-outlined mr-1 align-[-3px] text-[15px] text-brand-500">
                   travel_explore
@@ -174,7 +181,7 @@ const FilterDialog = ({ cases, filters, onApply, onClose, Modal, searchesAll = f
             )}
           </span>
           <span className="ml-auto flex items-center gap-2">
-            <button type="button" onClick={() => setDraft({ ...EMPTY_FILTERS })}
+            <button type="button" onClick={() => { onApply({ ...EMPTY_FILTERS }); onClose(); }}
                     className="rounded-full border border-ash-300 bg-white px-4 py-2 font-ui text-[13px] font-semibold text-ash-700 transition-colors hover:border-brand-300 hover:text-brand-700">
               Reset
             </button>

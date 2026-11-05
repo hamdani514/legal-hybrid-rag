@@ -17,9 +17,10 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from bson import ObjectId
-from fastapi import HTTPException, Request, Depends
+from fastapi import HTTPException, Request
 from loguru import logger
 
+from app.api.security import caller_id, caller_is_admin
 from app.database import db
 from modules.payment import plans
 
@@ -34,42 +35,12 @@ def _users():
     return db.database.users
 
 
-async def get_current_user_from_request(request: Request) -> Optional[dict]:
-    """Resolve the user from the JWT principal, Authorization header, or request state."""
-    principal = getattr(request.state, "principal", None)
-    sub = None
-    if isinstance(principal, dict):
-        sub = principal.get("sub")
-    elif principal:
-        sub = getattr(principal, "sub", None)
-
-    if not sub or sub == "anonymous":
-        # Check Authorization Bearer header directly
-        auth_header = request.headers.get("authorization") or ""
-        scheme, _, token = auth_header.partition(" ")
-        if scheme.lower() == "bearer" and token.strip():
-            try:
-                from app.api.security import decode_token
-                payload = decode_token(token.strip())
-                sub = payload.get("sub")
-            except Exception:
-                pass
-
-    if not sub or sub == "anonymous":
-        # Also check x-user-id header or user_id query param
-        sub = request.headers.get("x-user-id") or request.query_params.get("user_id")
-
-    if not sub or sub == "anonymous":
-        return None
-
-    # Find user by id, email, or ObjectId
-    or_clauses = [{"id": str(sub)}, {"email": str(sub).strip().lower()}]
-    try:
-        if ObjectId.is_valid(str(sub)):
-            or_clauses.append({"_id": ObjectId(str(sub))})
-    except Exception:
-        pass
-
+async def caller_user(request: Request) -> Optional[dict]:
+    """The caller's account, from the verified token only (security.caller_id)."""
+    sub = caller_id(request)
+    or_clauses = [{"id": sub}, {"email": sub.strip().lower()}]
+    if ObjectId.is_valid(sub):
+        or_clauses.append({"_id": ObjectId(sub)})
     return await _users().find_one({"$or": or_clauses})
 
 
@@ -80,25 +51,17 @@ async def plan_guard(request: Request):
     subscription is active and not expired).
     Atomic increment prevents race conditions.
     """
-    user = await get_current_user_from_request(request)
+    # Admins are not on a plan, and have no searches to count.
+    if caller_is_admin(request):
+        request.state.effective_plan = plans.PREMIUM
+        return None
+
+    user = await caller_user(request)
+    if not user:
+        # A valid token for an account that no longer exists.
+        raise HTTPException(status_code=401, detail="This account no longer exists. Please sign in again.")
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    if not user:
-        # Anonymous users: apply the Free tier limit, tracked by IP
-        client_ip = request.client.host if request.client else "unknown"
-        anon_key = f"anon_{client_ip}"
-        anon_doc = await _users().find_one({"id": anon_key})
-        if not anon_doc:
-            await _users().insert_one({
-                "id": anon_key,
-                "email": f"{anon_key}@anonymous.local",
-                "plan": "Free",
-                "dailyQueries": {"count": 0, "date": now},
-                "created_at": now
-            })
-            anon_doc = await _users().find_one({"id": anon_key})
-        user = anon_doc
 
     # Effective plan. A paid plan past its end date is Free: downgrade it
     # here too, in case the expiry job has not run yet.
@@ -124,7 +87,9 @@ async def plan_guard(request: Request):
     if isinstance(last_reset, datetime) and last_reset.tzinfo is None:
         last_reset = last_reset.replace(tzinfo=timezone.utc)
 
-    if not last_reset or last_reset < today_start:
+    # No counter on the record yet (older and some Google accounts): create it, or
+    # the atomic update below finds no field to compare and reports the limit reached.
+    if not last_reset or last_reset < today_start or "count" not in (user.get("dailyQueries") or {}):
         # Reset counter for a fresh day
         await _users().update_one(
             {"_id": user["_id"]},
@@ -186,14 +151,8 @@ async def current_plan(request: Request) -> str:
     cached = getattr(request.state, "effective_plan", None)
     if cached:
         return cached
-    principal = getattr(request.state, "principal", None)
-    role = principal.get("role") if isinstance(principal, dict) else getattr(principal, "role", None)
-    sub = principal.get("sub") if isinstance(principal, dict) else getattr(principal, "sub", None)
-    # Admins are not on a plan; a signed-in admin token may use every tool.
-    if role == "admin" and sub and sub != "anonymous":
-        key = plans.PREMIUM
-    else:
-        key = plans.effective_plan(await get_current_user_from_request(request))
+    # Admins are not on a plan; a signed-in admin may use every tool.
+    key = plans.PREMIUM if caller_is_admin(request) else plans.effective_plan(await caller_user(request))
     request.state.effective_plan = key
     return key
 

@@ -18,11 +18,11 @@ from urllib.parse import urlsplit
 
 import stripe
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel
 
-from app.api.security import require_user
+from app.api.security import caller_id
 from app.config import settings
 from app.database import db
 from modules.payment import plans
@@ -45,33 +45,12 @@ def _users():
     return db.database.users
 
 
-async def _current_user(request: Request, supplied_id: Optional[str] = None) -> dict:
-    principal = getattr(request.state, "principal", None)
-    sub = principal.get("sub") if isinstance(principal, dict) else getattr(principal, "sub", None)
-    identifier = (sub if sub and sub != "anonymous" else (supplied_id or "")).strip()
-
-    if not identifier:
-        # Fall back to Authorization Bearer header
-        auth_header = request.headers.get("authorization") or ""
-        scheme, _, token = auth_header.partition(" ")
-        if scheme.lower() == "bearer" and token.strip():
-            try:
-                from app.api.security import decode_token
-                payload = decode_token(token.strip())
-                identifier = str(payload.get("sub") or "")
-            except Exception:
-                pass
-
-    if not identifier:
-        raise HTTPException(status_code=401, detail="Please sign in to manage subscriptions.")
-
+async def _current_user(request: Request) -> dict:
+    """The caller's account, from the verified token only (security.caller_id)."""
+    identifier = caller_id(request).strip()
     query = [{"id": identifier}, {"email": identifier.lower()}]
-    try:
-        if ObjectId.is_valid(identifier):
-            query.append({"_id": ObjectId(identifier)})
-    except Exception:
-        pass
-
+    if ObjectId.is_valid(identifier):
+        query.append({"_id": ObjectId(identifier)})
     user = await _users().find_one({"$or": query})
     if not user:
         raise HTTPException(status_code=404, detail="Account not found. Please sign in again.")
@@ -85,18 +64,14 @@ def _is_paid(user: dict) -> bool:
 # ============================================================
 # STEP 2 — Cancel Subscription Endpoint
 # ============================================================
-class CancelRequest(BaseModel):
-    user_id: Optional[str] = None
-
-
 @router.post("/cancel-subscription")
-async def cancel_subscription(request: Request, body: Optional[CancelRequest] = None):
+async def cancel_subscription(request: Request):
     """
     Cancel subscription at period end.
     User keeps access until period end. Card is NOT detached here.
     """
     client = _stripe()
-    user = await _current_user(request, body.user_id if body else None)
+    user = await _current_user(request)
 
     if not _is_paid(user):
         raise HTTPException(status_code=400, detail="You are not on an active paid plan.")
@@ -152,15 +127,11 @@ async def cancel_subscription(request: Request, body: Optional[CancelRequest] = 
 # ============================================================
 # STEP 3 — Reactivate Endpoint
 # ============================================================
-class ReactivateRequest(BaseModel):
-    user_id: Optional[str] = None
-
-
 @router.post("/reactivate-subscription")
-async def reactivate_subscription(request: Request, body: Optional[ReactivateRequest] = None):
+async def reactivate_subscription(request: Request):
     """Reactivate a subscription that was scheduled for cancellation."""
     client = _stripe()
-    user = await _current_user(request, body.user_id if body else None)
+    user = await _current_user(request)
 
     subscription_id = user.get("stripeSubscriptionId") or user.get("stripe_subscription_id")
     if not subscription_id:
@@ -210,12 +181,12 @@ async def reactivate_subscription(request: Request, body: Optional[ReactivateReq
 # STEP 9 — Update Status Endpoint
 # ============================================================
 @router.get("/status")
-async def get_status(request: Request, user_id: Optional[str] = None):
+async def get_status(request: Request):
     """
     Returns user's real-time plan, auto-renewal, card info, and daily quota.
     Enforces lazy downgrade if expired.
     """
-    user = await _current_user(request, user_id)
+    user = await _current_user(request)
     now = datetime.now(timezone.utc)
     raw_ends = plans.subscription_end(user)
 
@@ -244,6 +215,18 @@ async def get_status(request: Request, user_id: Optional[str] = None):
 
     described = plans.describe(plan_key)
 
+    # Paying users recorded before the card was read from the right place.
+    if is_paid and not user.get("cardLast4") and (user.get("stripeSubscriptionId") or user.get("stripeCustomerId")):
+        try:
+            from modules.payment.webhook import card_on_file
+            pm_id, last4, brand = card_on_file(_stripe(), user.get("stripeSubscriptionId"), user.get("stripeCustomerId"))
+            if last4:
+                await _users().update_one({"_id": user["_id"]}, {"$set": {
+                    "stripePaymentMethodId": pm_id, "cardLast4": last4, "cardBrand": brand}})
+                user = {**user, "stripePaymentMethodId": pm_id, "cardLast4": last4, "cardBrand": brand}
+        except Exception as e:  # noqa: BLE001 - the status still answers without it
+            logger.warning(f"Could not fill in the card for {user.get('email')}: {e}")
+
     return {
         **described,
         "is_paid": is_paid,
@@ -262,7 +245,6 @@ async def get_status(request: Request, user_id: Optional[str] = None):
 # Checkout and Confirmation
 # ============================================================
 class CheckoutRequest(BaseModel):
-    user_id: Optional[str] = None
     # Which paid plan to subscribe to.
     plan: Literal["standard", "premium"] = "standard"
 
@@ -325,7 +307,7 @@ async def create_checkout_session(request: Request, body: Optional[CheckoutReque
     if not price_id:
         raise HTTPException(status_code=503, detail=f"The {target_name} plan is not available for checkout yet.")
 
-    user = await _current_user(request, body.user_id if body else None)
+    user = await _current_user(request)
     current = plans.effective_plan(user)
     if current == target:
         raise HTTPException(status_code=400, detail=f"You are already on the {target_name} plan.")
@@ -375,13 +357,12 @@ async def create_checkout_session(request: Request, body: Optional[CheckoutReque
 
 class ConfirmRequest(BaseModel):
     session_id: str
-    user_id: Optional[str] = None
 
 
 @router.post("/confirm")
 async def confirm_checkout(request: Request, body: ConfirmRequest):
     client = _stripe()
-    user = await _current_user(request, body.user_id)
+    user = await _current_user(request)
     user_id = str(user.get("id") or user.get("_id"))
 
     try:

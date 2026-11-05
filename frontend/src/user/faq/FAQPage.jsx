@@ -22,7 +22,7 @@ const FAQPage = () => {
           secondaryCta={{ to: '/contact', label: 'Ask a specific question', icon: 'mail' }}
           highlights={[
             { icon: 'menu_book', label: '10 core topics covered' },
-            { icon: 'lock', label: 'Encrypted research queries' },
+            { icon: 'lock', label: 'Private to your account' },
             { icon: 'rule', label: 'Plain limits stated' },
           ]}
         />

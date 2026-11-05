@@ -28,13 +28,8 @@ re-modelling would silently drop a field the panel needs on reload.
 
 Who owns a conversation
 -----------------------
-The token's subject when the caller is authenticated; otherwise the user id
-the client sends. While settings.AUTH_REQUIRED is False there are no tokens,
-so the client-supplied id is trusted - the same assumption the rest of the app
-already makes (the admin panel trusts `currentAdmin` the same way). Turning
-AUTH_REQUIRED on closes that gap without changing this file: the token wins
-whenever one is present, and every query filters on user_key, so a user can
-only ever read or delete their own conversations.
+The verified token's subject, and nothing the client sends. Every query filters
+on user_key, so a user can only ever read or delete their own conversations.
 
 Bounded on purpose
 ------------------
@@ -54,11 +49,11 @@ from fastapi import APIRouter, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from app.api.security import caller_id
 from app.database import db
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-ANONYMOUS = "anonymous"
 MAX_SESSIONS_PER_USER = 100
 MAX_MESSAGES_PER_SESSION = 400
 # A whole conversation must stay far below MongoDB's 16 MB document limit.
@@ -73,14 +68,9 @@ def _collection():
     return db.database.chat_sessions
 
 
-def _user_key(request: Request, supplied: str | None) -> str:
-    """Who the conversation belongs to: the token's subject, else the client's id."""
-    principal = getattr(request.state, "principal", None)
-    sub = principal.get("sub") if isinstance(principal, dict) else getattr(principal, "sub", None)
-    if sub and sub != ANONYMOUS:
-        return str(sub)
-    cleaned = (supplied or "").strip()
-    return cleaned or ANONYMOUS
+def _user_key(request: Request) -> str:
+    """Who the conversation belongs to: the token's subject."""
+    return caller_id(request)
 
 
 def _title_from(text: str) -> str:
@@ -123,25 +113,22 @@ def _trim(messages: list) -> list:
 
 
 class SessionCreate(BaseModel):
-    user_id: str | None = None
     title: str | None = None
 
 
 class MessagesAppend(BaseModel):
-    user_id: str | None = None
     messages: list[dict] = Field(default_factory=list)
 
 
 class SessionPatch(BaseModel):
-    user_id: str | None = None
     title: str | None = None
     pinned: bool | None = None
 
 
 @router.get("/sessions")
-async def list_sessions(request: Request, user_id: str | None = None, limit: int = 50):
+async def list_sessions(request: Request, limit: int = 50):
     """The caller's conversations, most recently used first (no message bodies)."""
-    key = _user_key(request, user_id)
+    key = _user_key(request)
     limit = max(1, min(int(limit or 50), MAX_SESSIONS_PER_USER))
     cursor = (_collection().find({"user_key": key}, {"_id": 0})
               .sort([("pinned", -1), ("updated_at", -1)]).limit(limit))
@@ -151,7 +138,7 @@ async def list_sessions(request: Request, user_id: str | None = None, limit: int
 @router.post("/sessions")
 async def create_session(body: SessionCreate, request: Request):
     """Start a conversation. The title is set from the first question if absent."""
-    key = _user_key(request, body.user_id)
+    key = _user_key(request)
     now = datetime.now(timezone.utc)
     doc = {
         "session_id": str(uuid4()),
@@ -184,9 +171,9 @@ async def create_session(body: SessionCreate, request: Request):
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: str, request: Request, user_id: str | None = None):
+async def get_session(session_id: str, request: Request):
     """One full conversation, ready to put back on screen."""
-    key = _user_key(request, user_id)
+    key = _user_key(request)
     doc = await _collection().find_one({"session_id": session_id, "user_key": key}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Conversation not found.")
@@ -196,7 +183,7 @@ async def get_session(session_id: str, request: Request, user_id: str | None = N
 @router.post("/sessions/{session_id}/messages")
 async def append_messages(session_id: str, body: MessagesAppend, request: Request):
     """Add messages to a conversation, exactly as the screen shows them."""
-    key = _user_key(request, body.user_id)
+    key = _user_key(request)
     doc = await _collection().find_one({"session_id": session_id, "user_key": key}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Conversation not found.")
@@ -218,7 +205,7 @@ async def append_messages(session_id: str, body: MessagesAppend, request: Reques
 @router.patch("/sessions/{session_id}")
 async def update_session(session_id: str, body: SessionPatch, request: Request):
     """Rename a conversation and/or pin it to the top of the list."""
-    key = _user_key(request, body.user_id)
+    key = _user_key(request)
     update: dict = {}
     if body.title is not None:
         title = body.title.strip()[:MAX_TITLE_CHARS]
@@ -239,9 +226,9 @@ async def update_session(session_id: str, body: SessionPatch, request: Request):
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: str, request: Request, user_id: str | None = None):
+async def delete_session(session_id: str, request: Request):
     """Delete one conversation."""
-    key = _user_key(request, user_id)
+    key = _user_key(request)
     result = await _collection().delete_one({"session_id": session_id, "user_key": key})
     if not result.deleted_count:
         raise HTTPException(status_code=404, detail="Conversation not found.")
@@ -249,9 +236,9 @@ async def delete_session(session_id: str, request: Request, user_id: str | None 
 
 
 @router.delete("/sessions")
-async def clear_sessions(request: Request, user_id: str | None = None):
+async def clear_sessions(request: Request):
     """Delete every conversation the caller owns."""
-    key = _user_key(request, user_id)
+    key = _user_key(request)
     result = await _collection().delete_many({"user_key": key})
     return {"deleted": result.deleted_count}
 
@@ -272,6 +259,7 @@ if __name__ == "__main__":
     import httpx
 
     import main  # noqa: E402
+    from app.api.security import create_access_token  # noqa: E402
     from app.database import close_db, connect_db  # noqa: E402
 
     RESULTS: list = []
@@ -283,14 +271,17 @@ if __name__ == "__main__":
     async def run() -> None:
         await connect_db()
         await db.client.drop_database(SCRATCH)
+        await db.database.users.insert_many([{"id": "USr-1001", "email": "a@example.com"}, {"id": "USr-2002", "email": "b@example.com"}])
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=30) as c:
             A, B = "USr-1001", "USr-2002"
+            HA = {"Authorization": f"Bearer {create_access_token(A, 'user')}"}
+            HB = {"Authorization": f"Bearer {create_access_token(B, 'user')}"}
 
-            r = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.get("/api/chat/sessions", headers=HA)
             check("a new user has no history", r.status_code == 200 and r.json()["sessions"] == [])
 
-            r = await c.post("/api/chat/sessions", json={"user_id": A})
+            r = await c.post("/api/chat/sessions", json={}, headers=HA)
             sid = r.json()["session_id"]
             check("conversation created", r.status_code == 200 and sid)
 
@@ -300,97 +291,79 @@ if __name__ == "__main__":
                  "citations": [{"judgment_id": "3eff8217", "confidence": "medium",
                                 "heading": "Civil Appeal No. 23-P of 2017"}]},
             ]
-            r = await c.post(f"/api/chat/sessions/{sid}/messages", json={"user_id": A, "messages": msgs})
+            r = await c.post(f"/api/chat/sessions/{sid}/messages", json={"messages": msgs}, headers=HA)
             check("messages appended and titled from the question",
                   r.status_code == 200 and r.json()["message_count"] == 2
                   and r.json()["title"].startswith("A widow claims land"), r.json().get("title"))
 
-            r = await c.get(f"/api/chat/sessions/{sid}", params={"user_id": A})
+            r = await c.get(f"/api/chat/sessions/{sid}", headers=HA)
             back = r.json()["messages"]
             check("conversation restores verbatim (citations survive)",
                   back == msgs and back[1]["citations"][0]["confidence"] == "medium")
 
-            r = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.get("/api/chat/sessions", headers=HA)
             check("it appears in the user's history", len(r.json()["sessions"]) == 1)
 
             # Isolation between users.
-            r = await c.get("/api/chat/sessions", params={"user_id": B})
+            r = await c.get("/api/chat/sessions", headers=HB)
             check("another user sees none of it", r.json()["sessions"] == [])
-            r = await c.get(f"/api/chat/sessions/{sid}", params={"user_id": B})
+            r = await c.get(f"/api/chat/sessions/{sid}", headers=HB)
             check("another user cannot open it", r.status_code == 404, str(r.status_code))
-            r = await c.delete(f"/api/chat/sessions/{sid}", params={"user_id": B})
+            r = await c.delete(f"/api/chat/sessions/{sid}", headers=HB)
             check("another user cannot delete it", r.status_code == 404, str(r.status_code))
 
-            r = await c.patch(f"/api/chat/sessions/{sid}", json={"user_id": A, "title": "Dower dispute"})
-            r2 = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.patch(f"/api/chat/sessions/{sid}", json={"title": "Dower dispute"}, headers=HA)
+            r2 = await c.get("/api/chat/sessions", headers=HA)
             check("rename works", r.status_code == 200 and r2.json()["sessions"][0]["title"] == "Dower dispute")
 
             # Ordering: the most recently used conversation comes first.
-            r = await c.post("/api/chat/sessions", json={"user_id": A, "title": "Second"})
+            r = await c.post("/api/chat/sessions", json={"title": "Second"}, headers=HA)
             sid2 = r.json()["session_id"]
             await c.post(f"/api/chat/sessions/{sid2}/messages",
-                         json={"user_id": A, "messages": [{"sender": "user", "text": "second question"}]})
-            r = await c.get("/api/chat/sessions", params={"user_id": A})
+                         json={"messages": [{"sender": "user", "text": "second question"}]}, headers=HA)
+            r = await c.get("/api/chat/sessions", headers=HA)
             check("most recent conversation first", r.json()["sessions"][0]["session_id"] == sid2)
 
             # Pinning: an older conversation is held above a newer one.
-            r = await c.patch(f"/api/chat/sessions/{sid}", json={"user_id": A, "pinned": True})
+            r = await c.patch(f"/api/chat/sessions/{sid}", json={"pinned": True}, headers=HA)
             check("pin accepted", r.status_code == 200 and r.json().get("pinned") is True)
-            r = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.get("/api/chat/sessions", headers=HA)
             rows = r.json()["sessions"]
             check("pinned conversation sorts to the top even though it is older",
                   rows[0]["session_id"] == sid and rows[0]["pinned"] is True
                   and rows[1]["session_id"] == sid2, [x["session_id"][:6] for x in rows])
-            r = await c.patch(f"/api/chat/sessions/{sid}", json={"user_id": A, "pinned": False})
-            r2 = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.patch(f"/api/chat/sessions/{sid}", json={"pinned": False}, headers=HA)
+            r2 = await c.get("/api/chat/sessions", headers=HA)
             check("unpin restores recency order",
                   r.status_code == 200 and r2.json()["sessions"][0]["session_id"] == sid2)
-            r = await c.patch(f"/api/chat/sessions/{sid}", json={"user_id": B, "pinned": True})
+            r = await c.patch(f"/api/chat/sessions/{sid}", json={"pinned": True}, headers=HB)
             check("another user cannot pin it", r.status_code == 404, str(r.status_code))
 
             # Caps: a conversation cannot grow without bound.
             many = [{"sender": "user", "text": f"q{i}"} for i in range(MAX_MESSAGES_PER_SESSION + 50)]
-            await c.post(f"/api/chat/sessions/{sid2}/messages", json={"user_id": A, "messages": many})
-            r = await c.get(f"/api/chat/sessions/{sid2}", params={"user_id": A})
+            await c.post(f"/api/chat/sessions/{sid2}/messages", json={"messages": many}, headers=HA)
+            r = await c.get(f"/api/chat/sessions/{sid2}", headers=HA)
             kept = r.json()["messages"]
             check("long conversation trimmed to the cap, newest kept",
                   len(kept) == MAX_MESSAGES_PER_SESSION and kept[-1]["text"] == f"q{len(many) - 1}",
                   f"{len(kept)} messages")
 
-            r = await c.delete(f"/api/chat/sessions/{sid}", params={"user_id": A})
+            r = await c.delete(f"/api/chat/sessions/{sid}", headers=HA)
             check("owner can delete", r.status_code == 200)
-            r = await c.delete("/api/chat/sessions", params={"user_id": A})
-            r2 = await c.get("/api/chat/sessions", params={"user_id": A})
+            r = await c.delete("/api/chat/sessions", headers=HA)
+            r2 = await c.get("/api/chat/sessions", headers=HA)
             check("clear all empties the history", r.status_code == 200 and r2.json()["sessions"] == [])
 
-            r = await c.get("/api/chat/sessions/does-not-exist", params={"user_id": A})
+            r = await c.get("/api/chat/sessions/does-not-exist", headers=HA)
             check("unknown conversation -> 404", r.status_code == 404)
 
-            # ── with authentication switched on ──────────────────────────
-            from app.api import security
-
-            original = (settings.AUTH_REQUIRED, settings.JWT_SECRET)
-            settings.JWT_SECRET = "chat-selfcheck-" + "k" * 40
-            settings.AUTH_REQUIRED = True
-            try:
-                r = await c.get("/api/chat/sessions", params={"user_id": A})
-                check("auth on: no token -> 401, history is private", r.status_code == 401,
-                      str(r.status_code))
-
-                token = security.create_access_token(A, "user")
-                head = {"Authorization": f"Bearer {token}"}
-                await c.post("/api/chat/sessions", json={"title": "Signed in"}, headers=head)
-                r = await c.get("/api/chat/sessions", headers=head)
-                check("auth on: the token identifies the owner",
-                      r.status_code == 200 and len(r.json()["sessions"]) == 1)
-
-                # A client claiming to be someone else must be ignored.
-                r = await c.get("/api/chat/sessions", params={"user_id": B}, headers=head)
-                titles = [s["title"] for s in r.json()["sessions"]]
-                check("auth on: a spoofed user_id cannot read another user's history",
-                      titles == ["Signed in"], str(titles))
-            finally:
-                settings.AUTH_REQUIRED, settings.JWT_SECRET = original
+            # ── nobody else's history ──────────────────────────────────
+            r = await c.get("/api/chat/sessions", params={"user_id": A})
+            check("no token -> 401, history is private", r.status_code == 401, str(r.status_code))
+            r = await c.post("/api/chat/sessions", json={"title": "Mine"}, headers=HA)
+            r = await c.get("/api/chat/sessions", params={"user_id": B}, headers=HA)
+            titles = [s["title"] for s in r.json()["sessions"]]
+            check("a spoofed user_id cannot read another user's history", titles == ["Mine"], str(titles))
 
         await db.client.drop_database(SCRATCH)
         await close_db()

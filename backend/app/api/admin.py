@@ -1247,9 +1247,11 @@ class SupportStatusUpdate(BaseModel):
 
 
 @router.post("/support")
-async def create_support_query(query: SupportQueryCreate):
+async def create_support_query(query: SupportQueryCreate, request: Request):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
+    from app.api import throttle
+    await throttle.spend(throttle.FORM_IP, throttle.client_ip(request))
 
     # Validate email domain
     if not query.email.strip().lower().endswith("@gmail.com"):

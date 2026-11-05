@@ -233,11 +233,10 @@ class Settings(BaseSettings):
     QUERY_RECORDER_SLIM: bool = True    # no 768-float vector, no full contexts
 
     # ── Authentication (Agent S) ─────────────────────────────────────────
-    # OFF until the integrator has wired the frontend to send tokens; turning
-    # it on early would lock the current UI out of search.
-    AUTH_REQUIRED: bool = False
+    # Always on: see app/api/security.py. No secret has a usable default, so a
+    # server without them cannot run with values anyone can read in this file.
     SUPER_ADMIN_EMAIL: str = "admindaniyal@cst.com"
-    SUPER_ADMIN_PASSWORD: str = "Dan1yal#SuperAdmin2026!"
+    SUPER_ADMIN_PASSWORD: str = ""   # empty: the env super admin cannot log in
     # A token's lifetime. The frontend renews it silently once half has passed
     # (sessionManager.refreshSessionIfNeeded), so someone using the app stays
     # signed in indefinitely; this is how long the app may stay CLOSED before a
@@ -245,12 +244,6 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 43200
     USER_SEARCHES_PER_MINUTE: int = 10
     USER_ANSWERS_PER_DAY: int = 200
-    # Anonymous callers are keyed by client IP, and behind the Vite dev proxy
-    # every browser arrives as 127.0.0.1 — so with this on and auth off, ALL
-    # users would share one 10-searches/min allowance. Off until AUTH_REQUIRED
-    # is on and every request carries its own identity. The shared Gemini
-    # limiter (LLM_RPM_LIMIT) protects the quota meanwhile.
-    RATE_LIMIT_ANONYMOUS: bool = False
 
     # ── Ingestion completeness (Agent I) ─────────────────────────────────
     # The contextual collection is never read by live search (it scored
@@ -332,7 +325,7 @@ class Settings(BaseSettings):
     REACTIVATION_TOKEN_EXPIRY_DAYS: int = 30
 
     # Auth & Security
-    JWT_SECRET: str = "long_random_string_here"
+    JWT_SECRET: str = ""   # required: the app refuses to start without a strong one
     GOOGLE_CLIENT_ID: str = ""
     RECAPTCHA_SECRET_KEY: str = ""
     RECAPTCHA_SCORE_THRESHOLD: float = 0.5

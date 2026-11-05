@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import ChatInput from './ChatInput';
+import useIsMobile from '../hooks/useIsMobile';
+import { EMPTY_FILTERS, activeFilterCount } from './ResultsFilter';
 import EmptyState from './EmptyState';
 import ResultsPanel from './ResultsPanel';
 import CopyButton from './CopyButton';
@@ -64,7 +66,18 @@ const WelcomeContent = () => {
   const [activeTab, setActiveTab] = useState('case');
   const [chatHistory, setChatHistory] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Filters chosen in the query box, for the next search only.
+  const [composerFilters, setComposerFilters] = useState(EMPTY_FILTERS);
+  // Desktop: a column, open by default. Phone and tablet: a drawer over the page,
+  // closed by default, so the conversation gets the whole width.
+  const isMobile = useIsMobile();
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const sidebarOpen = isMobile ? mobileSidebarOpen : desktopSidebarOpen;
+  const toggleSidebar = () =>
+    isMobile ? setMobileSidebarOpen((v) => !v) : setDesktopSidebarOpen((v) => !v);
+  // On a phone, picking something in the drawer closes it.
+  const closeDrawer = () => isMobile && setMobileSidebarOpen(false);
   const chatEndRef = useRef(null);
 
   // ── Saved conversations ─────────────────────────────────────────────────
@@ -124,7 +137,7 @@ const WelcomeContent = () => {
     if (!userId) return undefined;
     let live = true;
     (async () => {
-      const saved = await listSessions(userId);
+      const saved = await listSessions();
       if (!live) return;
       setSessions(saved);
       setHistoryLoading(false);
@@ -162,12 +175,12 @@ const WelcomeContent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, userId, historyLoading, sessions]);
 
-  const refreshSessions = async () => setSessions(await listSessions(userId));
+  const refreshSessions = async () => setSessions(await listSessions());
 
   /** The conversation to write into, creating one on the first question. */
   const ensureSession = async (firstQuestion) => {
     if (sessionRef.current) return sessionRef.current;
-    const created = await createSession(userId, firstQuestion);
+    const created = await createSession(firstQuestion);
     if (created) {
       sessionRef.current = created;
       setSessionId(created);
@@ -182,7 +195,7 @@ const WelcomeContent = () => {
   const saveExchange = async (firstQuestion, messages) => {
     const id = await ensureSession(firstQuestion);
     if (!id) return;
-    await appendMessages(userId, id, messages);
+    await appendMessages(id, messages);
     refreshSessions();
   };
 
@@ -192,7 +205,7 @@ const WelcomeContent = () => {
     sessionRef.current = id;
     setSessionId(id);
     setActiveTab('case');
-    const conversation = await loadSession(userId, id);
+    const conversation = await loadSession(id);
     if (sessionRef.current !== id) return; // the user moved on while it loaded
     if (!conversation) {
       sessionRef.current = '';
@@ -214,7 +227,7 @@ const WelcomeContent = () => {
   const pinSession = async (id, pinned) => {
     // Show it immediately, then confirm with the server.
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, pinned } : s)));
-    if (await setPinned(userId, id, pinned)) {
+    if (await setPinned(id, pinned)) {
       toast.success(pinned ? 'Conversation pinned.' : 'Conversation unpinned.');
     } else {
       toast.error('The conversation could not be updated. Please try again.');
@@ -227,7 +240,7 @@ const WelcomeContent = () => {
     setSessions((prev) => prev.map((s) => (s.session_id === id ? { ...s, title } : s)));
     // The open conversation's address follows its new name.
     if (sessionRef.current === id) navigate(chatPath(id, title), { replace: true });
-    if (await renameSession(userId, id, title)) {
+    if (await renameSession(id, title)) {
       toast.success('Conversation renamed.');
     } else {
       toast.error('The conversation could not be renamed. Please try again.');
@@ -236,7 +249,7 @@ const WelcomeContent = () => {
   };
 
   const removeSession = async (id) => {
-    if (await deleteSession(userId, id)) {
+    if (await deleteSession(id)) {
       toast.success('Conversation deleted.');
     } else {
       toast.error('The conversation could not be deleted. Please try again.');
@@ -286,6 +299,10 @@ const WelcomeContent = () => {
 
   const handleSendQuery = async (queryText) => {
     if (!queryText.trim()) return;
+    // Filters chosen in the query box belong to this one search. They do not
+    // change what is searched: the search runs plain, and they travel with
+    // the result, which opens already filtered and can be changed or reset.
+    const chosenFilters = composerFilters;
 
     // Add user message
     const userMessage = { sender: 'user', text: queryText };
@@ -300,6 +317,7 @@ const WelcomeContent = () => {
     }
 
     setIsSearching(true);
+    setComposerFilters(EMPTY_FILTERS);
 
     try {
       const res = await apiFetch('/query/search', {
@@ -372,6 +390,7 @@ const WelcomeContent = () => {
         // More relevant judgments exist beyond this page: ResultsPanel offers
         // "More relevant cases", which fetches them with this query.
         hasMore: Boolean(data.has_more),
+        ...(activeFilterCount(chosenFilters) > 0 ? { filters: chosenFilters } : {}),
         latencyMs: data.latency_ms,
         // Set when a broad query was answered with a category browse.
         notice: data.notice || '',
@@ -387,10 +406,6 @@ const WelcomeContent = () => {
     } finally {
       setIsSearching(false);
     }
-  };
-
-  const handleSelectCard = (prompt) => {
-    handleSendQuery(prompt);
   };
 
   const renderContent = () => {
@@ -426,11 +441,11 @@ const WelcomeContent = () => {
     }
 
     if (chatHistory.length === 0) {
-      return <EmptyState onSelectCard={handleSelectCard} />;
+      return <EmptyState />;
     }
 
     return (
-      <div className="flex-grow w-full max-w-4xl mx-auto px-8 pt-24 pb-44 overflow-y-auto">
+      <div className="flex-grow w-full max-w-4xl mx-auto px-4 sm:px-8 pt-20 sm:pt-24 pb-44 overflow-y-auto">
         <div className="flex flex-col gap-6">
           {chatHistory.map((message, index) => (
             <div
@@ -440,7 +455,7 @@ const WelcomeContent = () => {
               {message.sender === 'user' ? (
                 // The copy button sits under the bubble and appears on hover,
                 // so a long description can be lifted out and sent on.
-                <div className="group flex max-w-[75%] flex-col items-end">
+                <div className="group flex max-w-[88%] sm:max-w-[75%] flex-col items-end">
                   <div className="rounded-2xl rounded-tr-md border border-brand-100 bg-brand-50 px-6 py-4 text-ash-900">
                     <p className="font-prose text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
                   </div>
@@ -449,7 +464,7 @@ const WelcomeContent = () => {
                   </div>
                 </div>
               ) : (
-                <div className="max-w-[85%] flex gap-4">
+                <div className="min-w-0 max-w-full sm:max-w-[85%] flex gap-2 sm:gap-4">
                   <span className="material-symbols-outlined text-brand-500 text-2xl mt-1 select-none flex-shrink-0">
                     gavel
                   </span>
@@ -477,30 +492,37 @@ const WelcomeContent = () => {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onNewQuery={handleNewQuery}
+        onNewQuery={() => {
+          closeDrawer();
+          handleNewQuery();
+        }}
         userEmail={userEmail}
         sessions={sessions}
         activeSessionId={sessionId}
-        onOpenSession={goToSession}
+        onOpenSession={(id) => {
+          closeDrawer();
+          goToSession(id);
+        }}
         onPinSession={pinSession}
         onRenameSession={renameSessionTitle}
         onDeleteSession={removeSession}
         loading={historyLoading}
         isOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        mobile={isMobile}
+        onToggleSidebar={toggleSidebar}
         onLogout={handleLogout}
       />
 
       {/* Main Workspace Area */}
       <main
         className={`flex-1 flex flex-col min-h-screen relative overflow-hidden transition-[margin] duration-300 ease-in-out ${
-          sidebarOpen ? 'ml-72' : 'ml-[68px]'
+          isMobile ? 'ml-0' : sidebarOpen ? 'ml-72' : 'ml-[68px]'
         }`}
       >
         {/* Top AppBar */}
         <TopBar
           sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          onToggleSidebar={toggleSidebar}
         />
 
         {/* Dynamic Content Frame */}
@@ -510,8 +532,11 @@ const WelcomeContent = () => {
         {activeTab === 'case' && (
           <ChatInput
             onSend={handleSendQuery}
+            filters={composerFilters}
+            onFiltersChange={setComposerFilters}
             loading={isSearching}
             sidebarOpen={sidebarOpen}
+            mobile={isMobile}
           />
         )}
       </main>

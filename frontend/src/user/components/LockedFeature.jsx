@@ -11,7 +11,7 @@ import { FEATURE_LABELS, PLANS } from '../lib/plan';
  * with no way to find out why. Instead it looks inactive (dashed outline,
  * muted text, a lock badge) and opens the upgrade dialog that explains it.
  */
-export const LockedButton = ({ feature, icon, label, onLocked, size = 'md' }) => {
+export const LockedButton = ({ feature, icon, label, onLocked, size = 'md', compact = false }) => {
   const small = size === 'sm';
   return (
     <button
@@ -21,19 +21,24 @@ export const LockedButton = ({ feature, icon, label, onLocked, size = 'md' }) =>
       aria-label={`${label}. Locked: available on the Standard and Premium plans.`}
       title="Available on the Standard and Premium plans"
       className={`group inline-flex items-center gap-1.5 rounded-full border border-dashed border-ash-300 bg-ash-50 font-ui font-semibold text-ash-500 transition-all duration-200 hover:border-gold-400 hover:bg-white hover:text-ash-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 ${
-        small ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-[13px]'
+        compact ? 'px-2.5 py-1.5 text-xs' : small ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-[13px]'
       }`}
     >
-      <span aria-hidden="true" className={`material-symbols-outlined ${small ? 'text-[15px]' : 'text-[16px]'}`}>
-        {icon}
-      </span>
-      {label}
+      {typeof icon === 'string' ? (
+        <span aria-hidden="true" className={`material-symbols-outlined ${small ? 'text-[15px]' : 'text-[16px]'}`}>
+          {icon}
+        </span>
+      ) : (
+        icon
+      )}
+      {/* compact (a phone's query box): icon and lock only; the label is still read out. */}
+      <span className={compact ? 'sr-only' : ''}>{label}</span>
       <span
         aria-hidden="true"
         className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-gold-700 transition-colors group-hover:bg-amber-400/30"
       >
         <span className="material-symbols-outlined text-[11px]">lock</span>
-        Pro
+        {!compact && 'Pro'}
       </span>
     </button>
   );

@@ -29,7 +29,7 @@ const PRINCIPLES = [
   {
     icon: 'lock',
     title: 'Your research is private',
-    body: 'Queries and saved trails are yours. They are not used to train the underlying model, and not sold.',
+    body: 'Your conversations are visible only to you and can be deleted at any time. We do not sell your data.',
   },
   {
     icon: 'balance',

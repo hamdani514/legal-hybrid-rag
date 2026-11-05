@@ -1,6 +1,6 @@
 """Admin blog authoring: create, edit and delete articles.
 
-Mounted under /api/admin/blogs so it inherits admin_router_guard from main.py
+Mounted under /api/admin/blogs so api_guard (app/api/security.py) makes it admin-only
 — the public reader API in app/routes/blogs.py stays read-only and unguarded,
 and every write goes through this module.
 

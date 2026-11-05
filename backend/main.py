@@ -1,25 +1,12 @@
 """
 FastAPI entry point: lifespan (DB, model warm-up), routers, and route protection.
 
-Route protection is applied HERE, as router-level dependencies, rather than as
-decorators inside each route module. That makes the policy default-deny (a new
-admin route is admin-only without anyone remembering to protect it) and keeps
-it reviewable in one place: the guards and the public allowlist live in
-app/api/security.py. Every guard is a no-op while settings.AUTH_REQUIRED is
-False (anonymous callers behave exactly as before), apart from the per-user
-search limits.
-
-    /api/admin/*      admin, except ADMIN_PUBLIC_ROUTES (login, availability
-                      checks, contact form) and the PDF download (any user)
-    /api/auth/*       public — each route authenticates the caller itself
-    /api/blogs/*      public — read-only marketing content
-    /api/admin/blogs/*  admin — authoring the same articles
-    /query/*          signed-in user + per-user limits
-    /embeddings/*     /search: user + limits; /generate: admin
-    /api/judgments/{id}/download   signed-in user (token may be ?token=)
-    /api/health, SPA  public
+Route protection: api_guard (app/api/security.py) runs before every route in the
+application. A route needs a valid token unless it is listed in PUBLIC_ROUTES
+there, so a new route is protected without anyone remembering to protect it.
 """
 
+import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
@@ -36,14 +23,11 @@ from app.api.embedding_routes import router as embedding_router
 from app.api.routes.query import router as query_router
 from app.api.security import (
     RateLimitExceeded,
-    admin_router_guard,
+    api_guard,
     check_security_config,
-    embedding_router_guard,
-    query_router_guard,
-    require_user,
-    require_user_download,
 )
 from app.database import connect_db, close_db, db
+from app.config import settings
 
 # ----------------------------
 # Logging setup
@@ -55,12 +39,26 @@ logger = logging.getLogger("legal-rag")
 # ----------------------------
 # Lifespan (startup/shutdown)
 # ----------------------------
+def _warn_about_deployment() -> None:
+    """Problems that do not stop the app but would hurt real users: loud in the log."""
+    backend = Path(__file__).resolve().parent
+    lexical = Path(settings.LEXICAL_DB_PATH or backend / "lexical.db")
+    if not lexical.exists():
+        logger.error(f"Keyword search index missing at {lexical}: search will miss results. Copy lexical.db in.")
+    if not (backend / "chroma_db").exists():
+        logger.error("Vector store missing at backend/chroma_db: search will find nothing. Copy chroma_db in.")
+    if "localhost" in (settings.FRONTEND_URL or "") or "127.0.0.1" in (settings.FRONTEND_URL or ""):
+        logger.warning(f"FRONTEND_URL is {settings.FRONTEND_URL}: links in emails point to this machine. "
+                       "Set it to the site's public address in production.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Starting application...")
 
-    # Refuses to start with the placeholder JWT_SECRET when AUTH_REQUIRED=True.
+    # Refuses to start with a weak JWT_SECRET.
     check_security_config()
+    _warn_about_deployment()
 
     try:
         logger.info("🔌 Connecting to database...")
@@ -70,6 +68,8 @@ async def lifespan(app: FastAPI):
         # Initialize MongoDB indexes for embeddings
         from app.database.mongodb import init_mongodb_indexes
         await init_mongodb_indexes()
+        from app.api.throttle import ensure_indexes as _throttle_indexes
+        await _throttle_indexes()
 
         # Initialize Beanie ODM and compound unique indexes
         from beanie import init_beanie
@@ -135,8 +135,7 @@ async def lifespan(app: FastAPI):
         # No LLM calls: the analyzer and judge are off by default, and
         # retrieve_v2 does not record queries.
         try:
-            from app.config import settings
-
+            
             if getattr(settings, "USE_V2_PIPELINE", False):
                 from app.retrieval.pipeline_v2 import retrieve_v2
 
@@ -174,15 +173,83 @@ async def lifespan(app: FastAPI):
 # ----------------------------
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(api_guard)])
+
+def _allowed_origins() -> list[str]:
+    """Sites allowed to call the API from a browser: the app's own address(es).
+
+    In production the backend serves the frontend itself (same site), and in
+    development the Vite proxy makes it the same site too, so cross-site calls are
+    never needed by the app. Any other website is refused by the browser.
+    """
+    raw = [settings.FRONTEND_URL or ""] + (settings.FRONTEND_ORIGINS or "").split(",")
+    return sorted({o.strip().rstrip("/") for o in raw if o.strip()})
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins(),
+    # Sign-in travels in the Authorization header, never in cookies.
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+def _inline_script_hashes(index_file: Path) -> list[str]:
+    """CSP hashes of the inline <script> blocks in the built index.html (the
+    scroll-to-top and loading-skeleton scripts), so they run and nothing else does."""
+    import base64
+    import hashlib
+    import re as _re
+
+    try:
+        html = index_file.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return [
+        "'sha256-" + base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode() + "'"
+        for body in _re.findall(r"<script>(.*?)</script>", html, flags=_re.S)
+    ]
+
+
+def _content_security_policy(index_file: Path) -> str:
+    google = "https://accounts.google.com"
+    return "; ".join([
+        "default-src 'self'",
+        "script-src 'self' " + " ".join(_inline_script_hashes(index_file) + [f"{google}/gsi/client"]),
+        f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com {google}/gsi/style",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https:",
+        f"connect-src 'self' {google}/gsi/",
+        f"frame-src {google}/gsi/",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "object-src 'none'",
+    ])
+
+
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",  # Google sign-in opens a popup
+}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").split(",")[0].strip() == "https"
+    if https:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers.setdefault("Content-Security-Policy", app.state.csp)
+    return response
 
 
 @app.exception_handler(RateLimitExceeded)
@@ -197,7 +264,9 @@ async def _rate_limited(request: Request, exc: RateLimitExceeded):
 # ----------------------------
 # Frontend static files
 # ----------------------------
-frontend_dist = Path(__file__).resolve().parent / "static"
+# The built frontend. STATIC_DIR points elsewhere (tests serve frontend/dist).
+frontend_dist = Path(os.getenv("STATIC_DIR") or Path(__file__).resolve().parent / "static")
+app.state.csp = _content_security_policy(frontend_dist / "index.html")
 
 if frontend_dist.exists():
     app.mount(
@@ -234,14 +303,10 @@ async def health():
 # ----------------------------
 # SPA fallback route
 # ----------------------------
-app.include_router(admin_router, prefix="", dependencies=[Depends(admin_router_guard)])
-app.include_router(auth_router, prefix="")  # public by design: see app/api/auth.py
+app.include_router(admin_router, prefix="")
+app.include_router(auth_router, prefix="")
 # Chat history belongs to one signed-in user; every route filters on that user.
-app.include_router(chat_router, prefix="", dependencies=[Depends(require_user)])
-# Slug-based chat URL system
-from app.routes.chats import router as chats_router, query_api_router
-app.include_router(chats_router)
-app.include_router(query_api_router)
+app.include_router(chat_router, prefix="")
 # Blog: public marketing content, read-only — no guard by design, see
 # app/routes/blogs.py. Must stay registered before the SPA catch-all below.
 from app.routes.blogs import router as blogs_router
@@ -252,18 +317,15 @@ app.include_router(stats_router)
 # Authoring the same articles. Separate router so the public one stays
 # read-only, and guarded like the rest of /api/admin.
 from app.routes.admin_blogs import router as admin_blogs_router
-app.include_router(admin_blogs_router, dependencies=[Depends(admin_router_guard)])
-# Payments: the two account routes carry their own require_user dependency,
-# because POST /api/payments/webhook must stay public — Stripe is not a
-# signed-in user, and its signature is what authenticates that call.
+app.include_router(admin_blogs_router)
+# Payments: POST /api/payments/webhook is public (Stripe's signature authenticates
+# it); every account route needs the caller's own token.
 app.include_router(payments_router, prefix="")
-app.include_router(embedding_router, prefix="", dependencies=[Depends(embedding_router_guard)])
-app.include_router(
-    query_router, prefix="/query", tags=["Query"], dependencies=[Depends(query_router_guard)]
-)
+app.include_router(embedding_router, prefix="")
+app.include_router(query_router, prefix="/query", tags=["Query"])
 
 
-@app.get("/api/judgments/{judgment_id}/download", dependencies=[Depends(require_user_download)])
+@app.get("/api/judgments/{judgment_id}/download")
 async def download_judgment_alias(judgment_id: str, request: Request):
     from app.api.admin import download_judgment
     return await download_judgment(judgment_id, request)

@@ -92,6 +92,94 @@ def _current_subscription(user: dict) -> Optional[str]:
     return user.get("stripeSubscriptionId") or user.get("stripe_subscription_id")
 
 
+def _get(obj, key):
+    """obj[key] for a Stripe object or a dict; None when absent."""
+    try:
+        return obj[key]
+    except (KeyError, TypeError, AttributeError):
+        return getattr(obj, key, None)
+
+
+def card_on_file(client, subscription_id: Optional[str], customer_id: Optional[str]) -> tuple:
+    """(payment method id, last 4 digits, brand) of the card paying a subscription.
+
+    Stripe Checkout attaches the card to the SUBSCRIPTION (default_payment_method),
+    not to the customer's invoice settings, which is all this used to read, so
+    every paying user showed "No payment card on file" and the card was never
+    removed when the plan ended. The customer's default is the fallback.
+    """
+    sources = []
+    if subscription_id:
+        sources.append(lambda: _get(client.Subscription.retrieve(subscription_id, expand=["default_payment_method"]),
+                                    "default_payment_method"))
+    if customer_id:
+        sources.append(lambda: _get(_get(client.Customer.retrieve(customer_id, expand=["invoice_settings.default_payment_method"]),
+                                         "invoice_settings"), "default_payment_method"))
+    for source in sources:
+        try:
+            pm = source()
+        except Exception as e:  # noqa: BLE001 - try the next place
+            logger.warning(f"Could not read the card for {subscription_id or customer_id}: {e}")
+            continue
+        card = _get(pm, "card") if pm and not isinstance(pm, str) else None
+        if card:
+            return _get(pm, "id"), _get(card, "last4"), _get(card, "brand")
+    return None, None, None
+
+
+async def cancel_replaced(client, user: dict, subscription_id: str) -> bool:
+    """Cancel a subscription the user has replaced. On failure it is remembered on
+    the user and retried by the scheduler (scheduled_tasks.retry_replaced_cancellations),
+    so a failed call cannot leave someone paying for two plans."""
+    try:
+        client.Subscription.cancel(subscription_id, prorate=True)
+        logger.info(f"Cancelled replaced subscription {subscription_id} for {user.get('email')}")
+        cancelled = True
+    except Exception as e:  # noqa: BLE001
+        text = str(e).lower()
+        cancelled = "no such subscription" in text or "canceled" in text or "cancelled" in text
+        if not cancelled:
+            logger.error(f"Could not cancel replaced subscription {subscription_id} for {user.get('email')}: {e}. "
+                         "It will be retried every hour until it succeeds.")
+    await _users().update_one(
+        {"_id": user["_id"]},
+        {"$pull": {"subscriptionsToCancel": subscription_id}} if cancelled
+        else {"$addToSet": {"subscriptionsToCancel": subscription_id}},
+    )
+    return cancelled
+
+
+# A subscription in one of these states is over; a payment for it changes nothing.
+ENDED_STATUSES = {"canceled", "incomplete_expired", "unpaid"}
+
+
+def _stale_reason(session: dict, user: dict, subscription_id: Optional[str]) -> Optional[str]:
+    """Why this completed checkout must NOT be applied, or None if it should be.
+
+    The browser confirms a checkout when it lands on the success page, and Stripe
+    may deliver the same event again later. Reopening an old success link, or a
+    late delivery, must never move the account back to an older plan or cancel
+    the subscription that is current now.
+    """
+    current = _current_subscription(user)
+    if not subscription_id or subscription_id == current:
+        return None  # nothing yet, or the current subscription again (a repeat)
+    history = [h for h in (user.get("subscription_history") or []) if isinstance(h, dict)]
+    if any(h.get("reference") == subscription_id for h in history):
+        return "it was applied before and has since been replaced"
+    if current:
+        replaces = (session.get("metadata") or {}).get("replaces_subscription") or None
+        if replaces == current:
+            return None  # the switch this checkout was opened for
+        created = session.get("created")
+        activated = user.get("planActivatedAt") or user.get("plan_activated_at")
+        if isinstance(activated, datetime) and activated.tzinfo is None:
+            activated = activated.replace(tzinfo=timezone.utc)
+        if not isinstance(created, (int, float)) or (isinstance(activated, datetime) and created <= activated.timestamp()):
+            return "the account has a newer subscription than this checkout"
+    return None
+
+
 def _is_replaced(user: dict, subscription_id: Optional[str]) -> bool:
     """An event about a subscription the user has since replaced.
 
@@ -135,6 +223,11 @@ async def handle_checkout_completed(session: dict) -> None:
     customer_id = session.get("customer")
     subscription_id = session.get("subscription")
 
+    stale = _stale_reason(session, user, subscription_id)
+    if stale:
+        logger.warning(f"Ignoring checkout {session.get('id')} for {user.get('email')}: {stale}")
+        return
+
     period_end = None
     # The plan bought: named in the session metadata by create_checkout_session;
     # else read from the subscription's price; else Standard (older sessions).
@@ -142,6 +235,13 @@ async def handle_checkout_completed(session: dict) -> None:
     if subscription_id:
         try:
             sub = client.Subscription.retrieve(subscription_id)
+            try:
+                status = sub["status"]
+            except (KeyError, TypeError):
+                status = None
+            if status in ENDED_STATUSES:
+                logger.warning(f"Ignoring checkout {session.get('id')}: its subscription is {status}")
+                return
             period_end = _extract_period_end(sub)
             bought = plans.plan_of_subscription(sub) or bought
         except Exception as e:
@@ -153,23 +253,7 @@ async def handle_checkout_completed(session: dict) -> None:
     if not period_end:
         period_end = datetime.now(timezone.utc) + timedelta(days=30)
 
-    # Fetch default payment method details
-    pm_id = None
-    card_last4 = None
-    card_brand = None
-    if customer_id:
-        try:
-            customer = client.Customer.retrieve(customer_id, expand=["invoice_settings.default_payment_method"])
-            inv_settings = getattr(customer, "invoice_settings", None) or (customer.get("invoice_settings") if isinstance(customer, dict) else None)
-            pm = getattr(inv_settings, "default_payment_method", None) if inv_settings else None
-            if pm:
-                pm_id = getattr(pm, "id", None) or (pm.get("id") if isinstance(pm, dict) else None)
-                card = getattr(pm, "card", None) or (pm.get("card") if isinstance(pm, dict) else None)
-                if card:
-                    card_last4 = getattr(card, "last4", None) or (card.get("last4") if isinstance(card, dict) else None)
-                    card_brand = getattr(card, "brand", None) or (card.get("brand") if isinstance(card, dict) else None)
-        except Exception as e:
-            logger.warning(f"Could not retrieve default payment method for customer {customer_id}: {e}")
+    pm_id, card_last4, card_brand = card_on_file(client, subscription_id, customer_id)
 
     now = datetime.now(timezone.utc)
     update = {
@@ -194,11 +278,10 @@ async def handle_checkout_completed(session: dict) -> None:
         "dailyQueries": {"count": 0, "date": now},
     }
 
-    # A plan switch: the subscription this one replaces (named at checkout,
-    # else the one on record). It is cancelled once the new one is in place.
-    replaced = (session.get("metadata") or {}).get("replaces_subscription") or _current_subscription(user)
-    if replaced == subscription_id:
-        replaced = None
+    # The subscription this one replaces: the current one, if different. Only a
+    # checkout that passed _stale_reason gets here, so it is never an old one.
+    current = _current_subscription(user)
+    replaced = current if current and current != subscription_id else None
 
     history_item = {
         "id": f"sub_hist_{session.get('id', 'pay')[-8:]}",
@@ -233,12 +316,7 @@ async def handle_checkout_completed(session: dict) -> None:
         # triggers is recognised as a replaced subscription and ignored.
         # Prorated: the unused days of the old plan become a credit on the
         # customer's balance, taken off their next invoice.
-        try:
-            client.Subscription.cancel(replaced, prorate=True)
-            logger.info(f"Cancelled replaced subscription {replaced} for {user.get('email')}")
-        except Exception as e:
-            # Already cancelled (a repeat delivery) or not found: nothing to do.
-            logger.warning(f"Could not cancel replaced subscription {replaced}: {e}")
+        await cancel_replaced(client, user, replaced)
 
 
 # ============================================================

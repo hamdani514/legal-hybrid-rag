@@ -72,6 +72,8 @@ const SettingsPage = () => {
   useEffect(() => {
     let isMounted = true;
     if (!validateSessionOrPurge({ navigate })) {
+      // Signed out: there is no account to show, so go and sign in.
+      navigate('/login', { replace: true });
       return undefined;
     }
 
@@ -100,10 +102,8 @@ const SettingsPage = () => {
 
     const fetchProfileData = async () => {
       try {
-        const storedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-        const userIdParam = storedUser?.id || storedUser?.email || '';
 
-        const res = await apiFetch(`/api/auth/profile${userIdParam ? `?user_id=${encodeURIComponent(userIdParam)}` : ''}`);
+        const res = await apiFetch('/api/auth/profile');
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
@@ -212,10 +212,8 @@ const SettingsPage = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const storedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-      const userIdParam = storedUser?.id || storedUser?.email || profile?.id || profile?.email || '';
 
-      const res = await apiFetch(`/api/auth/profile/avatar${userIdParam ? `?user_id=${encodeURIComponent(userIdParam)}` : ''}`, {
+      const res = await apiFetch('/api/auth/profile/avatar', {
         method: 'POST',
         body: formData,
       });
@@ -259,10 +257,8 @@ const SettingsPage = () => {
     setSaveSuccess('');
 
     try {
-      const storedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-      const userIdParam = storedUser?.id || storedUser?.email || profile?.id || profile?.email || '';
 
-      const res = await apiFetch(`/api/auth/profile/avatar${userIdParam ? `?user_id=${encodeURIComponent(userIdParam)}` : ''}`, {
+      const res = await apiFetch('/api/auth/profile/avatar', {
         method: 'DELETE',
       });
 
@@ -1091,7 +1087,7 @@ const SettingsPage = () => {
               <div className="bg-ash-50 rounded-2xl p-4 border border-ash-200/80 flex items-start gap-3 text-xs text-ash-600 font-prose leading-relaxed">
                 <span className="material-symbols-outlined text-brand-600 text-[18px] shrink-0 mt-0.5">lock</span>
                 <span>
-                  All payments and checkout invoices are securely authenticated and processed by Stripe with 256-bit encryption. You can cancel active subscriptions at any time with no lock-in.
+                  All payments and checkout invoices are securely authenticated and processed securely by Stripe. You can cancel active subscriptions at any time with no lock-in.
                 </span>
               </div>
             </div>

@@ -120,6 +120,24 @@ async def expire_canceled_subscriptions():
         logger.info(f"Completed subscription expiration sweep: {expired_count} users reverted to Free.")
 
 
+@scheduler.scheduled_job("cron", minute=30)  # every hour, at half past
+async def retry_replaced_cancellations():
+    """Cancel subscriptions a plan switch replaced, where cancelling failed at the
+    time: otherwise the user would keep paying for both plans."""
+    if db.database is None:
+        return
+    from modules.payment.webhook import cancel_replaced
+
+    client = _stripe()
+    async for user in db.database.users.find({"subscriptionsToCancel.0": {"$exists": True}}):
+        for subscription_id in list(user.get("subscriptionsToCancel") or []):
+            if subscription_id == (user.get("stripeSubscriptionId") or user.get("stripe_subscription_id")):
+                # Never the one they are on now.
+                await db.database.users.update_one({"_id": user["_id"]}, {"$pull": {"subscriptionsToCancel": subscription_id}})
+                continue
+            await cancel_replaced(client, user, subscription_id)
+
+
 def start_scheduler():
     if not scheduler.running:
         scheduler.start()

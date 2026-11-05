@@ -8,17 +8,21 @@ admin route (including DELETE /api/admin/jobs/{id}, which permanently removes
 a judgment and its Drive copy) were open to anyone who could reach the port,
 passwords were compared in plain text, and JWT_SECRET was never used.
 
-The design keeps the existing route modules untouched (admin.py belongs to
-other work in flight) and applies protection from the outside:
+The rules, all enforced here:
 
-  * main.py attaches the guards below as *router-level* dependencies, so a
-    new admin route is protected by default (default-deny) instead of relying
-    on someone remembering a decorator. The public exceptions are an explicit
-    allowlist in this file (ADMIN_PUBLIC_ROUTES), reviewed in one place.
-  * Everything hinges on settings.AUTH_REQUIRED, read at request time. While
-    it is False every guard hands back an anonymous principal and the API
-    behaves exactly as before — the frontend can be migrated to send tokens
-    first, and the flag flipped afterwards without a deploy-day lockout.
+  * Default-deny. main.py installs api_guard on the whole application, so every
+    route — including one added next year — needs a valid token unless it is
+    listed in PUBLIC_ROUTES below. Nobody has to remember a decorator.
+  * Identity comes from the verified token and nowhere else. A user id in a
+    header, query string or body is never trusted: routes ask caller_id().
+  * There is no "authentication off" mode. There used to be a switch, it was
+    left off, and the whole API was open. A switch can be forgotten; this can't.
+  * The app refuses to start with a weak JWT_SECRET, so a server cannot run with
+    a signing key anyone can read in the repository.
+
+app/api/access_selfcheck.py walks every route and fails if any of this stops
+being true.
+
   * Passwords: bcrypt via the `bcrypt` package directly. passlib 1.7.4 is
     incompatible with the installed bcrypt 5.x (its backend self-test hashes a
     255-byte secret, which bcrypt 5 rejects), so CryptContext crashes on the
@@ -63,11 +67,6 @@ Role = Literal["user", "admin"]
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration checks
 # ─────────────────────────────────────────────────────────────────────────────
-def auth_required() -> bool:
-    """Read at request time so the flag (and tests) take effect without re-import."""
-    return bool(getattr(settings, "AUTH_REQUIRED", False))
-
-
 def _secret() -> str:
     return (getattr(settings, "JWT_SECRET", "") or "").strip()
 
@@ -78,33 +77,22 @@ def secret_is_weak() -> bool:
 
 
 def check_security_config() -> None:
-    """
-    Startup gate, called from main.py's lifespan.
+    """Startup gate, called from main.py's lifespan.
 
-    With AUTH_REQUIRED on, a placeholder/empty secret means anyone who has read
-    the repository can mint an admin token — refuse to start rather than run
-    "protected" with a public key. With it off, only warn: tokens are issued
-    but nothing depends on them yet.
+    A placeholder, empty or short secret means anyone who has read the repository
+    can mint an admin token, so the app refuses to start rather than run
+    "protected" with a public key.
     """
-    secret = _secret()
-    placeholder = not secret or secret == PLACEHOLDER_SECRET
-    if auth_required() and placeholder:
-        logger.critical(
-            "AUTH_REQUIRED is True but JWT_SECRET is the placeholder/empty value. "
-            "Anyone could forge admin tokens. Set JWT_SECRET in backend/.env to a "
-            "random string of 32+ characters (python -c \"import secrets; "
-            "print(secrets.token_urlsafe(48))\"). Refusing to start."
-        )
-        raise RuntimeError("Refusing to start: JWT_SECRET is the placeholder while AUTH_REQUIRED=True")
     if secret_is_weak():
-        logger.warning(
-            "JWT_SECRET is weak (placeholder or < {} chars). Fine while AUTH_REQUIRED is "
-            "False; must be replaced before turning authentication on.",
+        logger.critical(
+            "JWT_SECRET is missing, the placeholder, or under {} characters. Anyone could "
+            "forge admin tokens. Set JWT_SECRET to a random value (python -c \"import secrets; "
+            "print(secrets.token_urlsafe(48))\"). Refusing to start.",
             MIN_SECRET_LENGTH,
         )
+        raise RuntimeError("Refusing to start: JWT_SECRET is weak.")
     logger.info(
-        "Auth: AUTH_REQUIRED={} | limits: {}/min searches, {}/day answers",
-        auth_required(),
+        "Auth: limits {}/min searches, {}/day answers",
         _limit("USER_SEARCHES_PER_MINUTE"),
         _limit("USER_ANSWERS_PER_DAY"),
     )
@@ -177,6 +165,8 @@ def create_access_token(sub: str, role: Role, expires_minutes: Optional[int] = N
     minutes = int(expires_minutes or getattr(settings, "JWT_EXPIRE_MINUTES", 1440) or 1440)
     now = int(time.time())
     claims = {"sub": str(sub), "role": role, "iat": now, "exp": now + minutes * 60}
+    if secret_is_weak():
+        raise RuntimeError("JWT_SECRET is weak: refusing to sign a token.")
     return jwt.encode(claims, _secret(), algorithm=ALGORITHM)
 
 
@@ -185,6 +175,8 @@ class TokenError(Exception):
 
 
 def decode_token(token: str) -> TokenPayload:
+    if secret_is_weak():  # a token signed with a public key proves nothing
+        raise TokenError("Invalid authentication token.")
     try:
         claims = jwt.decode(
             token,
@@ -232,13 +224,11 @@ def _unauthorized(message: str) -> HTTPException:
 
 
 def _resolve(request: Request, need: Literal["any", "user", "admin"], allow_query: bool = False) -> TokenPayload:
-    """
-    The single decision function behind every dependency.
+    """The single decision function behind every dependency.
 
-    AUTH_REQUIRED False: never raises. A valid token is still honoured (so
-    limits key by user once the frontend sends tokens); otherwise the caller
-    is the anonymous principal — with role "admin" on admin routes, which is
-    exactly today's behaviour (everyone may call them).
+    "any" is for public routes: a valid token still identifies the caller, and an
+    unusable one is ignored, since a public page must not fail over a stale token.
+    Everything else needs a valid token, and "admin" needs an admin one.
     """
     token = _extract_token(request, allow_query=allow_query)
     principal: Optional[TokenPayload] = None
@@ -249,20 +239,7 @@ def _resolve(request: Request, need: Literal["any", "user", "admin"], allow_quer
         except TokenError as e:
             error = str(e)
 
-    # If an authentication token was provided but is expired or invalid,
-    # always reject with 401 so the client session is safely terminated.
-    if token and error:
-        raise _unauthorized(error)
-
-    if not auth_required():
-        if principal is None or (need == "admin" and principal["role"] != "admin"):
-            principal = anonymous("admin" if need == "admin" else "user")
-        request.state.principal = principal
-        return principal
-
     if need == "any":
-        if error:
-            raise _unauthorized(error)
         principal = principal or anonymous()
     else:
         if principal is None:
@@ -273,45 +250,82 @@ def _resolve(request: Request, need: Literal["any", "user", "admin"], allow_quer
     return principal
 
 
+def caller_id(request: Request) -> str:
+    """Who is calling: the verified token's subject. The only source of identity.
+
+    Never read a user id from a header, query string or body to decide whose data
+    to touch; that is how one user could act as another.
+    """
+    principal = getattr(request.state, "principal", None)
+    sub = principal.get("sub") if isinstance(principal, dict) else None
+    if not sub or sub == ANONYMOUS_SUB:
+        raise _unauthorized("Please sign in.")
+    return str(sub)
+
+
+def caller_is_admin(request: Request) -> bool:
+    principal = getattr(request.state, "principal", None)
+    return isinstance(principal, dict) and principal.get("role") == "admin" and principal.get("sub") != ANONYMOUS_SUB
+
+
 # FastAPI dependencies --------------------------------------------------------
-async def current_user(request: Request) -> TokenPayload:
-    """Optional auth: the token's principal, or anonymous. An invalid token is 401 only when AUTH_REQUIRED."""
-    return _resolve(request, "any")
-
-
 async def require_user(request: Request) -> TokenPayload:
-    """Any signed-in account (user or admin). Anonymous allowed while AUTH_REQUIRED is False."""
+    """Any signed-in account (user or admin)."""
     return _resolve(request, "user")
 
 
 async def require_admin(request: Request) -> TokenPayload:
-    """Admin role. 401 without a valid token, 403 with a user token (when AUTH_REQUIRED)."""
+    """Admin role. 401 without a valid token, 403 with a user token."""
     return _resolve(request, "admin")
 
 
-async def require_user_download(request: Request) -> TokenPayload:
-    """require_user that also accepts ?token= — for PDF links opened via <a href>."""
-    return _resolve(request, "user", allow_query=True)
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# Route policy (applied from main.py as router-level dependencies)
+# Route policy: installed on the whole application by main.py
 # ─────────────────────────────────────────────────────────────────────────────
-# (METHOD, route path template). Everything else under /api/admin needs admin.
-ADMIN_PUBLIC_ROUTES = frozenset({
+# The ONLY routes reachable without signing in, as (METHOD, route path template).
+# Anything not listed needs a token. Adding a line here is a security decision,
+# and access_selfcheck.py fails until the same line is added to its own list.
+PUBLIC_ROUTES = frozenset({
+    ("GET", "/api/health"),
+    ("GET", "/{full_path:path}"),                # the single-page app itself
+    # Getting into an account: each proves itself with a password, code or token.
+    ("POST", "/api/auth/login"),
+    ("POST", "/api/auth/admin/login"),
+    ("POST", "/api/auth/signup"),
+    ("POST", "/api/auth/verify-signup-otp"),
+    ("POST", "/api/auth/resend-signup-otp"),
+    ("POST", "/api/auth/forgot-password"),
+    ("POST", "/api/auth/verify-otp"),
+    ("POST", "/api/auth/reset-password"),
+    ("POST", "/api/auth/reactivate/{token}"),
+    ("POST", "/api/auth/send-reactivation-link"),
+    ("GET", "/api/auth/google/config"),
+    ("POST", "/api/auth/google"),
+    # Pictures an <img> loads, which cannot send a token.
+    ("GET", "/api/auth/avatar/{file_id}"),
+    ("GET", "/api/blogs/cover/{file_id}"),
+    # Public pages and forms.
+    ("POST", "/api/auth/contact"),
+    ("POST", "/api/admin/support"),              # contact form
     ("GET", "/api/admin/users/check-username"),  # signup form availability check
     ("GET", "/api/admin/users/check-email"),     # signup form availability check
-    ("POST", "/api/admin/support"),            # public contact form (ContactForm.jsx)
+    ("GET", "/api/blogs"),
+    ("GET", "/api/blogs/{slug}"),
+    ("GET", "/api/stats"),
+    ("GET", "/api/payments/config"),
+    # Stripe is not a signed-in user; its signature authenticates the call.
+    ("POST", "/api/payments/webhook"),
 })
-# Routes under /api/admin that any signed-in user (not only admins) may call.
-ADMIN_USER_ROUTES = frozenset({
-    ("GET", "/api/admin/judgments/{judgment_id}/download"),  # result-card PDF download
-})
-DOWNLOAD_ROUTES = ADMIN_USER_ROUTES
 
-# /embeddings: /generate rebuilds vectors for the archive (admin work);
-# /search is a legacy alias of /query/search and is limited like it.
-EMBEDDING_ADMIN_ROUTES = frozenset({("POST", "/embeddings/generate")})
+# Signed-in users, token also accepted as ?token= since an <a href> cannot send a
+# header. Whether the caller's plan includes downloading is checked by the route.
+DOWNLOAD_ROUTES = frozenset({
+    ("GET", "/api/admin/judgments/{judgment_id}/download"),
+    ("GET", "/api/judgments/{judgment_id}/download"),
+})
+
+# Admin only, outside /api/admin.
+ADMIN_ROUTES = frozenset({("POST", "/embeddings/generate")})
 
 
 def _route_key(request: Request) -> Tuple[str, str]:
@@ -320,26 +334,58 @@ def _route_key(request: Request) -> Tuple[str, str]:
     return request.method.upper(), path
 
 
-async def admin_router_guard(request: Request) -> TokenPayload:
-    key = _route_key(request)
-    if key in ADMIN_PUBLIC_ROUTES:
+def required_access(key: Tuple[str, str]) -> Literal["public", "download", "admin", "user"]:
+    """What a route needs. Default-deny: not listed means signed in."""
+    if key in PUBLIC_ROUTES:
+        return "public"
+    if key in DOWNLOAD_ROUTES:
+        return "download"
+    if key in ADMIN_ROUTES or key[1].startswith("/api/admin"):
+        return "admin"
+    return "user"
+
+
+async def account_is_active(principal: TokenPayload) -> bool:
+    """Does the account a valid token names still exist, and is it active?
+
+    A token is valid for its whole lifetime (JWT_EXPIRE_MINUTES), so without this
+    a deleted or deactivated account kept working until its token ran out.
+    """
+    from app.database import db
+
+    if db.database is None:
+        raise HTTPException(status_code=503, detail="Database is not connected.")
+    sub = str(principal.get("sub") or "")
+    if principal.get("role") == "admin":
+        super_email = (getattr(settings, "SUPER_ADMIN_EMAIL", "") or "").strip().lower()
+        if super_email and getattr(settings, "SUPER_ADMIN_PASSWORD", "") and sub.lower() == super_email:
+            return True  # the super admin is configured, not stored
+        doc = await db.database.admins.find_one({"adminid": sub}, {"status": 1, "isActive": 1})
+    else:
+        clauses = [{"id": sub}, {"email": sub.lower()}]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(sub):
+                clauses.append({"_id": ObjectId(sub)})
+        except Exception:  # noqa: BLE001
+            pass
+        doc = await db.database.users.find_one({"$or": clauses}, {"status": 1, "isActive": 1})
+    if not doc:
+        return False
+    return doc.get("isActive") is not False and str(doc.get("status") or "Active").lower() not in ("inactive", "deactivated", "deleted")
+
+
+async def api_guard(request: Request) -> TokenPayload:
+    """Runs before every route in the application."""
+    access = required_access(_route_key(request))
+    if access == "public":
         return _resolve(request, "any")
-    if key in ADMIN_USER_ROUTES:
-        return _resolve(request, "user", allow_query=key in DOWNLOAD_ROUTES)
-    return _resolve(request, "admin")
-
-
-async def embedding_router_guard(request: Request) -> TokenPayload:
-    if _route_key(request) in EMBEDDING_ADMIN_ROUTES:
-        return _resolve(request, "admin")
-    principal = _resolve(request, "user")
-    enforce_limits(request, principal)
-    return principal
-
-
-async def query_router_guard(request: Request) -> TokenPayload:
-    principal = _resolve(request, "user")
-    enforce_limits(request, principal)
+    principal = _resolve(request, "user" if access == "download" else access, allow_query=access == "download")
+    if not await account_is_active(principal):
+        # 401: the frontend then ends the session, as it should.
+        raise _unauthorized("This account is no longer active. Please sign in again.")
+    if access != "download":
+        enforce_limits(request, principal)
     return principal
 
 
@@ -353,7 +399,6 @@ async def query_router_guard(request: Request) -> TokenPayload:
 # CPU (the cross-encoder) but no Gemini call.
 SEARCH_PATHS = frozenset({
     "/query/search", "/query/more", "/query/answer", "/query/compare", "/query/summarize",
-    "/embeddings/search",
 })
 ANSWER_PATHS = SEARCH_PATHS - {"/query/more"}
 
@@ -474,11 +519,6 @@ def _limit(name: str) -> int:
 def limit_key(request: Request, principal: Optional[TokenPayload]) -> Optional[str]:
     if not is_anonymous(principal):
         return f"user:{principal['sub']}"
-    # Proposed key RATE_LIMIT_ANONYMOUS (default True): lets the integrator
-    # exempt anonymous callers while AUTH_REQUIRED is off (e.g. behind the
-    # Vite proxy every anonymous user shares 127.0.0.1).
-    if not bool(getattr(settings, "RATE_LIMIT_ANONYMOUS", True)):
-        return None
     host = request.client.host if request.client else "unknown"
     return f"ip:{host}"
 

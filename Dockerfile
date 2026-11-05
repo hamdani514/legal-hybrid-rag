@@ -3,6 +3,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+# The frontend tests must pass before anything is built.
+RUN npm test
 RUN npm run build
 
 FROM python:3.10-slim
@@ -35,4 +37,6 @@ WORKDIR /app/backend
 # with "no open ports detected" if the app binds a different one. Shell form so
 # the variable is expanded; 8000 keeps local `docker run -p 8000:8000` working.
 ENV PORT=8000
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# --proxy-headers: behind Render's (or any) proxy, take the client's address from
+# X-Forwarded-For, so per-network sign-in limits apply per user, not to everyone.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

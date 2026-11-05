@@ -38,7 +38,7 @@ export const LEGAL_DOCUMENTS = {
         id: 'what-we-never-do',
         heading: 'What we never do',
         body: [
-          'We do not train retrieval or language models on your queries, your uploads, or your research paths.',
+          'We do not train our own retrieval models on your queries. To analyse a judgment, your question and passages from that judgment are sent to Google’s Gemini service, which processes them under Google’s API terms.',
           'We do not sell, rent, or disclose your data to advertisers or data brokers.',
           'We do not read the contents of your workspace except where you explicitly ask support to look at a specific session.',
         ],
@@ -47,8 +47,8 @@ export const LEGAL_DOCUMENTS = {
         id: 'security',
         heading: 'Security',
         body: [
-          'Data is encrypted with AES-256 in transit and at rest. Access to production systems is restricted, logged, and reviewed.',
-          'Each account operates in an isolated workspace; one account cannot reach another account’s sessions, drafts, or saved research.',
+          'Passwords are stored only as one-way hashes, never in readable form. Payments are handled entirely by Stripe: card details never reach our servers.',
+          'Each account can see only its own conversations; one account cannot read or change another’s.',
         ],
       },
       {
@@ -56,14 +56,14 @@ export const LEGAL_DOCUMENTS = {
         heading: 'Retention and deletion',
         body: [
           'Research sessions are retained for as long as your account is active, because they form your private knowledge base.',
-          'You may request deletion of your account and its associated research at any time by writing to BSE231005@cust.pk. We action deletion requests within 30 days.',
+          'You can delete your account at any time from Account settings, which deletes your conversations with it. You can also ask us through the contact form on this site.',
         ],
       },
       {
         id: 'contact-privacy',
         heading: 'Questions',
         body: [
-          'Privacy questions and data requests go to BSE231005@cust.pk, or through the contact form on this site.',
+          'Privacy questions and data requests go through the contact form on this site.',
         ],
       },
     ],
@@ -83,7 +83,7 @@ export const LEGAL_DOCUMENTS = {
         heading: 'Accounts',
         body: [
           'You must provide accurate registration details and keep your credentials confidential. You are responsible for activity carried out under your account.',
-          'Accounts are for individual use. Firm-wide and chambers-wide access is available as a separate licence — contact us to arrange one rather than sharing a single login.',
+          'Accounts are for individual use. Please do not share a login; if a team needs access, contact us.',
         ],
       },
       {
@@ -170,7 +170,7 @@ export const LEGAL_DOCUMENTS = {
         id: 'contact-disclaimer',
         heading: 'Raise a correction',
         body: [
-          'If you find an indexing error or a misattributed citation, tell us at BSE231005@cust.pk and we will investigate it.',
+          'If you find an indexing error or a misattributed citation, tell us through the contact form and we will investigate it.',
         ],
       },
     ],

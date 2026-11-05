@@ -80,7 +80,7 @@ const ClosingCTA = ({
 
             {/* Trust Points */}
             <p className="mt-9 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 font-prose text-[13.5px] text-white/85">
-              {['Free for verified students', 'No card required', 'Every answer cited'].map(
+              {['Free plan available', 'No card required', 'Every answer cited'].map(
                 (item) => (
                   <span key={item} className="inline-flex items-center gap-1.5">
                     <span

@@ -104,6 +104,31 @@ export const refreshPlan = async () => {
   return loading;
 };
 
+// Signing out, or in as someone else (even without a page reload), must not
+// leave the previous account's plan on screen: start from the stored user, then
+// ask the server. 'auth-changed' comes from lib/api.js; 'storage' from logouts
+// and other tabs.
+const readToken = () => {
+  try {
+    return localStorage.getItem('authToken') || '';
+  } catch {
+    return '';
+  }
+};
+let lastToken = typeof window !== 'undefined' ? readToken() : '';
+const onAuthChange = () => {
+  const token = readToken();
+  if (token === lastToken) return;
+  lastToken = token;
+  state = build(storedPlan(), null, { confirmed: false });
+  emit();
+  if (token) refreshPlan();
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('auth-changed', onAuthChange);
+  window.addEventListener('storage', onAuthChange);
+}
+
 const subscribe = (listener) => {
   listeners.add(listener);
   return () => listeners.delete(listener);

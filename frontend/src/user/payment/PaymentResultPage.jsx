@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import SiteNav from '../components/bound/SiteNav';
 import SiteFoot from '../components/bound/SiteFoot';
 import Reveal from '../components/Reveal';
-import { confirmCheckout, paymentStatus } from '../lib/payments';
+import { PENDING_CHECKOUT_KEY, confirmCheckout, paymentStatus, pendingCheckoutPlan } from '../lib/payments';
 import { PLANS, planKey, refreshPlan, setPlanFromServer } from '../lib/plan';
 import { toast } from '../../lib/toast';
 
@@ -46,6 +46,19 @@ const PaymentResultPage = () => {
     }
     let live = true;
     let attempts = 0;
+    // The plan this checkout was for. Switching from Standard to Premium, the
+    // account is already "paid" before Stripe confirms anything, so being paid
+    // alone proves nothing: the account must show the plan that was bought.
+    const expected = pendingCheckoutPlan();
+    const isTheNewPlan = (raw) => !expected || planKey(raw) === planKey(expected);
+    const done = (raw) => {
+      try {
+        localStorage.removeItem(PENDING_CHECKOUT_KEY);
+      } catch {
+        /* nothing to tidy */
+      }
+      applyPlan(raw);
+    };
 
     const ask = async () => {
       // First time round, settle it directly with Stripe rather than waiting
@@ -54,15 +67,15 @@ const PaymentResultPage = () => {
       if (attempts === 0) {
         const settled = await confirmCheckout(params.get('session_id'));
         if (!live) return;
-        if (settled?.is_paid) {
-          applyPlan(settled.plan);
+        if (settled?.confirmed && settled?.is_paid && isTheNewPlan(settled.plan)) {
+          done(settled.plan);
           return;
         }
       }
       const status = await paymentStatus();
       if (!live) return;
-      if (status?.is_paid) {
-        applyPlan(status.plan);
+      if (status?.is_paid && isTheNewPlan(status.plan)) {
+        done(status.plan);
         return;
       }
       attempts += 1;

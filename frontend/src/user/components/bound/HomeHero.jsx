@@ -18,7 +18,7 @@ import useIsLoggedIn from '../../hooks/useIsLoggedIn';
 const DEFAULT_HIGHLIGHTS = [
   { icon: '/assets/thunder.svg', label: 'Answers in seconds' },
   { icon: 'format_quote', label: 'Every answer cited' },
-  { icon: 'school', label: 'Free for students' },
+  { icon: 'search', label: 'Free plan, no card' },
 ];
 
 const HomeHero = ({

@@ -32,7 +32,7 @@ const ContactPage = () => {
           eyebrow="Meanwhile"
           title="You do not have to"
           accent="wait to start."
-          lede="Student access is free on an institutional address, and the archive opens the moment your account is confirmed."
+          lede="The Free plan needs no card: create an account and start searching straight away."
           primary={{ to: '/signup', label: 'Create free account' }}
           secondary={{ to: '/faq', label: 'Read the FAQ' }}
         />

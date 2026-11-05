@@ -10,6 +10,18 @@
 
 import apiFetch from '../../lib/api';
 
+export const PENDING_CHECKOUT_KEY = 'pendingCheckout';
+
+/** The plan the last checkout was opened for, if it was opened in the last day. */
+export const pendingCheckoutPlan = () => {
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || 'null');
+    return pending && Date.now() - pending.at < 24 * 3600 * 1000 ? pending.plan : null;
+  } catch {
+    return null;
+  }
+};
+
 /** The signed-in user, as the login screens stored them. */
 export const currentUser = () => {
   try {
@@ -19,7 +31,7 @@ export const currentUser = () => {
   }
 };
 
-/** The id the server keys plans by (falls back to email for older sessions). */
+/** Whether someone is signed in. The server identifies them by their token. */
 export const currentUserId = () => {
   const u = currentUser();
   return u?.id || u?.user?.id || u?.email || u?.user?.email || '';
@@ -57,7 +69,7 @@ export async function confirmCheckout(sessionId) {
     const res = await apiFetch('/api/payments/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, user_id: id }),
+      body: JSON.stringify({ session_id: sessionId }),
     });
     return res.ok ? await readJson(res) : null;
   } catch {
@@ -70,7 +82,7 @@ export async function paymentStatus() {
   const id = currentUserId();
   if (!id) return null;
   try {
-    const res = await apiFetch(`/api/payments/status?user_id=${encodeURIComponent(id)}`);
+    const res = await apiFetch('/api/payments/status');
     return res.ok ? await readJson(res) : null;
   } catch {
     return null;
@@ -96,7 +108,7 @@ export async function startCheckout(plan = 'standard') {
     res = await apiFetch('/api/payments/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id, plan }),
+      body: JSON.stringify({ plan }),
     });
   } catch {
     return { ok: false, reason: 'network', message: 'Could not reach the payment service.' };
@@ -113,6 +125,13 @@ export async function startCheckout(plan = 'standard') {
   }
   if (!data.url) return { ok: false, reason: 'error', message: 'No checkout link was returned.' };
 
+  // Remembered for the success page, which must not say "payment successful"
+  // until the account actually shows THIS plan (a switch starts from a paid one).
+  try {
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({ plan, at: Date.now() }));
+  } catch {
+    /* the success page then falls back to the server's word */
+  }
   // Leave the app for Stripe's hosted page.
   window.location.assign(data.url);
   return { ok: true };
@@ -126,11 +145,7 @@ export async function cancelSubscription() {
   if (!id) return { ok: false, message: 'Please sign in first.' };
 
   try {
-    const res = await apiFetch('/api/payments/cancel-subscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id }),
-    });
+    const res = await apiFetch('/api/payments/cancel-subscription', { method: 'POST' });
     const data = await readJson(res);
     if (!res.ok) {
       return { ok: false, message: data?.detail || 'Could not cancel subscription.' };
@@ -149,11 +164,7 @@ export async function reactivateSubscription() {
   if (!id) return { ok: false, message: 'Please sign in first.' };
 
   try {
-    const res = await apiFetch('/api/payments/reactivate-subscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: id }),
-    });
+    const res = await apiFetch('/api/payments/reactivate-subscription', { method: 'POST' });
     const data = await readJson(res);
     if (!res.ok) {
       return { ok: false, message: data?.detail || 'Could not reactivate subscription.' };

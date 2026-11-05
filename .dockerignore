@@ -14,6 +14,8 @@ build
 .vscode
 .env
 **/.env
+.env.example
+**/.env.example
 api.txt
 *.log
 test_*.py
@@ -35,6 +37,9 @@ backend/scratch/
 chroma_db/
 backend/chroma_db/
 backend/uploads/*
+# Search data and secrets are mounted at run time (docker-compose.yml), never baked in.
+backend/lexical.db*
+backend/secrets/
 backend/app/connection/*
 backend/app/query/*
 

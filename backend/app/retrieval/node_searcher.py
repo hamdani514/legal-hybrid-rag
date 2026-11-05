@@ -241,19 +241,63 @@ def search_all_judgments(
         results = sections_from_candidates(candidates, judgment_ids, top_k_per_judgment)
 
     # Any judgment the candidate pool did not cover well enough gets its own
-    # search. Sequential on purpose: these are fast and local, and a simple
-    # loop keeps the ordering deterministic.
-    for judgment_id in judgment_ids:
-        if len(results.get(judgment_id) or []) < top_k_per_judgment:
-            found = search_sections_for_judgment(
-                query_vector, judgment_id, top_k=top_k_per_judgment
-            )
+    # search: all of them at once (see sections_for_judgments).
+    needed = [j for j in judgment_ids if len(results.get(j) or []) < top_k_per_judgment]
+    if needed:
+        try:
+            found_by = sections_for_judgments(query_vector, needed, top_k_per_judgment)
+        except Exception as e:  # noqa: BLE001 - the slower path still answers
+            logger.warning(f"batched section search failed, searching one judgment at a time: {e}")
+            found_by = {j: search_sections_for_judgment(query_vector, j, top_k=top_k_per_judgment) for j in needed}
+        for judgment_id in needed:
+            found = found_by.get(judgment_id) or []
             # Keep whichever pass found more; the reranked set wins on ties
             # because its scores come from the better model.
             if len(found) > len(results.get(judgment_id) or []):
                 results[judgment_id] = found
 
     return results
+
+
+def sections_for_judgments(query_vector: np.ndarray, judgment_ids: list[str], top_k: int = 3) -> dict[str, list[dict]]:
+    """Each judgment's best-matching sections, for many judgments in one read.
+
+    Searching judgment by judgment cost two filtered Chroma calls each (a count
+    and a query) — about 2 s of every search for ten judgments, and the stage
+    that grew most when several users searched at once. A judgment has only a
+    few dozen section chunks, so this fetches all of them for every judgment in
+    a single call and scores them exactly (cosine similarity, the collection's
+    own metric), instead of asking the approximate index ten times.
+    """
+    got = collection.get(
+        where={"$and": [{"level": {"$eq": SECTION_LEVEL}}, {"file_id": {"$in": list(judgment_ids)}}]},
+        include=["embeddings", "metadatas"],
+    )
+    embeddings = got.get("embeddings")
+    if embeddings is None or len(embeddings) == 0:
+        return {}
+    matrix = np.asarray(embeddings, dtype=np.float32)
+    query = np.asarray(query_vector, dtype=np.float32).ravel()
+    norms = np.linalg.norm(matrix, axis=1) * (np.linalg.norm(query) or 1.0)
+    scores = (matrix @ query) / np.where(norms == 0, 1.0, norms)
+
+    per_judgment: dict[str, list[dict]] = {}
+    for vector_id, meta, score in zip(got.get("ids") or [], got.get("metadatas") or [], scores):
+        meta = meta or {}
+        judgment_id = meta.get("file_id")
+        per_judgment.setdefault(judgment_id, []).append({
+            "judgment_id": judgment_id,
+            "mongo_doc_id": meta.get("node_id", vector_id),
+            "section_type": meta.get("section_type", ""),
+            "heading": meta.get("heading", ""),
+            "chunk_index": meta.get("chunk_index", 0),
+            "score": float(score),
+        })
+    out = {}
+    for judgment_id, chunks in per_judgment.items():
+        chunks.sort(key=lambda c: c["score"], reverse=True)
+        out[judgment_id] = dedupe_to_sections(chunks[: top_k * CHUNKS_PER_SECTION], top_k)
+    return out
 
 
 if __name__ == "__main__":

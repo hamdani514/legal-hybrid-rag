@@ -21,8 +21,9 @@ Two lookups
    tokens are weighted by rarity across all party names in the corpus, so a
    query naming "Khan" alone hits nothing while "Zafarullah Khan Jamali" hits
    the one case. A party name P matches when the query covers >= 60% of P's
-   rarity-weighted tokens and at least two of them. Score 0.5 + 0.4*coverage
-   (0.74..0.9), always below a case-key hit.
+   rarity-weighted tokens and at least two of them, AND the judgment's parties
+   together explain >= 60% of the query's own name tokens (MIN_QUERY_COVERAGE).
+   Score 0.5 + 0.4 * (party coverage x query coverage), always below a case-key hit.
 
 Institutions never identify a case
 ----------------------------------
@@ -87,6 +88,11 @@ CACHE_CHECK_SECONDS = 30
 
 MIN_COVERAGE = 0.6
 MIN_MATCHED_TOKENS = 2
+# A judgment must also explain this share of the names the QUERY gives (rarity-
+# weighted). Without it a short party name inside a longer query matched in full:
+# "Mir Saleem Ahmed Khosa versus Zafarullah Khan Jamali" pinned "Saleem Khan v
+# The State" (it explains 21% of the query) beside the right case (100%).
+MIN_QUERY_COVERAGE = 0.6
 
 # Tokens that say nothing about WHICH party: honorifics, legal roles, filler.
 _PARTY_STOP = frozenset("""
@@ -318,6 +324,14 @@ class ExactMatchRetriever:
                 best = max(best, coverage)
         return 0.5 + 0.4 * best if best else 0.0
 
+    def _query_coverage(self, query_tokens: set[str], entry: _Entry) -> float:
+        """Share of the query's name tokens (rarity-weighted) this judgment's parties explain."""
+        mass = sum(self._idf.get(t, 1.0) for t in query_tokens)
+        explained = set()
+        for name in entry["parties"]:
+            explained |= {t for t in match_tokens(name) if t in query_tokens}
+        return sum(self._idf.get(t, 1.0) for t in explained) / mass if mass else 0.0
+
     def match(self, analysis: QueryAnalysis, k: int) -> list[Candidate]:
         text = analysis.get("cleaned") or analysis.get("raw") or ""
         refs = analysis.get("case_refs")
@@ -345,8 +359,12 @@ class ExactMatchRetriever:
                 if judgment_id in scored:
                     continue
                 score = self._party_score(query_tokens, entry)
-                if score:
-                    scored[judgment_id] = (score, "party name", not narrative)
+                if not score:
+                    continue
+                qcov = self._query_coverage(query_tokens, entry)
+                if qcov >= MIN_QUERY_COVERAGE:
+                    party_cov = (score - 0.5) / 0.4
+                    scored[judgment_id] = (0.5 + 0.4 * party_cov * qcov, "party name", not narrative)
 
         ranked = sorted(scored.items(), key=lambda kv: (-kv[1][0], kv[0]))[:k]
         out: list[Candidate] = []

@@ -18,12 +18,8 @@ import { toast } from '../../lib/toast';
  */
 const PRICING_FAQS = [
   {
-    q: 'How does student verification work?',
-    a: 'Register with your official law faculty or university email (.edu.pk or recognized institution). Complimentary research access is automatically activated for your academic session.',
-  },
-  {
-    q: 'What payment methods do you support in Pakistan?',
-    a: 'We accept all major Pakistani payment methods including Visa, Mastercard, PayPak, Raast direct transfer, and mobile wallets (JazzCash and Nayapay).',
+    q: 'How can I pay?',
+    a: 'By debit or credit card (Visa, Mastercard and the other cards Stripe accepts), on Stripe’s secure checkout page. Your card details go to Stripe and never reach our servers.',
   },
   {
     q: 'Can I upgrade, downgrade or cancel anytime?',
@@ -38,12 +34,12 @@ const PRICING_FAQS = [
     a: 'Two searches a day. Each search returns up to 10 relevant judgments, each shown as a short case summary. The research tools are visible but locked until you subscribe.',
   },
   {
-    q: 'Do you offer custom chamber packages for law firms?',
-    a: 'Yes. For chambers and legal teams with multiple associates, we offer pooled research sessions, shared case history, and direct invoice billing.',
+    q: 'Do you offer plans for chambers or law firms?',
+    a: 'Not yet: every account is for one person. If you need access for a team, write to us through the contact page and we will tell you what we can offer.',
   },
   {
-    q: 'Is my research query data private and confidential?',
-    a: 'Strictly yes. We honor advocate-client privilege standards: your queries and research trails are encrypted and never used to train or refine public AI models.',
+    q: 'Is my research private?',
+    a: 'Your searches and conversations are visible only to you, and you can delete them at any time. To analyse a judgment, your question and passages from that judgment are sent to Google’s Gemini service, which processes them under Google’s API terms. We do not sell your data.',
   },
 ];
 
@@ -98,11 +94,11 @@ const PricingPage = () => {
       <main id="main-content" className="w-full flex-1">
         <HomeHero
           badge="Transparent Subscription Plans · Zero Hidden Tiers"
-          title="Predictable pricing for students and"
-          accent="chambers of every size"
+          title="Simple, predictable pricing"
+          accent="for every practitioner"
           description="Start free with summaries of the judgments that match your case. Standard and Premium unlock every research tool, and differ only in how many searches you get each day."
           primaryCta={{ to: '/signup', label: 'Get started free', icon: 'arrow_forward' }}
-          secondaryCta={{ to: '/contact', label: 'Chamber bulk onboarding', icon: 'corporate_fare' }}
+          secondaryCta={{ to: '/contact', label: 'Ask us a question', icon: 'mail' }}
           highlights={[
             { icon: 'search', label: 'Free · 2 searches a day' },
             { icon: 'balance', label: 'Standard · $10 / mo' },
@@ -194,7 +190,7 @@ const PricingPage = () => {
               icon="help"
               title={<span id="pricing-faq-title">Frequently asked billing &</span>}
               accent="subscription questions"
-              lede="Have questions about student enrolment, payment methods, or invoicing? Find answers below."
+              lede="Questions about plans, paying or cancelling? Find answers below."
               className="mx-auto"
             />
 

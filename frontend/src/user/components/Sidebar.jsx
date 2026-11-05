@@ -20,6 +20,7 @@ const Sidebar = ({
   loading = false,
   activeTab,
   isOpen = true,
+  mobile = false,
   onToggleSidebar,
   onLogout,
 }) => {
@@ -396,6 +397,17 @@ const Sidebar = ({
       </>
     );
 
+  // ── Phone, drawer closed: nothing on screen (the top bar opens it) ──────────
+  if (!isOpen && mobile) {
+    return (
+      <DeactivateModal
+        isOpen={deactivateModalOpen}
+        onClose={() => setDeactivateModalOpen(false)}
+        userEmail={userEmail}
+      />
+    );
+  }
+
   // ── Collapsed ChatGPT-style Rail ───────────────────────────────────────────
   if (!isOpen) {
     return (
@@ -441,8 +453,18 @@ const Sidebar = ({
   // ── Expanded Full Sidebar ──────────────────────────────────────────────────
   return (
     <>
+      {/* Phone: the drawer sits over the page; tapping outside it closes it. */}
+      {mobile && (
+        <div
+          aria-hidden="true"
+          onClick={onToggleSidebar}
+          className="fixed inset-0 z-40 bg-ash-900/40 backdrop-blur-[1px] animate-[fadeIn_0.2s_ease-out]"
+        />
+      )}
       <aside
-        className="h-full w-72 fixed left-0 top-0 bg-ash-100 flex flex-col p-5 gap-y-4 z-50 border-r border-ash-200/70 transition-all duration-300 ease-in-out"
+        className={`h-full w-72 fixed left-0 top-0 bg-ash-100 flex flex-col p-5 gap-y-4 z-50 border-r border-ash-200/70 transition-all duration-300 ease-in-out ${
+          mobile ? 'max-w-[85vw] shadow-card-lg' : ''
+        }`}
       >
         {/* Clicking anywhere else closes an open session menu. */}
         {menuFor && <div className="fixed inset-0 z-40" onClick={() => setMenuFor('')} />}

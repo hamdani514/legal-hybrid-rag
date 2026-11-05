@@ -125,7 +125,7 @@ const ResetPasswordStep = ({
           Set New Password
         </h1>
         <p className="font-prose text-sm leading-5 text-ash-600">
-          Choose a secure, bank-grade passphrase for your Verdict AI workspace.
+          Choose a strong password for your Verdict AI account.
         </p>
       </div>
 

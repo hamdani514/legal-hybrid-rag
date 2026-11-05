@@ -24,7 +24,7 @@ const ASSURANCES = [
   {
     icon: 'lock',
     title: 'Your research stays yours',
-    note: 'Queries are never used to train the underlying model.',
+    note: 'Your conversations are visible only to you.',
   },
 ];
 

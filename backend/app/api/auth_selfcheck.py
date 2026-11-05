@@ -125,7 +125,7 @@ async def run() -> None:
         setattr(auth_mod, name, _noop)
 
     original = {k: getattr(settings, k) for k in
-                ("AUTH_REQUIRED", "JWT_SECRET", "USER_SEARCHES_PER_MINUTE", "USER_ANSWERS_PER_DAY", "GOOGLE_CLIENT_ID")}
+                ("JWT_SECRET", "USER_SEARCHES_PER_MINUTE", "USER_ANSWERS_PER_DAY", "GOOGLE_CLIENT_ID")}
     settings.JWT_SECRET = "selfcheck-" + "k" * 40
 
     await connect_db()
@@ -134,7 +134,8 @@ async def run() -> None:
     users, admins = db.database.users, db.database.admins
     await users.insert_many([
         {"id": "USr-1001", "username": "legacy", "name": "Legacy User", "email": "legacy@gmail.com",
-         "plan": "Standard", "status": "Active", "password": "Legacy#Pass1"},
+         "plan": "Standard", "status": "Active", "password": "Legacy#Pass1",
+         "dailyQueries": {"count": 0, "date": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)}},
         {"id": "USr-1002", "username": "gone", "name": "Gone User", "email": "gone@gmail.com",
          "plan": "Standard", "status": "Inactive", "isActive": False, "password": "Gone#Pass12"},
     ])
@@ -145,17 +146,9 @@ async def run() -> None:
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         search_body = {"query": "constable dismissed from service appeal"}
 
-        # ================= AUTH_REQUIRED = False: behaves as before ============
-        settings.AUTH_REQUIRED = False
         security.limiter.reset()
-        r = await c.post("/query/search", json=search_body)
-        check("auth off: anonymous /query/search works", r.status_code == 200, f"{r.status_code}")
-        r = await c.get("/api/admin/users")
-        check("auth off: anonymous admin GET /api/admin/users works", r.status_code == 200, f"{r.status_code}")
-        r = await c.get("/api/admin/jobs", headers=_bearer("garbage"))
-        check("auth off: an invalid token is ignored, not rejected", r.status_code == 200, f"{r.status_code}")
         r = await c.get("/api/health")
-        check("auth off: health public", r.status_code == 200, f"{r.status_code}")
+        check("health public", r.status_code == 200, f"{r.status_code}")
 
         # ================= logins ============================================
         r = await c.post("/api/auth/login", json={"email": "legacy@gmail.com", "password": "wrong"})
@@ -166,8 +159,8 @@ async def run() -> None:
         r = await c.post("/api/auth/login", json={"email": "legacy@gmail.com", "password": "Legacy#Pass1"})
         body = r.json()
         check("legacy plain-text user logs in", r.status_code == 200 and "token" in body, f"{r.status_code}")
-        check("login returns the same user shape as before",
-              set(body.get("user", {})) == {"id", "username", "name", "email", "plan", "message"},
+        check("login returns the user, never a password",
+              {"id", "name", "email", "plan"} <= set(body.get("user", {})) and "password" not in body.get("user", {}),
               str(sorted(body.get("user", {}))))
         user_token = body["token"]
         doc = await users.find_one({"id": "USr-1001"})
@@ -186,7 +179,8 @@ async def run() -> None:
         r = await c.post("/api/auth/admin/login", json={"adminid": "root@example.com", "password": "Admin#Pass1"})
         body = r.json()
         check("admin logs in", r.status_code == 200 and "token" in body, f"{r.status_code}")
-        check("admin user shape unchanged", set(body.get("user", {})) == {"adminid", "name", "role", "message"})
+        check("admin login returns the admin, never a password",
+              {"adminid", "name", "role"} <= set(body.get("user", {})) and "password" not in body.get("user", {}))
         admin_token = body["token"]
         adoc = await admins.find_one({"adminid": "root@example.com"})
         check("admin legacy password upgraded to bcrypt", security.is_bcrypt_hash(adoc["password"]))
@@ -196,25 +190,29 @@ async def run() -> None:
               and security.decode_token(admin_token)["role"] == "admin"
               and security.decode_token(user_token)["sub"] == "USr-1001")
 
-        # ================= staying signed in (AUTH_REQUIRED off) ==============
-        await _refresh_rules(c, user_token, admin_token, "auth off")
-        await _no_401_for_signed_in(c, user_token, "auth off")
+        # ================= signup: pending until the emailed code, then a hash ==
+        codes = {}
 
-        # ================= signup stores a hash ==============================
+        async def capture_otp(_name, email, otp):
+            codes[email] = otp
+        auth_mod.send_signup_otp_email = capture_otp
         r = await c.post("/api/auth/signup", json={
-            "username": "Ayesha", "name": "Ayesha Khan", "email": "ayesha@gmail.com", "org": "",
-            "plan": "Standard", "password": "Strong#Pass9", "dob": "1990-01-01"})
-        check("signup succeeds", r.status_code == 200, f"{r.status_code} {r.text[:120]}")
+            "first_name": "Ayesha", "last_name": "Khan", "name": "Ayesha Khan", "email": "ayesha@gmail.com",
+            "plan": "Standard", "password": "Strong#Pass9"})
+        check("signup succeeds and asks for the emailed code", r.status_code == 200 and r.json().get("require_otp"),
+              f"{r.status_code} {r.text[:120]}")
         check("signup response omits password", "password" not in r.json())
+        check("no account exists until the code is verified", await users.find_one({"email": "ayesha@gmail.com"}) is None)
+        r = await c.post("/api/auth/verify-signup-otp", json={"email": "ayesha@gmail.com", "otp": codes.get("ayesha@gmail.com", "")})
+        check("the code creates the account", r.status_code == 200, f"{r.status_code}")
         sdoc = await users.find_one({"email": "ayesha@gmail.com"})
         check("signup stores bcrypt hash", sdoc and security.is_bcrypt_hash(sdoc["password"]))
-        # Standard is the PAID tier now ($10/month via Stripe), so a signup
-        # that asks for a paid plan must still land on Free - the only thing
-        # that may grant Standard is a confirmed Stripe payment.
+        # Only a confirmed Stripe payment may grant a paid plan.
         check("signup cannot self-assign a paid plan; it lands on Free",
               sdoc and sdoc["plan"] == "Free", sdoc and sdoc["plan"])
         r = await c.post("/api/auth/login", json={"email": "ayesha@gmail.com", "password": "Strong#Pass9"})
         check("new signup logs in", r.status_code == 200, f"{r.status_code}")
+        ayesha_token = r.json().get("token", "")
 
         # ================= reset-password stores a hash =====================
         await users.update_one({"id": "USr-1001"}, {"$set": {
@@ -230,45 +228,45 @@ async def run() -> None:
         check("login with reset password", r.status_code == 200, f"{r.status_code}")
 
         # ================= deactivate: CONFIRM no longer bypasses ===========
-        r = await c.post("/api/auth/deactivate", json={"email": "ayesha@gmail.com", "password": "CONFIRM"})
+        r = await c.post("/api/auth/deactivate", json={"email": "ayesha@gmail.com", "password": "CONFIRM"},
+                         headers=_bearer(ayesha_token))
         check("deactivate with 'CONFIRM' on a password account -> 403", r.status_code == 403, f"{r.status_code}")
 
-        # ================= AUTH_REQUIRED = True ==============================
-        settings.AUTH_REQUIRED = True
+        # ================= protected routes ==================================
         security.limiter.reset()
         r = await c.post("/query/search", json=search_body)
-        check("auth on: unauthenticated /query/search -> 401", r.status_code == 401, f"{r.status_code}")
+        check("unauthenticated /query/search -> 401", r.status_code == 401, f"{r.status_code}")
         r = await c.delete("/api/admin/jobs/x")
-        check("auth on: unauthenticated DELETE /api/admin/jobs/x -> 401", r.status_code == 401, f"{r.status_code}")
+        check("unauthenticated DELETE /api/admin/jobs/x -> 401", r.status_code == 401, f"{r.status_code}")
         r = await c.delete("/api/admin/jobs/x", headers=_bearer(user_token))
-        check("auth on: user token on DELETE /api/admin/jobs/x -> 403", r.status_code == 403, f"{r.status_code}")
+        check("user token on DELETE /api/admin/jobs/x -> 403", r.status_code == 403, f"{r.status_code}")
         r = await c.get("/api/admin/users", headers=_bearer(user_token))
-        check("auth on: user token on GET /api/admin/users -> 403", r.status_code == 403, f"{r.status_code}")
+        check("user token on GET /api/admin/users -> 403", r.status_code == 403, f"{r.status_code}")
         r = await c.get("/api/admin/users", headers=_bearer(admin_token))
-        check("auth on: admin token on GET /api/admin/users -> 200", r.status_code == 200, f"{r.status_code}")
+        check("admin token on GET /api/admin/users -> 200", r.status_code == 200, f"{r.status_code}")
         r = await c.get("/api/admin/jobs", headers=_bearer(admin_token))
-        check("auth on: admin token on GET /api/admin/jobs -> 200", r.status_code == 200, f"{r.status_code}")
+        check("admin token on GET /api/admin/jobs -> 200", r.status_code == 200, f"{r.status_code}")
         r = await c.post("/embeddings/generate", json={}, headers=_bearer(user_token))
-        check("auth on: user token on /embeddings/generate -> 403", r.status_code == 403, f"{r.status_code}")
+        check("user token on /embeddings/generate -> 403", r.status_code == 403, f"{r.status_code}")
         r = await c.post("/query/search", json=search_body, headers=_bearer("not.a.jwt"))
-        check("auth on: garbage token -> 401", r.status_code == 401, f"{r.status_code}")
+        check("garbage token -> 401", r.status_code == 401, f"{r.status_code}")
         expired = security.jwt.encode({"sub": "USr-1001", "role": "user", "exp": int(time.time()) - 1},
                                       settings.JWT_SECRET, algorithm="HS256")
         r = await c.post("/query/search", json=search_body, headers=_bearer(expired))
-        check("auth on: expired token -> 401", r.status_code == 401, f"{r.status_code}")
+        check("expired token -> 401", r.status_code == 401, f"{r.status_code}")
         forged = security.jwt.encode({"sub": "x", "role": "admin", "exp": int(time.time()) + 600},
                                      "long_random_string_here", algorithm="HS256")
         r = await c.get("/api/admin/users", headers=_bearer(forged))
-        check("auth on: token forged with the placeholder secret -> 401", r.status_code == 401, f"{r.status_code}")
+        check("token forged with the placeholder secret -> 401", r.status_code == 401, f"{r.status_code}")
         r = await c.post("/query/search", json=search_body, headers=_bearer(user_token))
-        check("auth on: user token on /query/search -> 200", r.status_code == 200, f"{r.status_code}")
+        check("user token on /query/search -> 200", r.status_code == 200, f"{r.status_code}")
         r = await c.get("/api/auth/me", headers=_bearer(user_token))
-        check("auth on: /api/auth/me returns principal", r.status_code == 200 and r.json()["principal"]["sub"] == "USr-1001")
+        check("/api/auth/me returns principal", r.status_code == 200 and r.json()["principal"]["sub"] == "USr-1001")
 
-        # ================= staying signed in (AUTH_REQUIRED on) ===============
+        # ================= staying signed in ==================================
         security.limiter.reset()
-        await _refresh_rules(c, user_token, admin_token, "auth on")
-        await _no_401_for_signed_in(c, user_token, "auth on")
+        await _refresh_rules(c, user_token, admin_token, "session")
+        await _no_401_for_signed_in(c, user_token, "session")
         security.limiter.reset()
 
         # public allowlist still reachable without a token
@@ -282,12 +280,12 @@ async def run() -> None:
             ("get", "/api/health", {}),
         ]:
             r = await getattr(c, method)(url, **kw)
-            check(f"auth on: public {method.upper()} {url.split('?')[0]} not 401/403",
+            check(f"public {method.upper()} {url.split('?')[0]} not 401/403",
                   r.status_code not in (401, 403), f"{r.status_code}")
         r = await c.get("/api/admin/judgments/nope/download")
-        check("auth on: download without token -> 401", r.status_code == 401, f"{r.status_code}")
+        check("download without token -> 401", r.status_code == 401, f"{r.status_code}")
         r = await c.get(f"/api/admin/judgments/nope/download?token={user_token}")
-        check("auth on: download with ?token= passes the guard", r.status_code not in (401, 403), f"{r.status_code}")
+        check("download with ?token= passes the guard", r.status_code not in (401, 403), f"{r.status_code}")
 
         # ================= per-user limits ===================================
         security.limiter.reset()
@@ -310,24 +308,6 @@ async def run() -> None:
         check("daily answer limit -> 429 after 3", codes == [200, 200, 200, 429], str(codes))
         settings.USER_ANSWERS_PER_DAY = original["USER_ANSWERS_PER_DAY"]
 
-        # Anonymous limiting is opt-in (RATE_LIMIT_ANONYMOUS, default False):
-        # behind the dev proxy every browser is 127.0.0.1, so an IP limit with
-        # auth off would make all users share one allowance. Test both modes.
-        settings.AUTH_REQUIRED = False
-        original_anon = getattr(settings, "RATE_LIMIT_ANONYMOUS", False)
-        settings.USER_SEARCHES_PER_MINUTE = 2
-
-        settings.RATE_LIMIT_ANONYMOUS = False
-        security.limiter.reset()
-        codes = [(await c.post("/query/search", json=search_body)).status_code for _ in range(3)]
-        check("auth off, anonymous limit off (default): no 429", codes == [200, 200, 200], str(codes))
-
-        settings.RATE_LIMIT_ANONYMOUS = True
-        security.limiter.reset()
-        codes = [(await c.post("/query/search", json=search_body)).status_code for _ in range(3)]
-        check("auth off, anonymous limit on: limited by IP", codes == [200, 200, 429], str(codes))
-
-        settings.RATE_LIMIT_ANONYMOUS = original_anon
         settings.USER_SEARCHES_PER_MINUTE = original["USER_SEARCHES_PER_MINUTE"]
         security.limiter.reset()
 
@@ -353,17 +333,17 @@ async def run() -> None:
         check("google: account created without password", gdoc is not None and not gdoc.get("password"))
 
         # ================= admin account routes: hashes in, never out =========
-        settings.AUTH_REQUIRED = False
+        admin = _bearer(admin_token)
         for path in ("/api/admin/users/login", "/api/admin/login"):
-            r = await c.post(path, json={"email": "legacy@gmail.com", "adminid": "x", "password": "x"})
+            r = await c.post(path, json={"email": "legacy@gmail.com", "adminid": "x", "password": "x"}, headers=admin)
             check(f"legacy plain-text login {path} removed", r.status_code in (404, 405), f"{r.status_code}")
 
-        r = await c.get("/api/admin/users")
+        r = await c.get("/api/admin/users", headers=admin)
         check("GET /users returns no passwords",
               r.status_code == 200 and all("password" not in u for u in r.json()["users"]))
         r = await c.post("/api/admin/users", json={
             "username": "bilal", "email": "bilal@gmail.com", "name": "Bilal Khan", "org": "Firm",
-            "plan": "Standard", "password": "Admin#Made1", "dob": "1990-01-01"})
+            "plan": "Standard", "password": "Admin#Made1", "dob": "1990-01-01"}, headers=admin)
         check("POST /users: 200, no password in response", r.status_code == 200 and "password" not in r.json(),
               f"{r.status_code}")
         bdoc = await users.find_one({"email": "bilal@gmail.com"})
@@ -372,50 +352,46 @@ async def run() -> None:
         check("admin-created user can log in", r.status_code == 200, f"{r.status_code}")
         # Admins may view and delete users, never edit them.
         edit = {k: bdoc.get(k) for k in ("username", "email", "name", "org", "plan", "dob")}
-        r = await c.put(f"/api/admin/users/{bdoc['id']}", json={**edit, "org": "New Firm", "password": ""})
+        r = await c.put(f"/api/admin/users/{bdoc['id']}", json={**edit, "org": "New Firm", "password": ""}, headers=admin)
         check("PUT /users/{id} (edit user) removed", r.status_code in (404, 405), f"{r.status_code}")
-        r = await c.put(f"/api/admin/users/{bdoc['id']}/plan", json={"plan": "Premium"})
+        r = await c.put(f"/api/admin/users/{bdoc['id']}/plan", json={"plan": "Premium"}, headers=admin)
         check("PUT /users/{id}/plan (change plan) removed", r.status_code in (404, 405), f"{r.status_code}")
         after = await users.find_one({"email": "bilal@gmail.com"})
         check("user record unchanged by the removed edit routes",
               after["org"] == bdoc["org"] and after["plan"] == bdoc["plan"] and after["password"] == bdoc["password"])
-        r = await c.delete(f"/api/admin/users/{bdoc['id']}")
+        r = await c.delete(f"/api/admin/users/{bdoc['id']}", headers=admin)
         check("DELETE /users/{id} still works", r.status_code == 200
               and await users.find_one({"email": "bilal@gmail.com"}) is None, f"{r.status_code}")
 
         admin_body = {"adminid": "ops@example.com", "name": "Ops", "email": "ops@gmail.com",
                       "role": "admin", "dob": "1985-05-05"}
-        r = await c.post("/api/admin/admins", json={**admin_body, "password": "Ops#Pass123"})
+        r = await c.post("/api/admin/admins", json={**admin_body, "password": "Ops#Pass123"}, headers=admin)
         odoc = await admins.find_one({"adminid": "ops@example.com"})
         check("POST /admins stores bcrypt hash", r.status_code == 200 and odoc
               and security.is_bcrypt_hash(odoc.get("password")), f"{r.status_code}")
-        r = await c.get("/api/admin/admins")
+        r = await c.get("/api/admin/admins", headers=admin)
         check("GET /admins returns no passwords",
               r.status_code == 200 and all("password" not in a for a in r.json()["admins"]))
-        r = await c.get("/api/admin/profile", params={"adminid": "ops@example.com"})
+        r = await c.get("/api/admin/profile", params={"adminid": "ops@example.com"}, headers=admin)
         check("GET /profile returns no password", r.status_code == 200 and "password" not in r.json())
-        r = await c.put("/api/admin/admins/ops@example.com", json={**admin_body, "name": "Ops Two", "password": ""})
+        r = await c.put("/api/admin/admins/ops@example.com", json={**admin_body, "name": "Ops Two", "password": ""}, headers=admin)
         after = await admins.find_one({"adminid": "ops@example.com"})
         check("PUT /admins blank password keeps the hash",
               r.status_code == 200 and after["password"] == odoc["password"] and after["name"] == "Ops Two")
         r = await c.put("/api/admin/profile", json={"original_adminid": "ops@example.com", "adminid": "ops@example.com",
-                                                    "password": "Prof#Pass99", "dob": "1985-05-05", "name": "Ops"})
+                                                    "password": "Prof#Pass99", "dob": "1985-05-05", "name": "Ops"}, headers=admin)
         r2 = await c.post("/api/auth/admin/login", json={"adminid": "ops@example.com", "password": "Prof#Pass99"})
         check("PUT /profile new password -> admin can log in with it",
               r.status_code == 200 and r2.status_code == 200, f"{r.status_code}/{r2.status_code}")
 
     # ================= startup gate ========================================
-    settings.AUTH_REQUIRED = True
     settings.JWT_SECRET = "long_random_string_here"
     try:
         security.check_security_config()
         refused = False
     except RuntimeError:
         refused = True
-    check("startup refuses placeholder secret when AUTH_REQUIRED", refused)
-    settings.AUTH_REQUIRED = False
-    security.check_security_config()  # only warns
-    check("startup with placeholder secret allowed when AUTH_REQUIRED is False", True)
+    check("startup refuses the placeholder secret", refused)
 
     for k, v in original.items():
         setattr(settings, k, v)

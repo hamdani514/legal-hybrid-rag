@@ -28,7 +28,7 @@ const AuthSuccessStep = ({
         Password Successfully Reset
       </h1>
       <p className="font-prose text-sm leading-6 text-ash-600 max-w-[340px] mb-6">
-        Your security credentials for <strong className="text-ash-900">{email || 'your account'}</strong> have been updated with bank-grade encryption.
+        Your security credentials for <strong className="text-ash-900">{email || 'your account'}</strong> have been updated.
       </p>
 
       {/* Security notice */}

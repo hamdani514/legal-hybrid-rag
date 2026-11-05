@@ -44,7 +44,7 @@ const POINTS = [
   {
     icon: 'lock',
     title: 'Your research stays private',
-    body: 'Queries are never used to train the underlying model.',
+    body: 'Your conversations are visible only to you.',
   },
 ];
 

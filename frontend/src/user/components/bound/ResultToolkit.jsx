@@ -1,3 +1,4 @@
+import FilterIcon from '../FilterIcon';
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
 
@@ -24,7 +25,7 @@ const Facsimile = ({ children }) => (
 const FilterFacsimile = () => (
   <Facsimile>
     <div className="flex items-center gap-2 border-b border-ash-200 bg-white px-5 py-3">
-      <span className="material-symbols-outlined text-[16px] text-brand-500">filter_list</span>
+      <FilterIcon size={15} className="text-brand-500" />
       <span className="font-ui text-[12.5px] font-bold text-ash-800">Filter results</span>
       <span className="ml-auto rounded-full bg-brand-500 px-2 py-0.5 font-ui text-[10.5px] font-bold text-white">
         2
@@ -204,7 +205,11 @@ const ResultToolkit = () => {
                 aria-hidden="true"
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 transition-colors duration-300 group-hover:bg-brand-500 group-hover:text-white"
               >
-                <span className="material-symbols-outlined text-[22px]">{icon}</span>
+                {icon === 'filter_list' ? (
+                  <FilterIcon size={20} />
+                ) : (
+                  <span className="material-symbols-outlined text-[22px]">{icon}</span>
+                )}
               </span>
 
               <h3 className="mt-6 font-display text-[clamp(1.25rem,2.1vw,1.5rem)] font-bold leading-[1.2] tracking-[-0.02em] text-ash-900">

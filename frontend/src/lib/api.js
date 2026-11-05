@@ -11,8 +11,8 @@
  *   - The bearer token lives in localStorage under TOKEN_KEY ("authToken"),
  *     written by the login screens. Admin sessions use ADMIN_TOKEN_KEY.
  *   - Requests to /api/admin/* send the admin token; everything else sends the
- *     user token. A request with no token is still sent — the backend decides,
- *     and while AUTH_REQUIRED is off it accepts anonymous calls.
+ *     user token. A request with no token is still sent, and the backend decides:
+ *     only the routes in its public list (app/api/security.py) accept one.
  *   - A 401 signs the session out only when the server confirms the token
  *     itself is no longer valid (sessionManager.confirmSessionEnded). Any other
  *     401 is returned to the caller like an ordinary error, and the user stays
@@ -46,6 +46,7 @@ export const setToken = (token, { admin = false } = {}) => {
   try {
     localStorage.setItem(admin ? ADMIN_TOKEN_KEY : TOKEN_KEY, token);
     initSessionTimeout();
+    window.dispatchEvent(new Event('auth-changed'));
   } catch {
     /* storage unavailable: requests go out unauthenticated */
   }
@@ -55,6 +56,7 @@ export const clearToken = ({ admin = false } = {}) => {
   try {
     localStorage.removeItem(admin ? ADMIN_TOKEN_KEY : TOKEN_KEY);
     clearSessionTimeout();
+    window.dispatchEvent(new Event('auth-changed'));
   } catch {
     /* nothing to clear */
   }

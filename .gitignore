@@ -11,6 +11,9 @@ build/
 # Environment variables
 .env
 backend/.env
+# The settings template stays on this machine; it is not published.
+.env.example
+**/.env.example
 backend/uploads/*
 !backend/uploads/.gitkeep
 backend/app/connection/*
@@ -92,3 +95,6 @@ backend/service_account*.json
 backend/eval/results/runs/
 backend/eval/labels/negative_candidates.json
 backend/eval/labels/narrative_negative_candidates.json
+
+# Google Drive credentials for Docker (docker-compose.yml mounts this folder)
+backend/secrets/

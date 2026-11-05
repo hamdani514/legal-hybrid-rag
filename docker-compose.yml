@@ -1,4 +1,19 @@
-version: "3.9"
+# Running the whole app with Docker.
+#
+# The image holds the code only. Everything that must survive a rebuild or a
+# container restart lives on the host and is mounted in:
+#
+#   backend/chroma_db/      vector store       (copy it in before `up`)
+#   backend/lexical.db      keyword index      (copy it in before `up`)
+#   backend/uploads/        uploaded PDFs, avatars and blog covers
+#   backend/secrets/        Google Drive files: client_secret.json and token.json
+#                           (token.json is rewritten when Google refreshes it)
+#   mongo_data volume       the MongoDB database
+#
+# Settings come from backend/.env (git-ignored). Missing search data stops
+# `docker compose up` with an error instead of starting a site that finds nothing.
+#
+#   FRONTEND_URL=https://your-site.example docker compose up -d --build
 
 services:
   backend:
@@ -7,18 +22,37 @@ services:
       - "8001:8000"
     depends_on:
       - mongodb
-      - redis
+    env_file:
+      - ./backend/.env
     environment:
       MONGO_URL: mongodb://mongodb:27017
       DB_NAME: legal_rag
-      REDIS_URL: redis://redis:6379
+      # Links in emails (password reset, reactivation) and the Stripe return
+      # address use this; localhost would point users at their own machine.
+      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL to the public address of the site, e.g. https://your-site.example}
+      GOOGLE_DRIVE_TOKEN_FILE: secrets/token.json
+      GOOGLE_DRIVE_CLIENT_SECRET_FILE: secrets/client_secret.json
+    volumes:
+      - type: bind
+        source: ./backend/chroma_db
+        target: /app/backend/chroma_db
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/lexical.db
+        target: /app/backend/lexical.db
+        bind:
+          create_host_path: false
+      - ./backend/uploads:/app/backend/uploads
+      - ./backend/secrets:/app/backend/secrets
+    restart: unless-stopped
 
   mongodb:
-    image: mongo
-    ports:
-      - "27017:27017"
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    # Not published to the host: only the backend talks to the database.
+    restart: unless-stopped
 
-  redis:
-    image: redis
-    ports:
-      - "6379:6379"
+volumes:
+  mongo_data:

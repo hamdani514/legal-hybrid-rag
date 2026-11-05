@@ -31,6 +31,7 @@ import app.api.admin as admin_mod  # noqa: E402
 import app.indexing.sync as sync_mod  # noqa: E402
 import app.ingestion.tree_builder as tree_mod  # noqa: E402
 import app.ingestion.validator as validator_mod  # noqa: E402
+from app.api.security import create_access_token  # noqa: E402
 from app.database import connect_db, db  # noqa: E402
 
 RESULTS: list = []
@@ -143,12 +144,14 @@ async def run() -> None:
     await connect_db()
     assert db.database.name == SCRATCH, db.database.name
     await db.client.drop_database(SCRATCH)
+    await db.database.admins.insert_one({"adminid": "selfcheck-admin", "name": "Self-check", "role": "admin"})
 
     markers = [f"case-{i}-{uuid.uuid4().hex[:6]}" for i in range(N_FILES)]
     created: list[str] = []
     transport = httpx.ASGITransport(app=main.app)
     try:
-        async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=60) as c:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test",
+                                 headers={"Authorization": f"Bearer {create_access_token('selfcheck-admin', 'admin')}"}, timeout=60) as c:
             async def upload(name: str, content: bytes):
                 return await c.post("/api/admin/upload", files={"file": (name, content, "application/pdf")})
 

@@ -68,6 +68,7 @@ retrieve_v2 itself never raises for a well-formed string.
 
 import asyncio
 import math
+import re
 import sys
 import time
 from collections import OrderedDict
@@ -147,6 +148,18 @@ async def _analysis(raw: str) -> QueryAnalysis:
             if opt("QUERY_ANALYZER_USE_LLM", True):
                 return await query_analyzer.analyze(raw)
             return query_analyzer.analyze_regex(raw)
+        # Urdu and Roman Urdu: the archive and every model here are English, so
+        # without a translation such a query matches nothing. Only these queries
+        # spend an LLM call (the analyzer restates them in English); English
+        # searches stay free of one. Cached, so a repeat costs nothing.
+        if opt("QUERY_ANALYZER_USE_LLM", True) and _is_untranslated(raw):
+            translated = await query_analyzer.analyze(raw)
+            if (translated or {}).get("rewrite"):
+                # Every retriever searches with the English restatement, not the
+                # Urdu words: those match nothing, and the gate trusts the top
+                # retrieved judgment (see _agreement_gate).
+                from app.retrieval.query_preprocessor import clean_query
+                return {**translated, "cleaned": clean_query(translated["rewrite"])}
         full = query_analyzer.analyze_regex(raw)
     except Exception as e:
         logger.warning(f"query analysis failed, using the raw query: {e}")
@@ -489,6 +502,42 @@ def narrative_relevance(facet_scores: dict[str, float], mode: str = "mean_top2")
     return (values[0] + values[1]) / 2
 
 
+# Common Roman Urdu words (Urdu written in English letters). A query made mostly
+# of these cannot be compared with English judgment text word for word.
+ROMAN_URDU = frozenset("""
+ka ki ke ko se mein ne aur hai hain tha thi hoga kya kyun kaise kab kahan
+nahi nahin bhi wala wali wale jis jab tak sath saath liye lie baad pehle diya gaya gayi kiya karna
+karne karta karti raha rahi apna apni apne mera meri mere hamara hamari unka unki iska iski uska uski
+naukri zameen zamin jaidad jaedad jhagra jhagda wirasat virasat zamanat qatl talaq khula mehr nikah
+dawa muqadma muqadme darkhwast adalat faisla faisle mulazim mulazmat barkhasti tankhwah giraftari
+kiraya kirayedar makan dukan qarz waris shohar biwi bachay
+""".split())  # not "the", "me", "main", "par", "ya": ordinary English too
+
+
+def _is_untranslated(raw: str) -> bool:
+    """Is the query in Urdu script, or mostly Roman Urdu?"""
+    if any("؀" <= ch <= "ۿ" for ch in raw):
+        return True
+    words = re.findall(r"[a-z]+", raw.lower())
+    hits = sum(w in ROMAN_URDU for w in words)
+    return hits >= 2 and hits >= 0.25 * len(words)
+
+
+def relevance_text(raw_query: str, analysis: QueryAnalysis) -> str:
+    """What the relevance check compares judgments with.
+
+    The query as typed, unless it is Urdu or Roman Urdu: the cross-encoder only
+    knows English, so "zameen ka jhagra bhai ke sath wirasat" scored every
+    judgment as irrelevant and the search said nothing matched. Then the
+    analyzer's English restatement ("a dispute over immovable property arising
+    from a claim of inheritance against a sibling") is compared instead.
+    """
+    rewrite = (analysis or {}).get("rewrite") or ""
+    if rewrite.strip() and _is_untranslated(raw_query or ""):
+        return rewrite.strip()
+    return (raw_query or "").strip()
+
+
 def rerank_facets(analysis: QueryAnalysis, evidence: dict[str, list[Candidate]]) -> dict[str, dict] | None:
     """Cross-encode each facet against its passages; aggregate per judgment.
 
@@ -814,7 +863,7 @@ async def _score_slice(session: dict, batch: list[FusedJudgment]) -> list[str]:
         if narrative:
             judged = await asyncio.to_thread(rerank_facets, analysis, evidence)
         else:
-            judged = await asyncio.to_thread(reranker.rerank_judgments, session["raw"].strip(), evidence)
+            judged = await asyncio.to_thread(reranker.rerank_judgments, relevance_text(session["raw"], analysis), evidence)
     except Exception as e:
         logger.warning(f"cross-encoder failed on a 'more' slice: {e}")
         return []   # fail closed, as the first page does
@@ -1202,7 +1251,7 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
             judged = await asyncio.to_thread(rerank_facets, analysis, evidence)
         else:
             last_debug["rerank_calls"] = last_debug.get("rerank_calls", 0) + 1
-            judged = await asyncio.to_thread(reranker.rerank_judgments, raw_query.strip(), evidence)
+            judged = await asyncio.to_thread(reranker.rerank_judgments, relevance_text(raw_query, analysis), evidence)
     except Exception as e:
         logger.warning(f"cross-encoder failed: {e}")
         judged, rerank_failed = None, True
@@ -1456,7 +1505,13 @@ if __name__ == "__main__":
         out = await retrieve_v2(story, 5, 2)
         assert out["analysis"]["is_narrative"] and last_debug["narrative"], "facet path expected"
         assert "_vectors" not in out["analysis"], "internal vectors must never leave retrieve_v2"
-        assert out["parent_results"] and out["parent_results"][0]["judgment_id"].startswith("2df8aea1")
+        # Found by case number, not a stored id: ids change when a case is re-ingested.
+        from app.retrieval.exact_match import ExactMatchRetriever
+        _finder = ExactMatchRetriever()
+        await _finder._refresh()
+        expected = _finder._key_index.get("CA-26-K-2021") or set()
+        assert out["parent_results"] and out["parent_results"][0]["judgment_id"] in expected, (
+            out["parent_results"][:1], expected)
         assert out["parent_results"][0]["confidence"] == "medium", out["parent_results"][0]
         assert last_debug["rows"][0].get("facet_relevance"), last_debug["rows"][0]
         print(f"OK: narrative -> {out['parent_results'][0]['judgment_id'][:8]} 'medium', "

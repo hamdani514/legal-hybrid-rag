@@ -8,15 +8,15 @@ import MediaFrame from './MediaFrame';
  */
 const CHANNELS = [
   {
-    icon: 'school',
-    label: 'Student verification',
-    body: 'Write from your institutional address and enrolment is confirmed on the same account.',
+    icon: 'credit_card',
+    label: 'Plans and billing',
+    body: 'A question about your plan, a payment or cancelling. Include the email you signed up with.',
     meta: 'Usually one working day',
   },
   {
     icon: 'gavel',
-    label: 'Chambers & firms',
-    body: 'Seat counts, shared research trails and private ingestion for your own case papers.',
+    label: 'Access for a team',
+    body: 'Every account is for one person today. Tell us what your chambers or firm needs.',
     meta: 'Two working days',
   },
   {

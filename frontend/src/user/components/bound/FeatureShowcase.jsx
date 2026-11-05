@@ -1,3 +1,4 @@
+import FilterIcon from '../FilterIcon';
 import Reveal from '../Reveal';
 import SectionOpener from './SectionOpener';
 
@@ -111,9 +112,13 @@ const GROUPS = [
 
 const ControlChip = ({ icon, label }) => (
   <span className="inline-flex items-center gap-1.5 rounded-full border border-ash-300 bg-white px-3 py-1 font-ui text-[12px] font-semibold text-ash-700 shadow-2xs">
-    <span className="material-symbols-outlined text-[15px] text-brand-600" aria-hidden="true">
-      {icon}
-    </span>
+    {icon === 'filter_list' ? (
+      <FilterIcon size={14} className="text-brand-600" />
+    ) : (
+      <span className="material-symbols-outlined text-[15px] text-brand-600" aria-hidden="true">
+        {icon}
+      </span>
+    )}
     {label}
   </span>
 );

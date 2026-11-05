@@ -18,6 +18,7 @@ emailed token or Google ID token).
 from datetime import datetime, timezone, timedelta
 import asyncio
 import hashlib
+import hmac
 import re
 import random
 import secrets
@@ -31,15 +32,13 @@ from loguru import logger
 from app.services.google_drive_service import google_drive_service
 
 from app.api.security import (
-    TokenError,
-    auth_required,
+    caller_id,
     create_access_token,
-    decode_token,
     hash_password,
-    is_anonymous,
     require_user,
     verify_password,
 )
+from app.api import throttle
 from app.config import settings
 from app.database import db
 from app.retrieval.contracts import TokenPayload
@@ -150,13 +149,15 @@ def _hash_token(token: str) -> str:
 # 1. POST /api/auth/forgot-password
 # -------------------------------------------------------------
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest):
+async def forgot_password(body: ForgotPasswordRequest, request: Request):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
     clean_email = body.email.lower().strip()
     if not clean_email:
         raise HTTPException(status_code=400, detail="Email is required.")
+    await throttle.spend(throttle.CODE_EMAIL, clean_email)
+    await throttle.spend(throttle.CODE_IP, throttle.client_ip(request))
 
     if not await verify_recaptcha(body.captchaToken, "forgot_password"):
         raise HTTPException(status_code=403, detail="Captcha verification failed. Please try again.")
@@ -207,11 +208,13 @@ async def forgot_password(body: ForgotPasswordRequest):
 # 2. POST /api/auth/verify-otp
 # -------------------------------------------------------------
 @router.post("/verify-otp")
-async def verify_otp(body: VerifyOtpRequest):
+async def verify_otp(body: VerifyOtpRequest, request: Request):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
     clean_email = body.email.lower().strip()
+    # Counted per email across codes: asking for a new code does not reset it.
+    await throttle.spend(throttle.CODE_CHECK, clean_email)
     clean_otp = body.otp.strip()
 
     if not clean_email or not clean_otp:
@@ -267,11 +270,13 @@ async def verify_otp(body: VerifyOtpRequest):
 # 3. POST /api/auth/reset-password
 # -------------------------------------------------------------
 @router.post("/reset-password")
-async def reset_password(body: ResetPasswordRequest):
+async def reset_password(body: ResetPasswordRequest, request: Request):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
     clean_email = body.email.lower().strip()
+    # Counted per email across codes: asking for a new code does not reset it.
+    await throttle.spend(throttle.CODE_CHECK, clean_email)
     clean_otp = body.otp.strip()
     new_password = body.password_val.strip()
 
@@ -372,12 +377,16 @@ async def deactivate_account(body: DeactivateAccountRequest, request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User account not found.")
 
+    # Only your own account, whoever's email is typed. The password below then
+    # confirms it is really you at the keyboard.
+    if caller_id(request) not in _user_subs(user):
+        raise HTTPException(status_code=403, detail="You can only deactivate your own account.")
+
     if user.get("status") == "Inactive" or user.get("isActive") is False:
         raise HTTPException(status_code=400, detail="Account is already deactivated.")
 
-    # Verify the caller owns the account. "CONFIRM" is accepted ONLY for
-    # password-less (Google) accounts — it used to be accepted for every
-    # account, so anyone knowing an email address could deactivate it.
+    # "CONFIRM" is accepted ONLY for password-less (Google) accounts: there is no
+    # password to check, and the token above has already proved who this is.
     user_pass = user.get("password")
     if not user_pass:
         if password != "CONFIRM":
@@ -385,11 +394,6 @@ async def deactivate_account(body: DeactivateAccountRequest, request: Request):
                 status_code=400,
                 detail='This account was created with Google. Type "CONFIRM" as password to deactivate.',
             )
-        if auth_required():
-            # No password to check, so the session must belong to this account.
-            principal = _principal_or_none(request)
-            if not principal or principal["sub"] not in _user_subs(user):
-                raise HTTPException(status_code=401, detail="Please sign in to deactivate this account.")
     else:
         ok, _ = verify_password(password, user_pass)
         if not ok:
@@ -510,11 +514,13 @@ class RequestReactivationRequest(BaseModel):
 
 
 @router.post("/send-reactivation-link")
-async def request_reactivation_link(body: RequestReactivationRequest):
+async def request_reactivation_link(body: RequestReactivationRequest, request: Request):
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
     clean_email = body.email.strip().lower()
+    await throttle.spend(throttle.CODE_EMAIL, clean_email)
+    await throttle.spend(throttle.CODE_IP, throttle.client_ip(request))
     if not clean_email:
         raise HTTPException(status_code=400, detail="Email is required.")
 
@@ -585,7 +591,8 @@ class ContactFormRequest(BaseModel):
 
 
 @router.post("/contact")
-async def submit_contact_form(body: ContactFormRequest):
+async def submit_contact_form(body: ContactFormRequest, request: Request):
+    await throttle.spend(throttle.FORM_IP, throttle.client_ip(request))
     if db.database is None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
@@ -695,17 +702,6 @@ def _require_db() -> None:
         raise HTTPException(status_code=503, detail="Database is not connected.")
 
 
-def _principal_or_none(request: Request) -> Optional[TokenPayload]:
-    header = request.headers.get("authorization") or ""
-    scheme, _, token = header.partition(" ")
-    if scheme.lower() != "bearer" or not token.strip():
-        return None
-    try:
-        return decode_token(token.strip())
-    except TokenError:
-        return None
-
-
 def _user_sub(user: dict) -> str:
     """Token subject for a users-collection document: its public id (USr-####)."""
     return str(user.get("id") or user.get("_id"))
@@ -786,8 +782,16 @@ async def _upgrade_password(collection, doc: dict, plain: str) -> None:
 # POST /api/auth/login  - user sign-in
 # -------------------------------------------------------------
 @router.post("/login")
-async def login(body: LoginRequest):
+async def login(body: LoginRequest, request: Request):
     _require_db()
+    email, ip = (body.email or "").strip().lower(), throttle.client_ip(request)
+    await throttle.check(throttle.LOGIN_ACCOUNT, email)
+    await throttle.check(throttle.LOGIN_IP, ip)
+
+    async def failed():
+        await throttle.record(throttle.LOGIN_ACCOUNT, email)
+        await throttle.record(throttle.LOGIN_IP, ip)
+
     user = await _find_user_by_email(body.email)
     if not user:
         pending = await db.database.pending_registrations.find_one({"email": (body.email or "").strip().lower()})
@@ -800,10 +804,13 @@ async def login(body: LoginRequest):
                     "email": pending.get("email"),
                 },
             )
+        await failed()
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
     ok, needs_upgrade = verify_password(body.password, user.get("password") if user else None)
     if not ok:
+        await failed()
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
+    await throttle.clear(throttle.LOGIN_ACCOUNT, email)
     if needs_upgrade:
         await _upgrade_password(db.database.users, user, body.password)
     if _is_deactivated(user):
@@ -815,16 +822,28 @@ async def login(body: LoginRequest):
 # POST /api/auth/admin/login  - administrator sign-in
 # -------------------------------------------------------------
 @router.post("/admin/login")
-async def admin_login(body: AdminLoginBody):
+async def admin_login(body: AdminLoginBody, request: Request):
     _require_db()
     input_adminid = (body.adminid or "").strip()
     input_password = body.password or ""
+    ip = throttle.client_ip(request)
+    await throttle.check(throttle.ADMIN_ACCOUNT, input_adminid)
+    await throttle.check(throttle.ADMIN_IP, ip)
 
-    super_email = (getattr(settings, "SUPER_ADMIN_EMAIL", "admindaniyal@cst.com") or "").strip()
-    super_pass = getattr(settings, "SUPER_ADMIN_PASSWORD", "Dan1yal#SuperAdmin2026!") or ""
+    async def failed():
+        await throttle.record(throttle.ADMIN_ACCOUNT, input_adminid)
+        await throttle.record(throttle.ADMIN_IP, ip)
+
+    super_email = (settings.SUPER_ADMIN_EMAIL or "").strip()
+    super_pass = settings.SUPER_ADMIN_PASSWORD or ""
 
     # Check ENV Super Admin credentials
-    if input_adminid.lower() == super_email.lower() and input_password == super_pass:
+    if (
+        super_pass
+        and input_adminid.lower() == super_email.lower()
+        and hmac.compare_digest(input_password.encode("utf-8"), super_pass.encode("utf-8"))
+    ):
+        await throttle.clear(throttle.ADMIN_ACCOUNT, input_adminid)
         super_admin_doc = {
             "adminid": super_email,
             "name": "Super Admin (Daniyal)",
@@ -841,12 +860,15 @@ async def admin_login(body: AdminLoginBody):
     })
 
     if not admin:
+        await failed()
         raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
 
     ok, needs_upgrade = verify_password(input_password, admin.get("password"))
     if not ok:
+        await failed()
         raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
 
+    await throttle.clear(throttle.ADMIN_ACCOUNT, input_adminid)
     if needs_upgrade:
         await _upgrade_password(db.database.admins, admin, input_password)
 
@@ -869,7 +891,7 @@ async def _next_user_id() -> str:
 
 
 @router.post("/signup")
-async def signup(body: SignupRequest):
+async def signup(body: SignupRequest, request: Request):
     """
     User registration initiation with First Name, Last Name, Email, and Password.
     Generates 6-digit verification OTP and dispatches to user's Gmail.
@@ -882,6 +904,8 @@ async def signup(body: SignupRequest):
     )
 
     email = body.email.strip().lower()
+    await throttle.spend(throttle.CODE_EMAIL, email)
+    await throttle.spend(throttle.CODE_IP, throttle.client_ip(request))
     first_name = (body.first_name or "").strip()
     last_name = (body.last_name or "").strip()
     full_name = (body.name or f"{first_name} {last_name}".strip()).strip() or "User"
@@ -940,7 +964,7 @@ async def signup(body: SignupRequest):
 
 
 @router.post("/verify-signup-otp")
-async def verify_signup_otp(body: VerifySignupOtpRequest):
+async def verify_signup_otp(body: VerifySignupOtpRequest, request: Request):
     """
     Verifies the 6-digit registration OTP, creates the user in the main users
     collection in MongoDB, removes pending registration, and logs the user in.
@@ -948,6 +972,8 @@ async def verify_signup_otp(body: VerifySignupOtpRequest):
     _require_db()
 
     clean_email = body.email.strip().lower()
+    # Counted per email across codes: asking for a new code does not reset it.
+    await throttle.spend(throttle.CODE_CHECK, clean_email)
     clean_otp = body.otp.strip()
 
     if not clean_email or not clean_otp:
@@ -1042,13 +1068,15 @@ async def verify_signup_otp(body: VerifySignupOtpRequest):
 
 
 @router.post("/resend-signup-otp")
-async def resend_signup_otp(body: ResendSignupOtpRequest):
+async def resend_signup_otp(body: ResendSignupOtpRequest, request: Request):
     """
     Resends a fresh 6-digit registration verification OTP to the user's email.
     """
     _require_db()
 
     clean_email = body.email.strip().lower()
+    await throttle.spend(throttle.CODE_EMAIL, clean_email)
+    await throttle.spend(throttle.CODE_IP, throttle.client_ip(request))
     if not clean_email:
         raise HTTPException(status_code=400, detail="Email is required.")
 
@@ -1226,7 +1254,7 @@ async def google_login(body: GoogleLoginRequest):
 # -------------------------------------------------------------
 @router.get("/me")
 async def me(principal: TokenPayload = Depends(require_user)):
-    return {"principal": principal, "auth_required": auth_required()}
+    return {"principal": principal}
 
 
 # -------------------------------------------------------------
@@ -1237,13 +1265,7 @@ async def refresh_session(principal: TokenPayload = Depends(require_user)):
     """Swap a valid token for a fresh one. The frontend calls this silently once
     half of a token's lifetime has passed, and to ask whether a session is still
     valid after some request was refused: 401 here means the session is over.
-
-    Only a real signed-in token is renewed. While AUTH_REQUIRED is off a request
-    without one resolves to the anonymous principal, which must not be handed a
-    token of its own.
     """
-    if is_anonymous(principal):
-        raise HTTPException(status_code=401, detail="Please sign in.")
     expires_minutes = int(getattr(settings, "JWT_EXPIRE_MINUTES", 1440) or 1440)
     new_token = create_access_token(
         sub=principal["sub"],
@@ -1257,14 +1279,9 @@ async def refresh_session(principal: TokenPayload = Depends(require_user)):
 # GET /api/auth/profile - current user profile & subscription history
 # -------------------------------------------------------------
 @router.get("/profile")
-async def get_user_profile(request: Request, user_id: Optional[str] = None):
+async def get_user_profile(request: Request):
     _require_db()
-    principal = _principal_or_none(request)
-    sub = principal.get("sub") if principal else None
-
-    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
-    if not query_id:
-        raise HTTPException(status_code=401, detail="Please sign in to view your profile.")
+    query_id = caller_id(request)
 
     user = await db.database.users.find_one({
         "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
@@ -1351,14 +1368,9 @@ async def get_user_profile(request: Request, user_id: Optional[str] = None):
 # PUT /api/auth/profile - update user profile details
 # -------------------------------------------------------------
 @router.put("/profile")
-async def update_user_profile(body: UpdateProfileRequest, request: Request, user_id: Optional[str] = None):
+async def update_user_profile(body: UpdateProfileRequest, request: Request):
     _require_db()
-    principal = _principal_or_none(request)
-    sub = principal.get("sub") if principal else None
-
-    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
-    if not query_id:
-        raise HTTPException(status_code=401, detail="Please sign in to update your profile.")
+    query_id = caller_id(request)
 
     user = await db.database.users.find_one({
         "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
@@ -1413,6 +1425,11 @@ async def delete_account(body: DeleteAccountRequest, request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User account not found.")
 
+    # Only your own account, whoever's email is typed. The password below then
+    # confirms it is really you at the keyboard.
+    if caller_id(request) not in _user_subs(user):
+        raise HTTPException(status_code=403, detail="You can only delete your own account.")
+
     user_pass = user.get("password")
     if not user_pass:
         if password != "CONFIRM":
@@ -1420,10 +1437,6 @@ async def delete_account(body: DeleteAccountRequest, request: Request):
                 status_code=400,
                 detail='This account was created with Google. Type "CONFIRM" as password to delete.',
             )
-        if auth_required():
-            principal = _principal_or_none(request)
-            if not principal or principal["sub"] not in _user_subs(user):
-                raise HTTPException(status_code=401, detail="Please sign in to delete this account.")
     else:
         ok, _ = verify_password(password, user_pass)
         if not ok:
@@ -1447,15 +1460,9 @@ async def delete_account(body: DeleteAccountRequest, request: Request):
 async def upload_profile_avatar(
     request: Request,
     file: UploadFile = File(...),
-    user_id: Optional[str] = None,
 ):
     _require_db()
-    principal = _principal_or_none(request)
-    sub = principal.get("sub") if principal else None
-
-    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
-    if not query_id:
-        raise HTTPException(status_code=401, detail="Please sign in to upload a profile picture.")
+    query_id = caller_id(request)
 
     user = await db.database.users.find_one({
         "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
@@ -1513,14 +1520,9 @@ async def upload_profile_avatar(
 # DELETE /api/auth/profile/avatar - remove profile picture from Google Drive
 # -------------------------------------------------------------
 @router.delete("/profile/avatar")
-async def delete_profile_avatar(request: Request, user_id: Optional[str] = None):
+async def delete_profile_avatar(request: Request):
     _require_db()
-    principal = _principal_or_none(request)
-    sub = principal.get("sub") if principal else None
-
-    query_id = (sub if sub and sub != "anonymous" else (user_id or "")).strip()
-    if not query_id:
-        raise HTTPException(status_code=401, detail="Please sign in to modify your profile picture.")
+    query_id = caller_id(request)
 
     user = await db.database.users.find_one({
         "$or": [{"id": query_id}, {"email": query_id}, {"email": query_id.lower()}]
@@ -1556,6 +1558,8 @@ async def delete_profile_avatar(request: Request, user_id: Optional[str] = None)
 @router.get("/avatar/{file_id}")
 async def get_avatar_image(file_id: str):
     """Streams the user profile picture from Google Drive or local cache."""
+    if not re.fullmatch(r"[\w.-]+", file_id):
+        raise HTTPException(status_code=404, detail="Avatar image not found.")
     try:
         stream, filename, mime_type = await google_drive_service.download_avatar_stream(file_id)
         return StreamingResponse(

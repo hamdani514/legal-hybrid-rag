@@ -150,7 +150,7 @@ const ContactForm = () => {
                 type="email"
                 name="email"
                 autoComplete="email"
-                placeholder="Daniyalabbas@gmail.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);

@@ -5,9 +5,8 @@
  * History is a convenience: if the server cannot store a conversation, the
  * research screen must still answer the question in front of the user.
  *
- * `userId` is the signed-in user's id (currentUser.id). The server prefers the
- * bearer token's subject when authentication is on and only falls back to this
- * value while it is off, so a conversation always belongs to one user.
+ * The server knows whose conversations these are from the bearer token, so no
+ * user id is ever sent: a conversation always belongs to the signed-in user.
  */
 
 import apiFetch from '../../lib/api';
@@ -22,9 +21,6 @@ const readJson = async (response) => {
   }
 };
 
-const withUser = (url, userId) =>
-  userId ? `${url}${url.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(userId)}` : url;
-
 const postJson = (url, body) =>
   apiFetch(url, {
     method: 'POST',
@@ -33,9 +29,9 @@ const postJson = (url, body) =>
   });
 
 /** Every conversation this user has, newest first. [] on any failure. */
-export async function listSessions(userId) {
+export async function listSessions() {
   try {
-    const res = await apiFetch(withUser(BASE, userId));
+    const res = await apiFetch(BASE);
     if (!res.ok) return [];
     const data = await readJson(res);
     return Array.isArray(data?.sessions) ? data.sessions : [];
@@ -45,9 +41,9 @@ export async function listSessions(userId) {
 }
 
 /** Start a conversation; returns its id, or null if history is unavailable. */
-export async function createSession(userId, title) {
+export async function createSession(title) {
   try {
-    const res = await postJson(BASE, { user_id: userId, title: title || '' });
+    const res = await postJson(BASE, { title: title || '' });
     if (!res.ok) return null;
     const data = await readJson(res);
     return data?.session_id || null;
@@ -57,9 +53,9 @@ export async function createSession(userId, title) {
 }
 
 /** One conversation's messages, exactly as they were on screen. null if gone. */
-export async function loadSession(userId, sessionId) {
+export async function loadSession(sessionId) {
   try {
-    const res = await apiFetch(withUser(`${BASE}/${encodeURIComponent(sessionId)}`, userId));
+    const res = await apiFetch(`${BASE}/${encodeURIComponent(sessionId)}`);
     if (!res.ok) return null;
     const data = await readJson(res);
     return Array.isArray(data?.messages) ? data : null;
@@ -69,11 +65,10 @@ export async function loadSession(userId, sessionId) {
 }
 
 /** Append messages to a conversation. Returns true when stored. */
-export async function appendMessages(userId, sessionId, messages) {
+export async function appendMessages(sessionId, messages) {
   if (!sessionId || !messages?.length) return false;
   try {
     const res = await postJson(`${BASE}/${encodeURIComponent(sessionId)}/messages`, {
-      user_id: userId,
       messages,
     });
     return res.ok;
@@ -82,12 +77,12 @@ export async function appendMessages(userId, sessionId, messages) {
   }
 }
 
-const patchSession = async (userId, sessionId, fields) => {
+const patchSession = async (sessionId, fields) => {
   try {
     const res = await apiFetch(`${BASE}/${encodeURIComponent(sessionId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, ...fields }),
+      body: JSON.stringify({ ...fields }),
     });
     return res.ok;
   } catch {
@@ -96,17 +91,17 @@ const patchSession = async (userId, sessionId, fields) => {
 };
 
 /** Rename a conversation. Returns true on success. */
-export const renameSession = (userId, sessionId, title) =>
-  patchSession(userId, sessionId, { title });
+export const renameSession = (sessionId, title) =>
+  patchSession(sessionId, { title });
 
 /** Pin a conversation to the top of the list (or unpin it). */
-export const setPinned = (userId, sessionId, pinned) =>
-  patchSession(userId, sessionId, { pinned: !!pinned });
+export const setPinned = (sessionId, pinned) =>
+  patchSession(sessionId, { pinned: !!pinned });
 
 /** Delete one conversation. Returns true on success. */
-export async function deleteSession(userId, sessionId) {
+export async function deleteSession(sessionId) {
   try {
-    const res = await apiFetch(withUser(`${BASE}/${encodeURIComponent(sessionId)}`, userId), {
+    const res = await apiFetch(`${BASE}/${encodeURIComponent(sessionId)}`, {
       method: 'DELETE',
     });
     return res.ok;
@@ -116,9 +111,9 @@ export async function deleteSession(userId, sessionId) {
 }
 
 /** Delete every conversation this user has. Returns true on success. */
-export async function clearSessions(userId) {
+export async function clearSessions() {
   try {
-    const res = await apiFetch(withUser(BASE, userId), { method: 'DELETE' });
+    const res = await apiFetch(BASE, { method: 'DELETE' });
     return res.ok;
   } catch {
     return false;
