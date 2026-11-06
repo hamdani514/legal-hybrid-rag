@@ -135,6 +135,20 @@ const safeReadJson = async (response) => {
   }
 };
 
+// The server refuses larger uploads (MAX_PDF_UPLOAD_MB, app/api/limits.py) by
+// closing the connection, which a browser reports only as a network error, so
+// the size is checked here first and explained.
+const MAX_PDF_MB = 50;
+
+/** Why a file cannot be uploaded, or '' if it can. */
+const uploadProblem = (file) => {
+  if (!file.name.toLowerCase().endsWith('.pdf')) return 'Not a PDF file.';
+  if (file.size > MAX_PDF_MB * 1024 * 1024) {
+    return `Larger than ${MAX_PDF_MB} MB (${(file.size / (1024 * 1024)).toFixed(0)} MB).`;
+  }
+  return '';
+};
+
 // Tag every upload with the signed-in admin; shown back in the "Uploaded by"
 // column.
 const appendUploader = (formData, admin) => {
@@ -200,6 +214,8 @@ const AdminCasesPage = () => {
   const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
 
   const [stats, setStats] = useState({ total_documents: 0, by_status: {} });
+  // Google Drive sign-in, from the server's hourly check (null until known).
+  const [drive, setDrive] = useState(null);
   const [activeJobId, setActiveJobId] = useState(null);
   const [activeJobStatus, setActiveJobStatus] = useState(null);
   const abortControllerRef = useRef(null);
@@ -344,6 +360,7 @@ const AdminCasesPage = () => {
   const showStatus = useCallback(({ data, error }) => {
     if (data) {
       setRecentError('');
+      setDrive(data.drive || null);
       setAllJobs(
         Array.isArray(data.all_jobs) ? data.all_jobs : Array.isArray(data.recent_jobs) ? data.recent_jobs : []
       );
@@ -502,14 +519,14 @@ const AdminCasesPage = () => {
   const addToQueue = (files) => {
     const rows = files.map((file, i) => {
       const key = `${Date.now()}-${i}-${file.name}`;
-      const isPdf = file.name.toLowerCase().endsWith('.pdf');
-      if (isPdf) queueFilesRef.current.set(key, file);
+      const problem = uploadProblem(file);
+      if (!problem) queueFilesRef.current.set(key, file);
       return {
         key,
         name: file.name,
         size: file.size,
-        state: isPdf ? 'waiting' : 'rejected',
-        error: isPdf ? '' : 'Not a PDF file.',
+        state: problem ? 'rejected' : 'waiting',
+        error: problem,
       };
     });
     setQueue((existing) => [...existing, ...rows]);
@@ -684,8 +701,9 @@ const AdminCasesPage = () => {
 
   const uploadSingle = async (selectedFile) => {
 
-    if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
-      setUploadError('Please select a PDF file.');
+    const problem = uploadProblem(selectedFile);
+    if (problem) {
+      setUploadError(problem);
       return;
     }
 
@@ -904,6 +922,18 @@ const AdminCasesPage = () => {
         />
 
         <div className="p-12 flex flex-col gap-8 flex-1">
+          {/* Files are always kept on the server; this only says the Drive copies
+              have stopped, and how to restore them. */}
+          {(drive?.status === 'expired' || drive?.status === 'not_configured') && (
+            <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 font-prose text-sm text-amber-900">
+              <p className="font-semibold">
+                {drive.status === 'expired' ? 'Google Drive copies are paused: the Drive sign-in has expired.' : 'Google Drive is not connected.'}
+              </p>
+              <p className="mt-1 text-amber-800">
+                Uploads still work and every file is kept on the server. {drive.detail}
+              </p>
+            </div>
+          )}
           {/* File Dropzone Header Banner */}
           <div
             onDragOver={(e) => {

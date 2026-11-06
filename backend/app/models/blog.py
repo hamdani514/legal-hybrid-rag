@@ -24,9 +24,9 @@ def parse_published_at(value: str) -> Optional[datetime]:
 
 
 class AuthorInfo(BaseModel):
-    name: str
-    role: str
-    avatar: str
+    name: str = Field(max_length=200)
+    role: str = Field(max_length=200)
+    avatar: str = Field(max_length=2000)
 
 
 class Blog(Document):

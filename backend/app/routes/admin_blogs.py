@@ -18,11 +18,11 @@ deleted from Drive. Pasted external URLs are left alone.
 
 import re
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from loguru import logger
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from pymongo.errors import DuplicateKeyError
 
 from app.models.blog import PUBLISHED, STATUSES, AuthorInfo, Blog, parse_published_at
@@ -51,8 +51,8 @@ class BlogPayload(BaseModel):
     isFeatured: bool = False
     author: AuthorInfo
     coverImage: str = Field(default="", max_length=2000)
-    tags: List[str] = []
-    contentHtml: str = ""
+    tags: List[Annotated[str, StringConstraints(max_length=60)]] = Field(default_factory=list, max_length=30)
+    contentHtml: str = Field(default="", max_length=MAX_CONTENT_CHARS)
 
     @field_validator("status")
     @classmethod

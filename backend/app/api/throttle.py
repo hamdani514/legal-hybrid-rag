@@ -21,6 +21,7 @@ A successful login clears its account key.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -74,7 +75,12 @@ def _collection():
 
 
 def _key(rule: Rule, value: str) -> str:
-    return f"{rule.name}:{(value or '').strip().lower()}"
+    """The stored key. Normal values (an email, an address) stay readable; a
+    longer one is hashed, so whatever a caller sends, the key is small."""
+    value = (value or "").strip().lower()
+    if len(value) > 254:
+        value = "sha256:" + hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()
+    return f"{rule.name}:{value}"
 
 
 def _refuse(rule: Rule, locked_until: datetime, now: datetime) -> None:

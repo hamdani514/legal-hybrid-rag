@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import apiFetch, { TOKEN_KEY } from '../../lib/api';
+import apiFetch, { TOKEN_KEY, retryWhileRestarting } from '../../lib/api';
 import CopyButton from './CopyButton';
 import Modal from './Modal';
 import FilterIcon from './FilterIcon';
@@ -601,21 +601,23 @@ const useMorePages = (message, onLocked) => {
     setLoading(true);
     setNotice('');
     try {
-      const res = await apiFetch('/query/more', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: message.query,
-          shown: citations.map((c) => c.judgment_id),
-          top_k_sections: 3,
-        }),
-      });
+      const res = await retryWhileRestarting(() =>
+        apiFetch('/query/more', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: message.query,
+            shown: citations.map((c) => c.judgment_id),
+            top_k_sections: 3,
+          }),
+        })
+      );
       if (await upgradeDetail(res)) {
         refreshPlan();
         onLocked?.('see_all');
         return;
       }
-      if (res.status === 429) {
+      if ((res.status === 429 || res.status === 503)) {
         const busy = (await errorDetail(res)) || 'The service is busy. Please try again in a minute.';
         setNotice(busy);
         toast.error(busy);
@@ -689,17 +691,19 @@ const useFilteredPages = (message, onLocked, initialFilters) => {
   );
 
   const request = async (filters, shown, silent = false) => {
-    const res = await apiFetch('/query/more', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: message.query, shown, top_k_sections: 3, filters }),
-    });
+    const res = await retryWhileRestarting(() =>
+      apiFetch('/query/more', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: message.query, shown, top_k_sections: 3, filters }),
+      })
+    );
     if (await upgradeDetail(res)) {
       refreshPlan();
       if (!silent) onLocked?.('filter');
       return { locked: true };
     }
-    if (res.status === 429) {
+    if ((res.status === 429 || res.status === 503)) {
       return { notice: (await errorDetail(res)) || 'The service is busy. Please try again in a minute.' };
     }
     if (!res.ok) throw new Error(`Filtering failed (${res.status})`);

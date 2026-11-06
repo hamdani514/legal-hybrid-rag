@@ -358,6 +358,7 @@ async def _complete(
     *,
     max_wait: float | None = None,
     label: str = "llm",
+    background: bool = False,
 ) -> LLMText:
     """Run one completion through the shared limiter.
 
@@ -371,7 +372,7 @@ async def _complete(
         # Looked up at call time so a test's replacement takes effect.
         return await _provider_call(system_prompt, user_prompt, max_tokens, resolved)
 
-    outcome = await get_limiter().run(call, max_wait=max_wait, label=f"{label}/{resolved}")
+    outcome = await get_limiter().run(call, max_wait=max_wait, label=f"{label}/{resolved}", background=background)
     if outcome.ok:
         return LLMText(outcome.text, ANSWER_READY)
     return LLMText(ERROR_RESPONSE, outcome.status, outcome.detail)

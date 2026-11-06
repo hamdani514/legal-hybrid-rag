@@ -33,11 +33,12 @@ from app.services.google_drive_service import google_drive_service
 from app.api.security import (
     caller_id,
     create_access_token,
-    hash_password,
     require_user,
-    verify_password,
 )
-from app.api import throttle
+from app.api import passwords, throttle
+from app.api.limits import (
+    Code, Email, Message, OptEmail, OptName, OptPassword, OptShortText, OptToken, Password, Token,
+)
 from app.config import settings
 from app.database import db
 from app.retrieval.contracts import TokenPayload
@@ -48,6 +49,7 @@ from app.services.email_service import (
     send_deactivation_email,
     send_reactivation_link_email,
     send_reactivation_confirmation_email,
+    send_existing_account_notice,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -69,30 +71,30 @@ def new_otp() -> str:
 # -------------------------------------------------------------
 
 class ForgotPasswordRequest(BaseModel):
-    email: str
-    captchaToken: Optional[str] = None
+    email: Email
+    captchaToken: OptToken = None
 
 
 class VerifyOtpRequest(BaseModel):
-    email: str
-    otp: str
+    email: Email
+    otp: Code
 
 
 class VerifySignupOtpRequest(BaseModel):
-    email: str
-    otp: str
+    email: Email
+    otp: Code
 
 
 class ResendSignupOtpRequest(BaseModel):
-    email: str
+    email: Email
 
 
 class ResetPasswordRequest(BaseModel):
-    email: str
-    otp: str
-    newPassword: Optional[str] = None
-    new_password: Optional[str] = None
-    captchaToken: Optional[str] = None
+    email: Email
+    otp: Code
+    newPassword: OptPassword = None
+    new_password: OptPassword = None
+    captchaToken: OptToken = None
 
     @property
     def password_val(self) -> str:
@@ -100,20 +102,20 @@ class ResetPasswordRequest(BaseModel):
 
 
 class DeactivateAccountRequest(BaseModel):
-    email: str
-    password: str
+    email: Email
+    password: Password
 
 
 class DeleteAccountRequest(BaseModel):
-    email: str
-    password: str
+    email: Email
+    password: Password
 
 
 class UpdateProfileRequest(BaseModel):
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
+    name: OptName = None
+    first_name: OptName = None
+    last_name: OptName = None
+    email: OptEmail = None
 
 
 # -------------------------------------------------------------
@@ -299,7 +301,7 @@ async def reset_password(body: ResetPasswordRequest, request: Request):
     if len(new_password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
     try:
-        hashed_password = hash_password(new_password)
+        hashed_password = await passwords.hash(new_password)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -347,6 +349,8 @@ async def reset_password(body: ResetPasswordRequest, request: Request):
         {
             "$set": {
                 "password": hashed_password,
+                # Every session from before the reset ends (security.account_is_active).
+                "tokens_valid_after": int(datetime.now(timezone.utc).timestamp()),
                 "updated_at": datetime.now(timezone.utc),
             },
             "$unset": {
@@ -405,7 +409,7 @@ async def deactivate_account(body: DeactivateAccountRequest, request: Request):
                 detail='This account was created with Google. Type "CONFIRM" as password to deactivate.',
             )
     else:
-        ok, _ = verify_password(password, user_pass)
+        ok, _ = await passwords.verify(password, user_pass)
         if not ok:
             # 403, not 401: the session is fine, the confirmation failed (a 401
             # makes the frontend treat the user as signed out).
@@ -520,7 +524,7 @@ async def reactivate_account(token: str):
 # 5b. POST /api/auth/send-reactivation-link
 # -------------------------------------------------------------
 class RequestReactivationRequest(BaseModel):
-    email: str
+    email: Email
 
 
 @router.post("/send-reactivation-link")
@@ -588,12 +592,12 @@ async def request_reactivation_link(body: RequestReactivationRequest, request: R
 # -------------------------------------------------------------
 
 class ContactFormRequest(BaseModel):
-    name: Optional[str] = None
-    full_name: Optional[str] = None
-    email: str
-    subject: Optional[str] = "No Subject"
-    message: str
-    captchaToken: Optional[str] = None
+    name: OptName = None
+    full_name: OptName = None
+    email: Email
+    subject: OptShortText = "No Subject"
+    message: Message
+    captchaToken: OptToken = None
 
     @property
     def sender_name(self) -> str:
@@ -685,26 +689,26 @@ DEACTIVATED_DETAIL = "Your account has been deactivated. Do you want to reactiva
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: Email
+    password: Password
 
 
 class AdminLoginBody(BaseModel):
-    adminid: str
-    password: str
+    adminid: Email
+    password: Password
 
 
 class SignupRequest(BaseModel):
-    email: str
-    password: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    name: Optional[str] = None
-    created_at: Optional[str] = None
+    email: Email
+    password: Password
+    first_name: OptName = None
+    last_name: OptName = None
+    name: OptName = None
+    created_at: OptShortText = None
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str  # the Google ID token (JWT) from @react-oauth/google
+    credential: Token  # the Google ID token (JWT) from @react-oauth/google
 
 
 def _require_db() -> None:
@@ -777,7 +781,7 @@ async def _find_user_by_email(email: str) -> Optional[dict]:
 async def _upgrade_password(collection, doc: dict, plain: str) -> None:
     """Replace a legacy plain-text password with a bcrypt hash (only if it is unchanged)."""
     try:
-        new_hash = hash_password(plain)
+        new_hash = await passwords.hash(plain)
         result = await collection.update_one(
             {"_id": doc["_id"], "password": doc.get("password")},
             {"$set": {"password": new_hash, "password_upgraded_at": datetime.now(timezone.utc)}},
@@ -804,8 +808,13 @@ async def login(body: LoginRequest, request: Request):
 
     user = await _find_user_by_email(body.email)
     if not user:
+        # The same work and the same answer as a wrong password, so neither the
+        # reply nor its timing tells whether an email is registered. A sign-up
+        # still waiting for its code is mentioned only to someone who knows its
+        # password (that is, its owner).
         pending = await db.database.pending_registrations.find_one({"email": (body.email or "").strip().lower()})
-        if pending:
+        pending_ok, _ = await passwords.verify(body.password, (pending or {}).get("password"))
+        if pending and pending_ok:
             return JSONResponse(
                 status_code=403,
                 content={
@@ -816,7 +825,7 @@ async def login(body: LoginRequest, request: Request):
             )
         await failed()
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
-    ok, needs_upgrade = verify_password(body.password, user.get("password") if user else None)
+    ok, needs_upgrade = await passwords.verify(body.password, user.get("password"))
     if not ok:
         await failed()
         raise HTTPException(status_code=401, detail="Invalid Email or Password.")
@@ -847,13 +856,16 @@ async def admin_login(body: AdminLoginBody, request: Request):
     super_email = (settings.SUPER_ADMIN_EMAIL or "").strip()
     super_pass = settings.SUPER_ADMIN_PASSWORD or ""
 
-    # Check ENV Super Admin credentials
-    if (
+    # Check ENV Super Admin credentials. A password check's worth of time is
+    # spent here too, so no admin id answers faster than another.
+    is_super = (
         super_email
         and super_pass
         and input_adminid.lower() == super_email.lower()
         and hmac.compare_digest(input_password.encode("utf-8"), super_pass.encode("utf-8"))
-    ):
+    )
+    if is_super:
+        await passwords.burn(input_password)
         await throttle.clear(throttle.ADMIN_ACCOUNT, input_adminid)
         super_admin_doc = {
             "adminid": super_email,
@@ -871,10 +883,11 @@ async def admin_login(body: AdminLoginBody, request: Request):
     })
 
     if not admin:
+        await passwords.burn(input_password)
         await failed()
         raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
 
-    ok, needs_upgrade = verify_password(input_password, admin.get("password"))
+    ok, needs_upgrade = await passwords.verify(input_password, admin.get("password"))
     if not ok:
         await failed()
         raise HTTPException(status_code=401, detail="Invalid Admin ID or Password.")
@@ -924,16 +937,29 @@ async def signup(body: SignupRequest, request: Request):
     try:
         validate_email_domain(email)
         validate_password_strength(body.password)
-        password_hash = hash_password(body.password)
+        password_hash = await passwords.hash(body.password)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     now = datetime.now(timezone.utc)
+    # The one reply sign-up gives, whether or not the address already has an account.
+    sent = {
+        "message": "Verification code sent to your email. Please verify to complete registration.",
+        "email": email,
+        "require_otp": True,
+    }
 
     # Check if already registered in the users collection
     existing = await db.database.users.find_one({"email": email})
     if existing:
-        raise HTTPException(status_code=409, detail="Email is already registered.")
+        # Answer exactly as for a new address, so sign-up cannot be used to find
+        # out who has an account; the owner is told by email instead. (Bounded
+        # by the code-email limit above: at most 3 such emails an hour.)
+        try:
+            await send_existing_account_notice(existing.get("name") or "", email)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Could not send the existing-account notice: {type(e).__name__}")
+        return sent
 
     # Generate 6-digit numeric OTP
     otp = new_otp()
@@ -967,11 +993,7 @@ async def signup(body: SignupRequest, request: Request):
             status_code=500, detail="Unable to dispatch verification email right now. Please try again later."
         )
 
-    return {
-        "message": "Verification code sent to your email. Please verify to complete registration.",
-        "email": email,
-        "require_otp": True,
-    }
+    return sent
 
 
 @router.post("/verify-signup-otp")
@@ -1449,18 +1471,15 @@ async def delete_account(body: DeleteAccountRequest, request: Request):
                 detail='This account was created with Google. Type "CONFIRM" as password to delete.',
             )
     else:
-        ok, _ = verify_password(password, user_pass)
+        ok, _ = await passwords.verify(password, user_pass)
         if not ok:
             raise HTTPException(status_code=403, detail="Incorrect password.")
 
-    user_id = user.get("id")
-    await db.database.users.delete_one({"_id": user["_id"]})
-    try:
-        await db.database.chat_sessions.delete_many({"user_key": {"$in": [user_id, clean_email]}})
-    except Exception as e:
-        logger.warning(f"Failed to clear chat sessions for {user_id}: {e}")
+    # Stops billing first (refusing if Stripe cannot confirm), then removes the
+    # account and everything stored for it (app/api/account_removal.py).
+    from app.api.account_removal import remove_account
 
-    logger.info(f"User {user_id} ({clean_email}) deleted their account permanently.")
+    await remove_account(user)
     return {"message": "Account has been permanently deleted."}
 
 

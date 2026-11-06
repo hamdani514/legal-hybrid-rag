@@ -191,7 +191,10 @@ def decode_token(token: str) -> TokenPayload:
     sub, role, exp = claims.get("sub"), claims.get("role"), claims.get("exp")
     if not isinstance(sub, str) or not sub or role not in ("user", "admin") or not isinstance(exp, int):
         raise TokenError("Invalid authentication token.")
-    return TokenPayload(sub=sub, role=role, exp=exp)
+    payload = TokenPayload(sub=sub, role=role, exp=exp)
+    if isinstance(claims.get("iat"), int):
+        payload["iat"] = claims["iat"]
+    return payload
 
 
 def anonymous(role: Role = "user") -> TokenPayload:
@@ -287,6 +290,7 @@ async def require_admin(request: Request) -> TokenPayload:
 # and access_selfcheck.py fails until the same line is added to its own list.
 PUBLIC_ROUTES = frozenset({
     ("GET", "/api/health"),
+    ("GET", "/api/health/live"),
     ("GET", "/{full_path:path}"),                # the single-page app itself
     # Getting into an account: each proves itself with a password, code or token.
     ("POST", "/api/auth/login"),
@@ -307,8 +311,6 @@ PUBLIC_ROUTES = frozenset({
     # Public pages and forms.
     ("POST", "/api/auth/contact"),
     ("POST", "/api/admin/support"),              # contact form
-    ("GET", "/api/admin/users/check-username"),  # signup form availability check
-    ("GET", "/api/admin/users/check-email"),     # signup form availability check
     ("GET", "/api/blogs"),
     ("GET", "/api/blogs/{slug}"),
     ("GET", "/api/stats"),
@@ -366,6 +368,10 @@ async def account_is_active(principal: TokenPayload) -> bool:
 
     A token is valid for its whole lifetime (JWT_EXPIRE_MINUTES), so without this
     a deleted or deactivated account kept working until its token ran out.
+
+    A token issued before the account's password last changed is refused too
+    (``tokens_valid_after``): resetting a password ends every other session,
+    including one a thief holds.
     """
     from app.database import db
 
@@ -376,7 +382,7 @@ async def account_is_active(principal: TokenPayload) -> bool:
         super_email = (getattr(settings, "SUPER_ADMIN_EMAIL", "") or "").strip().lower()
         if super_email and getattr(settings, "SUPER_ADMIN_PASSWORD", "") and sub.lower() == super_email:
             return True  # the super admin is configured, not stored
-        doc = await db.database.admins.find_one({"adminid": sub}, {"status": 1, "isActive": 1})
+        doc = await db.database.admins.find_one({"adminid": sub}, {"status": 1, "isActive": 1, "tokens_valid_after": 1})
     else:
         clauses = [{"id": sub}, {"email": sub.lower()}]
         try:
@@ -385,8 +391,11 @@ async def account_is_active(principal: TokenPayload) -> bool:
                 clauses.append({"_id": ObjectId(sub)})
         except Exception:  # noqa: BLE001
             pass
-        doc = await db.database.users.find_one({"$or": clauses}, {"status": 1, "isActive": 1})
+        doc = await db.database.users.find_one({"$or": clauses}, {"status": 1, "isActive": 1, "tokens_valid_after": 1})
     if not doc:
+        return False
+    valid_after = doc.get("tokens_valid_after")
+    if isinstance(valid_after, (int, float)) and int(principal.get("iat") or 0) < int(valid_after):
         return False
     return doc.get("isActive") is not False and str(doc.get("status") or "Active").lower() not in ("inactive", "deactivated", "deleted")
 

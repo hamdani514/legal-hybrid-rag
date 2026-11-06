@@ -1,5 +1,6 @@
 import io
 import os
+import time
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +10,16 @@ from loguru import logger
 from app.config import settings
 
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+
+# What to do when the sign-in expires. In Google Cloud's "Testing" publishing
+# status a refresh token lasts only 7 days; "In production" it lasts until
+# revoked. drive.file is a non-sensitive scope, so publishing needs no review.
+REAUTH_STEPS = (
+    "To fix: (1) Google Cloud console > APIs & Services > OAuth consent screen: if Publishing status is "
+    "'Testing', press 'Publish app' (otherwise the sign-in expires again after 7 days); (2) on a computer "
+    "with a browser run `python setup_google_drive.py auth --client-secrets client_secret.json` in backend/; "
+    "(3) copy the new token.json to the server's backend/secrets/ and restart the backend."
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 UPLOADS_DIR = BACKEND_DIR / "uploads"
@@ -41,6 +52,8 @@ class GoogleDriveService:
         self._folder_id: Optional[str] = settings.GOOGLE_DRIVE_FOLDER_ID or None
         self._auth_method: Optional[str] = None
         self.target_email = settings.GOOGLE_DRIVE_TARGET_EMAIL
+        self._last_expiry_alert = 0.0
+        self.health: Dict[str, Any] = {"status": "unknown", "detail": "Not checked yet."}
 
     def _resolve_file_path(self, filepath_or_name: str) -> Optional[Path]:
         if not filepath_or_name:
@@ -85,10 +98,8 @@ class GoogleDriveService:
                         with open(token_path, "w", encoding="utf-8") as f:
                             f.write(creds.to_json())
                     except Exception as refresh_err:
-                        logger.warning(
-                            f"Google Drive refresh token is expired or revoked: {refresh_err}. "
-                            "Please re-authenticate via 'python setup_google_drive.py auth' or provide service_account.json."
-                        )
+                        # An ERROR, not a warning: it reaches errors.log and Sentry.
+                        logger.error(f"Google Drive sign-in has expired or been revoked ({refresh_err}). {REAUTH_STEPS}")
                         try:
                             expired_backup = token_path.with_suffix(".json.expired")
                             token_path.replace(expired_backup)
@@ -127,6 +138,49 @@ class GoogleDriveService:
         except Exception as e:
             logger.error(f"❌ Failed to initialize Google Drive service: {e}")
             return None
+
+    def check_health(self) -> Dict[str, Any]:
+        """Is the Drive sign-in still good? Refreshes it with Google (cheap, read-only).
+
+        status: "ok", "off" (disabled), "not_configured", or "expired". Uploads
+        never depend on Drive (each file is also kept in backend/uploads), so a
+        problem here costs the Drive copies, not the site; but it used to be
+        silent. An expiry is logged as an ERROR with the steps to fix it, at
+        most once a day, and the admin Cases page shows it.
+        """
+        if not settings.GOOGLE_DRIVE_ENABLED:
+            return {"status": "off", "detail": "Google Drive is turned off (GOOGLE_DRIVE_ENABLED=false)."}
+        token_path = self._resolve_file_path(settings.GOOGLE_DRIVE_TOKEN_FILE)
+        expired_copy = token_path.with_suffix(".json.expired") if token_path else None
+        if token_path and token_path.exists():
+            try:
+                from google.auth.transport.requests import Request
+                from google.oauth2.credentials import Credentials
+
+                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+                creds.refresh(Request())
+                with open(token_path, "w", encoding="utf-8") as f:  # keep the file current
+                    f.write(creds.to_json())
+                return {"status": "ok", "detail": f"Signed in as {self.target_email}."}
+            except Exception as e:  # noqa: BLE001
+                self._service = None  # stop using a client whose sign-in is gone
+                self._alert_expired(e)
+                return {"status": "expired", "detail": "The Google Drive sign-in has expired: new files are kept "
+                        "on the server only. " + REAUTH_STEPS}
+        if self._auth_method == "service_account" and self.get_service() is not None:
+            return {"status": "ok", "detail": "Using a service account."}
+        if expired_copy and expired_copy.exists():
+            self._alert_expired("token.json was moved aside after a failed refresh")
+            return {"status": "expired", "detail": "The Google Drive sign-in has expired: new files are kept "
+                    "on the server only. " + REAUTH_STEPS}
+        return {"status": "not_configured", "detail": "No Google Drive sign-in: files are kept on the server only."}
+
+    def _alert_expired(self, reason) -> None:
+        now = time.monotonic()
+        if self._last_expiry_alert and now - self._last_expiry_alert < 86400:
+            return
+        self._last_expiry_alert = now
+        logger.error(f"Google Drive sign-in has expired ({reason}). {REAUTH_STEPS}")
 
     def is_configured(self) -> bool:
         """Returns True if Google Drive API client is connected."""

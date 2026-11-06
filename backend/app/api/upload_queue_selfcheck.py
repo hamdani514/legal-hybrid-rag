@@ -120,7 +120,10 @@ def pdf_bytes(marker: str) -> bytes:
 
 async def run() -> None:
     settings.ADMIN_INGEST_CONCURRENCY = SLOTS
-    admin_mod.extract = fake_extract
+    async def fake_extract_in_background(pdf_path: str, pdf_id: str, detected_type: str) -> str:
+        return await asyncio.to_thread(fake_extract, pdf_path=pdf_path, pdf_id=pdf_id, detected_type=detected_type)
+
+    admin_mod.extract_in_background = fake_extract_in_background
     admin_mod.parse_sections = fake_parse
     admin_mod.detect_pdf_type = lambda path: "text"
     tree_mod.ensure_tree = fake_tree

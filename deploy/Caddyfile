@@ -1,0 +1,30 @@
+# HTTPS in front of the backend (docker-compose.yml, service "caddy").
+#
+# Caddy gets a free certificate from Let's Encrypt for $DOMAIN and renews it
+# itself, redirects http:// to https://, and passes requests to the backend
+# with X-Forwarded-For / X-Forwarded-Proto (uvicorn --proxy-headers reads them:
+# per-person limits see the real client, and the app sends HSTS).
+#
+# Needs: DOMAIN's DNS pointing at this server, and ports 80 and 443 open.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The largest upload the app accepts is a 50 MB judgment PDF
+	# (backend/app/api/limits.py); refuse anything bigger here.
+	request_body {
+		max_size 55MB
+	}
+
+	reverse_proxy backend:8000 {
+		# A search can wait in the queue (20 s) and then run; leave room.
+		transport http {
+			read_timeout 120s
+			write_timeout 120s
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}

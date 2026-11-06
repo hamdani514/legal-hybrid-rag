@@ -111,4 +111,38 @@ export async function apiFetch(url, options = {}) {
   }
 }
 
+/**
+ * Retry a search for a few seconds when the server cannot take it yet.
+ *
+ * - While the server restarts (~15 s) the port is not open: the proxy answers
+ *   502 or the connection is refused. Such a request never reached the app.
+ * - At a peak, search answers 503 "busy" with Retry-After (5 or 10 s) when its
+ *   queue is full (backend app/api/search_slots.py). A busy search is not
+ *   counted against the daily limit.
+ *
+ * Both are safe to send again, so the person sees a longer spinner instead of
+ * an error. Other answers (including 503 "unavailable" with a longer
+ * Retry-After) are returned as they are.
+ */
+export async function retryWhileRestarting(request, waits = [2000, 4000, 6000], { busyRetries = 2 } = {}) {
+  let busyLeft = busyRetries;
+  for (let attempt = 0; ; attempt += 1) {
+    let wait = null;
+    try {
+      const res = await request();
+      const retryAfter = Number(res.headers?.get?.('Retry-After'));
+      if (res.status === 503 && busyLeft > 0 && retryAfter > 0 && retryAfter <= 10) {
+        busyLeft -= 1;
+        wait = retryAfter * 1000;
+      } else if (res.status !== 502 || attempt >= waits.length) {
+        return res;
+      }
+    } catch (err) {
+      if (attempt >= waits.length) throw err;
+    }
+    // A little randomness, so retries from many people do not arrive together.
+    await new Promise((resolve) => setTimeout(resolve, (wait ?? waits[attempt]) + Math.random() * 1000));
+  }
+}
+
 export default apiFetch;

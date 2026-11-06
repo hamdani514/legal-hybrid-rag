@@ -70,6 +70,8 @@ ujson==5.12.1
 loguru==0.7.3
 # Error reporting, used only when SENTRY_DSN is set (app/monitoring.py).
 sentry-sdk==2.74.0
+# Encrypts backups (scripts/backup_db.py); already a dependency of google-auth.
+cryptography==48.0.0
 
 pytest==9.0.3
 pytest-asyncio==1.3.0

@@ -59,7 +59,14 @@ jobs:
 
       # 4b. It must then actually serve. --network host so the MongoDB service
       #     container is reachable at localhost, the same way the job sees it.
-      - name: Container starts and answers /health
+      # 4a. The AI models are in the image and load with the network off, so a
+      #     container never depends on downloading them (Hugging Face) to search.
+      - name: Models are built into the image
+        run: |
+          docker run --rm --network none -e JWT_SECRET="ci-$(openssl rand -hex 32)" legal-hybrid-rag \
+            python -m scripts.fetch_models --check
+
+      - name: Container starts and answers /api/health/live
         run: |
           docker run -d --name test-container --network host \
             -e MONGO_URL="mongodb://localhost:27017" \
@@ -70,14 +77,16 @@ jobs:
               docker logs test-container
               exit 1
             fi
-            if curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+            # /api/health/live: the process serves. (/api/health is readiness, and needs
+            # the search indexes, which are copied onto the server, not built into the image.)
+            if curl -fsS http://localhost:8000/api/health/live >/dev/null 2>&1; then
               echo "Serving /health after ~$((i * 2))s."
               docker stop test-container
               exit 0
             fi
             sleep 2
           done
-          echo "::error::/health did not answer within 60s."
+          echo "::error::/api/health/live did not answer within 60s."
           docker logs test-container
           exit 1
 

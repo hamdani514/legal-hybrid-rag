@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from app.api.security import caller_id
 from app.config import settings
 from app.database import db
+from app.api.limits import Id
 from modules.payment import plans
 from modules.payment.webhook import _extract_period_end
 
@@ -359,7 +360,7 @@ async def create_checkout_session(request: Request, body: Optional[CheckoutReque
 
 
 class ConfirmRequest(BaseModel):
-    session_id: str
+    session_id: Id
 
 
 @router.post("/confirm")

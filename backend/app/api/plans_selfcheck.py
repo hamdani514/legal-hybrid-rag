@@ -146,6 +146,37 @@ async def run():
         check("config lists which paid plans can be bought",
               set(r.json().get("plans", {})) == {"standard", "premium"}, r.json().get("plans"))
 
+        # ── parallel searches cannot count past the limit ─────────────
+        # The daily reset used to be a write based on a stale read: 40 parallel
+        # searches got a Free account 6-10. The search itself is stubbed here.
+        from app.api.routes import query as query_routes
+        real_search, searches = query_routes.retrieve_and_answer, []
+
+        async def stub(**kw):
+            searches.append(1)
+            await asyncio.sleep(0.2)
+            return {"query": kw["raw_query"], "cleaned_query": kw["raw_query"], "intent": {}, "mode": kw["mode"],
+                    "judgments": [], "top_judgment_answer": None, "no_results": True, "message": ""}
+
+        query_routes.retrieve_and_answer = stub
+        per_minute = settings.USER_SEARCHES_PER_MINUTE
+        settings.USER_SEARCHES_PER_MINUTE = 100000
+        try:
+            for uid, stored, limit in (("USr-F", None, 2), ("USr-F", now - timedelta(days=1), 2),
+                                       ("USr-S", None, 20)):
+                await users.update_one({"id": uid}, {"$unset": {"dailyQueries": ""}} if stored is None
+                                       else {"$set": {"dailyQueries": {"count": limit, "date": stored}}})
+                searches.clear()
+                rs = await asyncio.gather(*[c.post("/query/search", json={"query": f"bail case {i}"}, headers=auth(uid))
+                                            for i in range(40)])
+                served = sum(r.status_code == 200 for r in rs)
+                label = "a fresh counter" if stored is None else "yesterday's count stored"
+                check(f"{uid}, {label}: 40 parallel searches -> exactly {limit}", served == limit == len(searches),
+                      f"served {served}, run {len(searches)}")
+        finally:
+            query_routes.retrieve_and_answer = real_search
+            settings.USER_SEARCHES_PER_MINUTE = per_minute
+
     await db.client.drop_database(SCRATCH)
     await close_db()
     passed = sum(RESULTS)

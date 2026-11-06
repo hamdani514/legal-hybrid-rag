@@ -2,12 +2,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.ingestion.embedding_pipeline import run_embedding_pipeline
+from app.api.limits import Id
 from loguru import logger
 
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
 
 class GenerateRequest(BaseModel):
-    pdf_id: Optional[str] = None
+    pdf_id: Optional[Id] = None
     force_regenerate: Optional[bool] = False
 
 @router.post("/generate")

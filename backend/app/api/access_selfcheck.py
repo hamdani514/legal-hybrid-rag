@@ -45,6 +45,7 @@ RESULTS: list = []
 # Keep in step with security.PUBLIC_ROUTES. A mismatch fails this check on purpose.
 EXPECTED_PUBLIC = {
     ("GET", "/api/health"),
+    ("GET", "/api/health/live"),
     ("GET", "/{full_path:path}"),
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/admin/login"),
@@ -62,8 +63,6 @@ EXPECTED_PUBLIC = {
     ("GET", "/api/blogs/cover/{file_id}"),
     ("POST", "/api/auth/contact"),
     ("POST", "/api/admin/support"),
-    ("GET", "/api/admin/users/check-username"),
-    ("GET", "/api/admin/users/check-email"),
     ("GET", "/api/blogs"),
     ("GET", "/api/blogs/{slug}"),
     ("GET", "/api/stats"),
@@ -171,6 +170,30 @@ async def routes_part(c) -> None:
         check(f"token {label}: refused", r.status_code == 401, r.status_code)
     r = await c.get("/api/payments/config", headers=bearer("not.a.jwt"))
     check("a stale token does not break a public route", r.status_code == 200, r.status_code)
+
+    # ── request size (app/api/limits.py) ─────────────────────────────────
+    # Before the limit, a 60 MB login grew the server by ~440 MB and crashed
+    # the attempt limiter; a few in parallel would exhaust the server.
+    r = await c.post("/api/auth/login", content=b"{" + b" " * (3 * 1024 * 1024) + b"}",
+                     headers={"Content-Type": "application/json"})
+    check("a 3 MB body to a public route is refused with 413", r.status_code == 413, r.status_code)
+
+    async def chunked(total):
+        for _ in range(total // (256 * 1024)):
+            yield b" " * (256 * 1024)
+    r = await c.post("/api/auth/login", content=chunked(3 * 1024 * 1024), headers={"Content-Type": "application/json"})
+    check("... also when the size is not declared (chunked)", r.status_code == 413, r.status_code)
+    long_email = "a" * 300 + "@gmail.com"
+    capped = []
+    for path, body in (("/api/auth/login", {"email": long_email, "password": "x"}),
+                       ("/api/auth/signup", {"email": long_email, "password": "x"}),
+                       ("/api/auth/forgot-password", {"email": long_email}),
+                       ("/api/auth/contact", {"email": "a@gmail.com", "message": "m" * 20_000}),
+                       ("/api/admin/support", {"full_name": "A", "email": "a@gmail.com", "subject": "s", "message": "m" * 20_000})):
+        r = await c.post(path, json=body)
+        if r.status_code != 422:
+            capped.append(f"{path} -> {r.status_code}")
+    check("public forms refuse oversized fields with 422", not capped, capped)
 
     # ── the public list is reviewed, and real ────────────────────────────
     check("public routes match this file's reviewed list", set(security.PUBLIC_ROUTES) == EXPECTED_PUBLIC,
@@ -525,12 +548,12 @@ async def accounts_part(c) -> None:
     check("the site's own address still is", mine.headers.get("access-control-allow-origin") == own,
           mine.headers.get("access-control-allow-origin"))
     check("credentials are never shared cross-site", mine.headers.get("access-control-allow-credentials") != "true")
-    r = await c.get("/api/health")
+    r = await c.get("/api/health/live")
     want = {"x-content-type-options": "nosniff", "x-frame-options": "DENY",
             "referrer-policy": "strict-origin-when-cross-origin"}
     check("security headers on every response", all(r.headers.get(k) == v for k, v in want.items()),
           {k: r.headers.get(k) for k in want})
-    r = await c.get("/api/health", headers={"x-forwarded-proto": "https"})
+    r = await c.get("/api/health/live", headers={"x-forwarded-proto": "https"})
     check("HSTS when served over HTTPS", "max-age" in r.headers.get("strict-transport-security", ""))
     csp = main.app.state.csp
     check("a content security policy is ready for the pages",

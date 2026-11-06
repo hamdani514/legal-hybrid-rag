@@ -63,6 +63,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from fastapi import HTTPException
 from loguru import logger
 
 from app.config import settings
@@ -151,6 +152,72 @@ _background: set[asyncio.Task] = set()
 def normalise_query(query: str) -> str:
     """The cache key form of a query: case and whitespace do not matter."""
     return " ".join((query or "").lower().split())
+
+
+# ── Search results cache ─────────────────────────────────────────────────────
+# A search is CPU-bound (~3 s, mostly the cross-encoder over long passages) and
+# deterministic for a given query and index, so the same search within
+# SEARCH_CACHE_TTL_S is served from memory: identical results, no model work.
+# The key includes the number of indexed passages, so adding or removing a
+# judgment never serves a stale result. Copies go in and out (callers mutate).
+#
+# Two more things make a crowd asking the same thing cheap:
+# * the cache is checked BEFORE taking a place in the search queue
+#   (app/api/search_slots.py), since a cached answer needs no CPU;
+# * the same search already running is joined, not started again: 50 people
+#   asking about bail at once cost one search, not 50 (and not 46 "busy").
+_search_cache = _LRU(int(getattr(settings, "SEARCH_CACHE_SIZE", 256) or 256))
+_inflight: dict = {}
+search_cache_stats = {"hits": 0, "misses": 0, "joined": 0}
+
+
+def _index_stamp() -> int:
+    try:
+        from app.retrieval.chroma_client import collection
+        return int(collection.count())
+    except Exception:  # noqa: BLE001 - no stamp means no caching for this call
+        return -1
+
+
+async def _retrieve_v2_cached(raw_query: str, top_k_judgments: int, top_k_sections: int) -> dict:
+    import copy
+
+    from app.retrieval.pipeline_v2 import retrieve_v2
+
+    ttl = float(getattr(settings, "SEARCH_CACHE_TTL_S", 600) or 0)
+    stamp = await asyncio.to_thread(_index_stamp) if ttl > 0 else -1
+    key = (normalise_query(raw_query), int(top_k_judgments), int(top_k_sections), stamp)
+    if stamp >= 0:
+        hit = _search_cache.get(key)
+        if hit is not None and time.monotonic() - hit[0] < ttl:
+            search_cache_stats["hits"] += 1
+            return copy.deepcopy(hit[1])
+        running = _inflight.get(key)
+        if running is not None:
+            search_cache_stats["joined"] += 1
+            return copy.deepcopy(await asyncio.shield(running))
+    search_cache_stats["misses"] += 1
+    future = asyncio.get_running_loop().create_future()
+    if stamp >= 0:
+        _inflight[key] = future
+    try:
+        # Only a search that really computes takes a place in the queue (503
+        # "busy" when it is full; the route then refunds the daily count).
+        from app.api.search_slots import search_slots
+
+        async with search_slots().slot():
+            result = await retrieve_v2(raw_query, top_k_judgments=top_k_judgments, top_k_sections=top_k_sections)
+        if stamp >= 0:
+            _search_cache.put(key, (time.monotonic(), copy.deepcopy(result)))
+        future.set_result(copy.deepcopy(result))
+        return result
+    except BaseException as e:
+        if not future.done():
+            future.set_exception(e)
+            future.exception()  # marked retrieved: no "never retrieved" warning when nobody joined
+        raise
+    finally:
+        _inflight.pop(key, None)
 
 
 async def _answer_cached(raw_query: str, judgment_id: str, context: str) -> tuple[str | None, str]:
@@ -315,11 +382,7 @@ async def retrieve_and_answer(
 
     if pipeline == "v2":
         try:
-            from app.retrieval.pipeline_v2 import retrieve_v2
-
-            v2 = await retrieve_v2(
-                raw_query, top_k_judgments=top_k_judgments, top_k_sections=top_k_sections
-            )
+            v2 = await _retrieve_v2_cached(raw_query, top_k_judgments, top_k_sections)
             candidates = v2.get("candidates") or []
             reranked = bool(v2.get("reranked"))
             parent_results = v2.get("parent_results") or []
@@ -332,6 +395,10 @@ async def retrieve_and_answer(
             for stage, ms in (v2.get("timings_ms") or {}).items():
                 timings[f"v2.{stage}"] = float(ms)
             t = time.perf_counter()
+        except HTTPException:
+            # "Search is busy" from the queue: tell the user (not counted). Falling
+            # back to v1 here would run an uncapped search instead.
+            raise
         except Exception:
             logger.exception("Pipeline v2 failed; falling back to v1 for this query")
             pipeline = "v1"

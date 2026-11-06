@@ -6,6 +6,7 @@ import { EMPTY_FILTERS, activeFilterCount, caseDate, matchesFilters } from '../u
 import { filterChips } from '../user/lib/filterSummary';
 import { FEATURES, PLANS, planKey } from '../user/lib/plan';
 import { slugify, slugifyTyping } from '../lib/slug';
+import { retryWhileRestarting } from '../lib/api';
 import { chatPath, chatSlug, slugMatches } from '../user/lib/chatSlug';
 import { caseJudges, isEmptyAnswer, prettyCaseName, prettyOutcome, NO_AUTHORITY_MARKER } from '../user/lib/answerFormat';
 
@@ -113,5 +114,46 @@ describe('names and addresses', () => {
 
   it('an answer saying there is no authority counts as empty', () => {
     expect(isEmptyAnswer(`${NO_AUTHORITY_MARKER} nothing here`)).toBe(true);
+  });
+});
+
+describe('restarts', () => {
+  const reply = (status) => ({ status });
+  it('a 502 while the server restarts is retried, then the answer is returned', async () => {
+    const seen = [502, 502, 200];
+    let calls = 0;
+    const res = await retryWhileRestarting(async () => reply(seen[calls++]), [0, 0, 0]);
+    expect(res.status).toBe(200);
+    expect(calls).toBe(3);
+  });
+
+  it('a refused connection is retried too', async () => {
+    let calls = 0;
+    const res = await retryWhileRestarting(async () => {
+      calls += 1;
+      if (calls === 1) throw new TypeError('Failed to fetch');
+      return reply(200);
+    }, [0, 0]);
+    expect(res.status).toBe(200);
+  });
+
+  it('a busy search (503, short Retry-After) is retried twice, then shown', async () => {
+    const busyReply = { status: 503, headers: { get: (h) => (h === 'Retry-After' ? '0.001' : null) } };
+    let calls = 0;
+    const res = await retryWhileRestarting(async () => { calls += 1; return busyReply; }, [0, 0]);
+    expect([res.status, calls]).toEqual([503, 3]);
+    calls = 0;
+    const ok = await retryWhileRestarting(async () => { calls += 1; return calls < 2 ? busyReply : reply(200); }, [0]);
+    expect([ok.status, calls]).toEqual([200, 2]);
+  });
+
+  it('answers from the app itself are not retried, and retrying stops', async () => {
+    let calls = 0;
+    const unavailable = { status: 503, headers: { get: (h) => (h === 'Retry-After' ? '60' : null) } };
+    const busy = await retryWhileRestarting(async () => { calls += 1; return unavailable; }, [0, 0]);
+    expect([busy.status, calls]).toEqual([503, 1]);
+    calls = 0;
+    const down = await retryWhileRestarting(async () => { calls += 1; return reply(502); }, [0, 0]);
+    expect([down.status, calls]).toEqual([502, 3]);
   });
 });

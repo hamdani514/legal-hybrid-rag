@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.retrieval.contracts import ANSWER_ON_DEMAND
+from app.api.limits import Id
 
 MAX_QUERY_CHARS = int(getattr(settings, "MAX_QUERY_CHARS", 4000) or 4000)
 
@@ -105,7 +106,7 @@ class MoreRequest(BaseModel):
     them, from every candidate the search found; ``shown`` is then what the
     filtered list already shows (empty for its first page)."""
     query: str = Field(min_length=3, max_length=MAX_QUERY_CHARS)
-    shown: list[str] = Field(default_factory=list, max_length=MAX_SHOWN)
+    shown: list[Id] = Field(default_factory=list, max_length=MAX_SHOWN)
     top_k_sections: int = Field(default=3, ge=1, le=6)
     filters: ResultFilters | None = None
 
@@ -117,7 +118,7 @@ class MoreResponse(BaseModel):
 
 
 class SummarizeRequest(BaseModel):
-    judgment_id: str
+    judgment_id: Id
 
 
 class SummarizeResponse(BaseModel):
@@ -144,7 +145,7 @@ class AnswerResponse(BaseModel):
 
 class CompareRequest(BaseModel):
     """Judgments to line up side by side, in display order."""
-    judgment_ids: list[str]
+    judgment_ids: list[Id] = Field(max_length=50)
 
 
 class CompareField(BaseModel):

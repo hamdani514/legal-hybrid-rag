@@ -535,3 +535,30 @@ async def send_contact_acknowledgement(name: str, email: str, subject: str, quer
         footer_note="This email confirms your inquiry has been logged into our support queue."
     )
     return await send_mail(email, mail_subject, html_body)
+
+
+async def send_existing_account_notice(user_name: str, user_email: str) -> bool:
+    """Someone tried to sign up with an address that already has an account.
+    Sign-up answers the same either way (so it cannot reveal who is registered);
+    the real owner learns of it here."""
+    safe_name = html.escape(user_name or "Counselor")
+    subject = "Someone tried to create an account with your email"
+    content_html = f"""
+        <p style="color: #334155; font-size: 15px; line-height: 1.6;">Hi <strong>{safe_name}</strong>,</p>
+        <p style="color: #334155; font-size: 15px; line-height: 1.6;">
+            Someone tried to create a new account with this email address, which already has an account.
+            No new account was created.
+        </p>
+        <p style="color: #334155; font-size: 15px; line-height: 1.6;">
+            If it was you, simply sign in. If you have forgotten your password, you can reset it from the sign-in page.
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+            <a href="{settings.FRONTEND_URL}/login" style="background-color: #0D1C32; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block;">
+                Sign In
+            </a>
+        </div>
+        <p style="color: #64748B; font-size: 13px; line-height: 1.6;">If it was not you, you can ignore this email: your account is unchanged.</p>
+    """
+    html_body = _email_container(title="Account Notice", subtitle="A sign-up attempt with your email",
+                                 content_html=content_html)
+    return await send_mail(user_email, subject, html_body)

@@ -6,12 +6,16 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.api import passwords
+from app.ingestion.background import extract_in_background, yield_to_searches
+from app.api.limits import Email, Id, Message, Name, OptEmail, OptName, OptShortText, Password, ShortText
 from loguru import logger
 
 from app.database import db
 from app.ingestion.detector import detect_pdf_type
-from app.ingestion.extractor import extract, ocr_issues, ocr_summary
+from app.ingestion.extractor import ocr_issues, ocr_summary
 from app.ingestion.parser import parse_sections
 from app.vectorstore.chroma_store import chroma_store
 from app.services.email_service import send_contact_notification, send_contact_acknowledgement
@@ -164,9 +168,10 @@ async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
         else:
             logger.info(f"[{pdf_id}] Extraction started")
             await _job_set(pdf_id, status="extracting")
-            # OCR is seconds per page of synchronous CPU: in a thread.
-            text = await asyncio.to_thread(extract, pdf_path=pdf_path, pdf_id=pdf_id,
-                                           detected_type=detected_type)
+            # Searches first (app/ingestion/background.py): wait while any run,
+            # then OCR a scanned PDF in a separate low-priority process.
+            await yield_to_searches("extraction", pdf_id)
+            text = await extract_in_background(pdf_path=pdf_path, pdf_id=pdf_id, detected_type=detected_type)
             if await is_cancelled():
                 logger.info(f"[{pdf_id}] Ingestion cancelled after text extraction.")
                 return
@@ -234,7 +239,9 @@ async def _run_pipeline(pdf_id: str, pdf_path: str, detected_type: str) -> None:
         stage = "index"
         await _job_set(pdf_id, status="embedding")
         logger.info(f"[{pdf_id}] Tree ready. Building the search stores...")
-        # One judgment at a time through the index stage (see the queue notes).
+        # One judgment at a time through the index stage (see the queue notes),
+        # after any running searches: it uses the same embedding model.
+        await yield_to_searches("indexing", pdf_id)
         async with _queue()["index"]:
             if await is_cancelled():
                 logger.info(f"[{pdf_id}] Ingestion cancelled while waiting for the index stage.")
@@ -591,7 +598,7 @@ async def list_jobs():
 
 
 class JobLookup(BaseModel):
-    job_ids: list[str]
+    job_ids: list[Id] = Field(max_length=500)
 
 
 MAX_LOOKUP_IDS = 500
@@ -912,7 +919,7 @@ async def delete_job(job_id: str):
 
 
 class BatchDeleteJobsRequest(BaseModel):
-    job_ids: list[str]
+    job_ids: list[Id] = Field(max_length=500)
 
 
 @router.post("/jobs/batch-delete")
@@ -963,11 +970,15 @@ async def admin_status():
     cursor = db.jobs.find({}, {"_id": 0}).sort("created_at", -1)
     all_jobs = [_with_activity(j) for j in await cursor.to_list(length=None)]
 
+    from app.services.google_drive_service import google_drive_service
+
     return {
         "total_documents": total_documents,
         "by_status": by_status,
         "recent_jobs": all_jobs[:5],
         "all_jobs": all_jobs,
+        # Last hourly check (scheduled_tasks.py); the Cases page warns when it is not ok.
+        "drive": google_drive_service.health,
     }
 
 
@@ -977,17 +988,17 @@ async def admin_status():
 from pydantic import BaseModel
 
 class UserCreate(BaseModel):
-    email: str
-    password: str
-    first_name: Optional[str] = ""
-    last_name: Optional[str] = ""
-    name: Optional[str] = ""
-    username: Optional[str] = ""
-    org: Optional[str] = ""
-    dob: Optional[str] = ""
-    gender: Optional[str] = "Male"
-    phone_no: Optional[str] = ""
-    created_at: Optional[str] = None
+    email: Email
+    password: Password
+    first_name: OptName = ""
+    last_name: OptName = ""
+    name: OptName = ""
+    username: OptName = ""
+    org: OptName = ""
+    dob: OptShortText = ""
+    gender: OptShortText = "Male"
+    phone_no: OptShortText = ""
+    created_at: OptShortText = None
 
 
 def validate_password_strength(password: str) -> None:
@@ -1057,7 +1068,6 @@ async def validate_human_name(username: str) -> bool:
 # Import re for regex validation
 import re
 
-from app.api.security import hash_password
 
 # Account documents store a bcrypt hash in "password" (older ones may still
 # hold plain text until their next login upgrades them). Neither ever leaves
@@ -1071,18 +1081,23 @@ def _without_secrets(doc: dict) -> dict:
     return {k: v for k, v in doc.items() if k not in SECRET_FIELDS}
 
 
-def _password_hash(plain: str) -> str:
-    """Validate a new password's strength and return its bcrypt hash (400 if unusable)."""
+async def _password_hash(plain: str) -> str:
+    """Validate a new password's strength and return its bcrypt hash (400 if unusable).
+    The hashing runs off the event loop (app/api/passwords.py)."""
     try:
         validate_password_strength(plain)
-        return hash_password(plain)
+        return await passwords.hash(plain)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def _password_change(plain: str) -> dict:
-    """{"password": hash} for a new password, {} for a blank one (keep the current password)."""
-    return {"password": _password_hash(plain)} if plain else {}
+async def _password_change(plain: str) -> dict:
+    """{"password": hash, ...} for a new password, {} for a blank one (keep the current
+    password). A new password ends that admin's other sessions (security.account_is_active)."""
+    if not plain:
+        return {}
+    return {"password": await _password_hash(plain),
+            "tokens_valid_after": int(datetime.now(timezone.utc).timestamp())}
 
 @router.get("/users")
 async def get_users():
@@ -1127,7 +1142,7 @@ async def create_user(user: UserCreate):
         raise HTTPException(status_code=400, detail=str(e))
         
     # 2. Validate and hash the password
-    password_hash = _password_hash(user.password)
+    password_hash = await _password_hash(user.password)
 
     # Calculate Name & Username
     full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
@@ -1230,7 +1245,10 @@ async def delete_user(user_id: str):
     if not existing_user:
         raise HTTPException(status_code=404, detail="User not found.")
         
-    await db.database.users.delete_one({"id": user_id})
+    # The same as the user deleting it: billing stopped, all their data removed.
+    from app.api.account_removal import remove_account
+
+    await remove_account(existing_user)
     return {"message": "User deleted successfully.", "id": user_id}
 
 # ----------------------------
@@ -1238,14 +1256,14 @@ async def delete_user(user_id: str):
 # ----------------------------
 
 class SupportQueryCreate(BaseModel):
-    full_name: str
-    email: str
-    subject: str
-    message: str
+    full_name: Name
+    email: Email
+    subject: ShortText
+    message: Message
 
 
 class SupportStatusUpdate(BaseModel):
-    status: str  # "Urgent", "Pending", "Solved"
+    status: ShortText  # "Urgent", "Pending", "Solved"
 
 
 @router.post("/support")
@@ -1388,11 +1406,11 @@ async def delete_support_query(query_id: str):
 
 
 class AdminProfileUpdate(BaseModel):
-    original_adminid: str
-    adminid: str
-    password: str = ""  # blank keeps the current password
-    dob: str
-    name: str
+    original_adminid: Email
+    adminid: Email
+    password: Password = ""  # blank keeps the current password
+    dob: ShortText
+    name: Name
 
 
 @router.put("/profile")
@@ -1418,7 +1436,7 @@ async def update_admin_profile(body: AdminProfileUpdate):
         raise HTTPException(status_code=400, detail="Admin ID cannot be empty.")
     
     # A new password, if one was typed (blank keeps the current one)
-    password_change = _password_change(body.password)
+    password_change = await _password_change(body.password)
 
     try:
         # Validate DOB format (YYYY-MM-DD)
@@ -1460,22 +1478,22 @@ async def get_admin_profile(adminid: str):
 
 
 class AdminCreate(BaseModel):
-    adminid: str
-    name: str
-    email: Optional[str] = ""
-    password: str
-    permissions: Optional[list[str]] = ["cases"]
-    role: Optional[str] = "admin"
-    dob: Optional[str] = ""
+    adminid: Email
+    name: Name
+    email: OptEmail = ""
+    password: Password
+    permissions: Optional[list[ShortText]] = Field(default=["cases"], max_length=20)
+    role: OptShortText = "admin"
+    dob: OptShortText = ""
 
 class AdminUpdate(BaseModel):
-    adminid: str
-    name: str
-    email: Optional[str] = ""
-    password: str = ""  # blank keeps the current password
-    permissions: Optional[list[str]] = ["cases"]
-    role: Optional[str] = "admin"
-    dob: Optional[str] = ""
+    adminid: Email
+    name: Name
+    email: OptEmail = ""
+    password: Password = ""  # blank keeps the current password
+    permissions: Optional[list[ShortText]] = Field(default=["cases"], max_length=20)
+    role: OptShortText = "admin"
+    dob: OptShortText = ""
 
 @router.get("/admins")
 async def get_admins():
@@ -1522,7 +1540,7 @@ async def create_admin(body: AdminCreate):
     if existing_email:
         raise HTTPException(status_code=409, detail="Email is already registered.")
         
-    password_hash = _password_hash(password)
+    password_hash = await _password_hash(password)
 
     allowed_perms = {"cases", "users", "support"}
     requested_perms = body.permissions or ["cases"]
@@ -1570,7 +1588,7 @@ async def update_admin(adminid_param: str, body: AdminUpdate):
         if dup:
             raise HTTPException(status_code=409, detail="Email is already registered.")
             
-    password_change = _password_change(password)
+    password_change = await _password_change(password)
 
     allowed_perms = {"cases", "users", "support"}
     requested_perms = body.permissions or existing.get("permissions") or ["cases"]

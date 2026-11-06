@@ -50,6 +50,10 @@ def _warn_about_deployment() -> None:
     if "localhost" in (settings.FRONTEND_URL or "") or "127.0.0.1" in (settings.FRONTEND_URL or ""):
         logger.warning(f"FRONTEND_URL is {settings.FRONTEND_URL}: links in emails point to this machine. "
                        "Set it to the site's public address in production.")
+    elif (settings.FRONTEND_URL or "").startswith("http://"):
+        # Sign-in tokens stay valid for weeks and travel with every request.
+        logger.error(f"FRONTEND_URL is {settings.FRONTEND_URL} (plain HTTP): sign-ins and tokens cross the "
+                     "network readable. Serve the site over HTTPS (docker-compose.yml runs Caddy for this).")
 
 
 @asynccontextmanager
@@ -111,19 +115,12 @@ async def lifespan(app: FastAPI):
     # one search a demo audience is guaranteed to watch. Run off the event loop
     # so the server accepts requests immediately; a failure here only means the
     # first search loads them itself, as before.
+    # The readiness check loads both models and opens both indexes; until it
+    # passes, searches are refused (not counted) and /api/health answers 503.
     def _warm_models() -> None:
-        import time
+        from app.retrieval import readiness
 
-        started = time.perf_counter()
-        try:
-            from app.embeddings.embedding_generator import EmbeddingGenerator
-            from app.retrieval.reranker import Reranker
-
-            EmbeddingGenerator().model.encode("warm-up", normalize_embeddings=True)
-            Reranker().score("warm-up", ["warm-up"])
-            logger.info(f"🔥 Retrieval models warm in {time.perf_counter() - started:.1f}s")
-        except Exception as e:
-            logger.warning(f"Model warm-up skipped: {e}")
+        readiness.check_now(force=True)
 
     import asyncio
 
@@ -156,6 +153,11 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("🛑 Shutting down application...")
+    try:
+        from app.ingestion.background import shutdown as stop_ocr_processes
+        stop_ocr_processes()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"OCR processes did not stop cleanly: {e}")
     try:
         from scheduled_tasks import stop_scheduler
         stop_scheduler()
@@ -191,6 +193,11 @@ def _allowed_origins() -> list[str]:
     raw = [settings.FRONTEND_URL or ""] + (settings.FRONTEND_ORIGINS or "").split(",")
     return sorted({o.strip().rstrip("/") for o in raw if o.strip()})
 
+
+# Refuse oversized request bodies before anything reads them (app/api/limits.py).
+# Added first, so it sits inside CORS and the security headers: a 413 carries them too.
+from app.api.limits import BodySizeLimit
+app.add_middleware(BodySizeLimit)
 
 app.add_middleware(
     CORSMiddleware,
@@ -286,8 +293,22 @@ if frontend_dist.exists():
 # ----------------------------
 # Health check
 # ----------------------------
+@app.get("/api/health/live")
+async def health_live():
+    """The process is up and answering (liveness). Says nothing about search."""
+    return {"status": "alive"}
+
+
 @app.get("/api/health")
 async def health():
+    """Ready to serve users (readiness): the database answers and search can run.
+
+    503 while the server is still loading its models, or when the database or
+    a search model or index is missing, so a host's health check sees a broken
+    server instead of one that answers every search "no case found".
+    """
+    from app.retrieval import readiness
+
     try:
         if not db.is_configured:
             db_status = "not configured"
@@ -300,10 +321,23 @@ async def health():
         logger.error(f"Health check error: {e}")
         db_status = "error"
 
-    return {
-        "message": "Legal Hybrid RAG Running",
-        "db_status": db_status
-    }
+    warming = getattr(app.state, "warmup", None)
+    if not readiness.is_ready() and warming is not None and not warming.done():
+        search_status, problems = "starting", ["loading the search models"]
+    else:
+        problems = await readiness.problems()
+        search_status = "ready" if not problems else "unavailable"
+
+    healthy = db_status == "connected" and search_status == "ready"
+    return JSONResponse(
+        status_code=200 if healthy else 503,
+        content={
+            "status": "ok" if healthy else "unhealthy",
+            "db_status": db_status,
+            "search": search_status,
+            "problems": problems,
+        },
+    )
 
 
 # ----------------------------

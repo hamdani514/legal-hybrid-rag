@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import { apiFetch } from '../../lib/api';
@@ -20,38 +20,10 @@ const SignupForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  // The last availability answer, for the address it was asked about. The
-  // status shown is derived from it, so typing never needs a state update in
-  // the effect: an address not yet answered simply reads as "checking".
-  const [emailCheck, setEmailCheck] = useState({ email: '', status: 'idle' });
+  // No "is this email taken?" check while typing: it told anyone which emails
+  // have accounts. Sign-up answers the same either way; an existing account's
+  // owner is emailed instead (backend app/api/auth.py, signup).
   const navigate = useNavigate();
-  const emailTrim = formData.email.trim();
-  const emailCheckable = Boolean(emailTrim) && emailTrim.toLowerCase().endsWith('@gmail.com');
-  const emailUniqueStatus = !emailCheckable
-    ? 'idle'
-    : emailCheck.email === emailTrim
-      ? emailCheck.status
-      : 'checking';
-
-  // Email availability check, debounced while typing.
-  useEffect(() => {
-    if (!emailCheckable) return undefined;
-    const delayDebounce = setTimeout(async () => {
-      let status = 'idle';
-      try {
-        const res = await apiFetch(`/api/admin/users/check-email?email=${encodeURIComponent(emailTrim)}`);
-        if (res.ok) {
-          const data = await res.json();
-          status = data.available ? 'available' : 'taken';
-        }
-      } catch (err) {
-        console.error('Error checking email:', err);
-      }
-      setEmailCheck({ email: emailTrim, status });
-    }, 500);
-
-    return () => clearTimeout(delayDebounce);
-  }, [emailTrim, emailCheckable]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,11 +62,6 @@ const SignupForm = () => {
       return;
     }
 
-    if (emailUniqueStatus === 'taken') {
-      setErrorMsg('Email is already registered.');
-      setLoading(false);
-      return;
-    }
 
     try {
       const payload = {
@@ -203,15 +170,6 @@ const SignupForm = () => {
             className="w-full bg-white px-4 py-[13px] font-body text-sm leading-[17px] text-[#191C1E] placeholder:text-[#CBD5E1] outline-none transition-all focus:ring-1 focus:ring-[#E9C176]"
             style={{ boxShadow: '0px 0px 0px 1px rgba(197, 198, 205, 0.2)' }}
           />
-          {emailUniqueStatus === 'checking' && (
-            <span className="text-[10px] text-blue-500 font-body">Checking availability...</span>
-          )}
-          {emailUniqueStatus === 'available' && (
-            <span className="text-[10px] text-green-600 font-body">✓ Email is available</span>
-          )}
-          {emailUniqueStatus === 'taken' && (
-            <span className="text-[10px] text-red-500 font-body">✗ Email is already registered</span>
-          )}
         </div>
 
         {/* Password & Confirm Password */}

@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     MONGO_URL: str = "mongodb://localhost:27017"
     REDIS_URL: str = ""
     DB_NAME: str = "legal_rag"
+    # How long startup waits for MongoDB to answer (after a reboot it can start
+    # after the app). Past this the server stops with a clear message.
+    MONGO_CONNECT_WAIT_S: float = 60
     OPENAI_API_KEY: str = ""
     
     # Gemini API Settings (Primary)
@@ -226,10 +229,36 @@ class Settings(BaseSettings):
     LLM_RPM_LIMIT: int = 14
     LLM_MAX_CONCURRENCY: int = 3
     LLM_MAX_WAIT_S: float = 20.0        # queue at most this long, then report rate_limited
+    # Uploads (parsing, case cards) use only what is left after this many calls a
+    # minute are kept for people's answers, and wait up to the second setting.
+    # On a paid Gemini tier raise LLM_RPM_LIMIT (and this reserve with it).
+    LLM_USER_RESERVE: int = 5
+    LLM_BACKGROUND_MAX_WAIT_S: float = 600.0
     ANSWER_TOP_ONLY: bool = True        # others are analysed on demand (POST /query/answer)
     MAX_QUERY_CHARS: int = 4000
+    # Searches running at once (app/api/search_slots.py). 0 = half the CPU
+    # cores, between 2 and 4. The rest wait in line up to SEARCH_QUEUE_WAIT_S;
+    # beyond that, or with SEARCH_MAX_WAITING (0 = 4 per slot) already waiting,
+    # the user is told the service is busy.
+    MAX_CONCURRENT_SEARCHES: int = 0
+    SEARCH_QUEUE_WAIT_S: float = 20.0
+    SEARCH_MAX_WAITING: int = 0
+    # The same search within this many seconds is served from memory (identical
+    # results; the key includes the index size). 0 = off.
+    SEARCH_CACHE_TTL_S: float = 600
+    SEARCH_CACHE_SIZE: int = 256
+    # Password checks (sign-in, sign-up, reset) run on a thread pool, never on the
+    # event loop (app/api/passwords.py). 0 = half the CPU cores, between 2 and 8.
+    # More than PASSWORD_MAX_WAITING waiting (0 = 50 per worker), or a wait past
+    # PASSWORD_QUEUE_WAIT_S, and the person is told sign-in is busy.
+    PASSWORD_WORKERS: int = 0
+    PASSWORD_MAX_WAITING: int = 0
+    PASSWORD_QUEUE_WAIT_S: float = 20.0
     TORCH_THREADS: int = 0              # 0 = automatic
     QUERY_RECORDER_ENABLED: bool = True
+    # Search-log records (app/query/*.json) older than this are deleted daily;
+    # a user's own records go when their account is deleted. 0 = keep forever.
+    QUERY_LOG_RETENTION_DAYS: float = 30
     QUERY_RECORDER_SLIM: bool = True    # no 768-float vector, no full contexts
 
     # ── Authentication (Agent S) ─────────────────────────────────────────
@@ -241,7 +270,9 @@ class Settings(BaseSettings):
     # (sessionManager.refreshSessionIfNeeded), so someone using the app stays
     # signed in indefinitely; this is how long the app may stay CLOSED before a
     # new login is needed. 30 days.
-    JWT_EXPIRE_MINUTES: int = 43200
+    # One day; an active session renews itself silently at half-life (frontend
+    # sessionManager), so only an idle one has to sign in again. Was 30 days.
+    JWT_EXPIRE_MINUTES: int = 1440
     USER_SEARCHES_PER_MINUTE: int = 10
     USER_ANSWERS_PER_DAY: int = 200
 
@@ -291,6 +322,13 @@ class Settings(BaseSettings):
     # judgment at a time, as in bulk ingest. Raise to 3-4 on a paid Gemini tier
     # if the CPU keeps up; OCR of scanned PDFs is the heavy part.
     ADMIN_INGEST_CONCURRENCY: int = 2
+    # Uploads give way to searches (app/ingestion/background.py): before each
+    # heavy stage an upload waits while searches run, at most this long.
+    INGEST_YIELD_MAX_S: float = 60
+    # Separate low-priority processes for OCR of scanned PDFs.
+    INGEST_OCR_PROCESSES: int = 1
+    # Largest judgment PDF an admin can upload (app/api/limits.py).
+    MAX_PDF_UPLOAD_MB: float = 50
 
     # ── Bulk ingestion (backend/ingest_bulk.py) ──────────────────────────
     BULK_LLM_CONCURRENCY: int = 3      # parallel Gemini parses; raise on a paid tier
@@ -321,6 +359,17 @@ class Settings(BaseSettings):
     ERROR_LOG_DIR: str = ""            # empty = backend/logs (errors.log, rotated)
     SENTRY_DSN: str = ""               # empty = no Sentry; errors stay in the log
     SENTRY_ENVIRONMENT: str = ""       # e.g. "production" or "staging"
+
+    # ── Backups (scripts/backup_db.py, run by scheduled_tasks.py) ────────
+    BACKUP_ENABLED: bool = True        # the server backs itself up on the schedule below
+    BACKUP_DIR: str = ""               # empty = backend/backups
+    BACKUP_COPY_DIR: str = ""          # a SECOND place for every backup (other disk, synced folder)
+    BACKUP_HOUR_UTC: int = 2           # daily: database + uploads
+    BACKUP_KEEP: int = 14              # daily backups kept (in each place)
+    BACKUP_FULL_WEEKDAY: str = "sun"   # weekly: also the search indexes (~1 GB); "" = never
+    BACKUP_FULL_KEEP: int = 2
+    # Encrypts every backup (scripts/backup_db.py --make-key). Keep a copy OFF the server.
+    BACKUP_ENCRYPTION_KEY: str = ""
     FRONTEND_URL: str = "http://localhost:5173"
     # Other addresses the frontend is served from (comma-separated origins,
     # e.g. "https://verdict.example.com,https://www.verdict.example.com").

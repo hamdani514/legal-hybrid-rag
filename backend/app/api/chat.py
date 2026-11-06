@@ -51,6 +51,7 @@ from pydantic import BaseModel, Field
 
 from app.api.security import caller_id
 from app.database import db
+from app.api.limits import OptShortText
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -113,15 +114,15 @@ def _trim(messages: list) -> list:
 
 
 class SessionCreate(BaseModel):
-    title: str | None = None
+    title: OptShortText = None
 
 
 class MessagesAppend(BaseModel):
-    messages: list[dict] = Field(default_factory=list)
+    messages: list[dict] = Field(default_factory=list, max_length=MAX_MESSAGES_PER_SESSION)
 
 
 class SessionPatch(BaseModel):
-    title: str | None = None
+    title: OptShortText = None
     pinned: bool | None = None
 
 

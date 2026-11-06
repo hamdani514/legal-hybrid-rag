@@ -83,7 +83,6 @@ SIGNED_IN_CALLS = [
     ("post", "/query/answer", {"json": {}}),
     ("post", "/query/compare", {"json": {"judgment_ids": []}}),
     ("post", "/query/summarize", {"json": {}}),
-    ("get", "/api/admin/users/check-email?email=zzz@gmail.com", {}),
 ]
 
 
@@ -147,7 +146,7 @@ async def run() -> None:
         search_body = {"query": "constable dismissed from service appeal"}
 
         security.limiter.reset()
-        r = await c.get("/api/health")
+        r = await c.get("/api/health/live")
         check("health public", r.status_code == 200, f"{r.status_code}")
 
         # ================= logins ============================================
@@ -214,7 +213,50 @@ async def run() -> None:
         check("new signup logs in", r.status_code == 200, f"{r.status_code}")
         ayesha_token = r.json().get("token", "")
 
+        # ---- nobody can find out which emails have accounts ------------------
+        notices, codes_before = [], dict(codes)
+
+        async def capture_notice(_name, email):
+            notices.append(email)
+        auth_mod.send_existing_account_notice = capture_notice
+        fresh = await c.post("/api/auth/signup", json={"email": "brandnew@gmail.com", "password": "Strong#Pass9"})
+        again = await c.post("/api/auth/signup", json={"email": "ayesha@gmail.com", "password": "Other#Pass77"})
+        check("sign-up with a registered email answers exactly like a new one",
+              again.status_code == fresh.status_code == 200
+              and {k: v for k, v in again.json().items() if k != "email"} == {k: v for k, v in fresh.json().items() if k != "email"},
+              f"{again.status_code} {again.text[:80]}")
+        check("... sends no code to it, and tells its owner instead",
+              codes.get("ayesha@gmail.com") == codes_before.get("ayesha@gmail.com") and notices == ["ayesha@gmail.com"], notices)
+        check("... and leaves the account untouched",
+              security.verify_password("Strong#Pass9", (await users.find_one({"email": "ayesha@gmail.com"}))["password"])[0])
+        for path in ("/api/admin/users/check-email?email=ayesha@gmail.com", "/api/admin/users/check-username?username=x"):
+            r = await c.get(path)
+            check(f"{path.split('?')[0]} is not public (it would reveal accounts)", r.status_code == 401, r.status_code)
+            r = await c.get(path, headers=_bearer(ayesha_token))
+            check(f"... nor open to signed-in users", r.status_code == 403, r.status_code)
+        import time as _t
+        timings = {}
+        for label, email in (("registered", "ayesha@gmail.com"), ("unknown", "nobody-here@gmail.com")):
+            spent = []
+            for _ in range(3):
+                t0 = _t.perf_counter()
+                await c.post("/api/auth/login", json={"email": email, "password": "Wrong#Pass00"})
+                spent.append(_t.perf_counter() - t0)
+            timings[label] = sorted(spent)[1]
+        security.limiter.reset()
+        await db.database.auth_throttle.delete_many({})
+        check("a wrong password takes as long for an unknown email as a registered one",
+              abs(timings["registered"] - timings["unknown"]) < 0.08,
+              {k: f"{v * 1000:.0f} ms" for k, v in timings.items()})
+
         # ================= reset-password stores a hash =====================
+        import time as _time
+        # A token from before the reset (issued a moment earlier, as a thief's would be).
+        old_session = _bearer(security.jwt.encode(
+            {"sub": "USr-1001", "role": "user", "iat": int(_time.time()) - 5, "exp": int(_time.time()) + 3600},
+            security._secret(), algorithm=security.ALGORITHM))
+        r = await c.get("/api/auth/profile", headers=old_session)
+        check("before the reset, the existing session works", r.status_code == 200, r.status_code)
         await users.update_one({"id": "USr-1001"}, {"$set": {
             "otp_hash": auth_mod._hash_otp("legacy@gmail.com", "123456"),
             "otp_expires": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
@@ -226,6 +268,14 @@ async def run() -> None:
               f"{r.status_code}")
         r = await c.post("/api/auth/login", json={"email": "legacy@gmail.com", "password": "Reset#Pass77"})
         check("login with reset password", r.status_code == 200, f"{r.status_code}")
+        new_token = r.json().get("token", "")
+        r = await c.get("/api/auth/profile", headers=old_session)
+        check("a password reset ends every earlier session", r.status_code == 401, r.status_code)
+        r = await c.post("/api/auth/refresh", headers=old_session)
+        check("... which cannot renew itself either", r.status_code == 401, r.status_code)
+        r = await c.get("/api/auth/profile", headers=_bearer(new_token))
+        check("... while the new sign-in works", r.status_code == 200, r.status_code)
+        user_token = new_token  # the rest of the checks use the session from after the reset
 
         # ================= deactivate: CONFIRM no longer bypasses ===========
         r = await c.post("/api/auth/deactivate", json={"email": "ayesha@gmail.com", "password": "CONFIRM"},
@@ -271,13 +321,11 @@ async def run() -> None:
 
         # public allowlist still reachable without a token
         for method, url, kw in [
-            ("get", "/api/admin/users/check-username?username=zzz", {}),
-            ("get", "/api/admin/users/check-email?email=zzz@gmail.com", {}),
             ("post", "/api/admin/support", {"json": {"full_name": "", "email": "a@x.com", "subject": "s", "message": "m"}}),
             ("post", "/api/auth/login", {"json": {"email": "legacy@gmail.com", "password": "Reset#Pass77"}}),
             ("post", "/api/auth/forgot-password", {"json": {"email": "nobody@gmail.com"}}),
             ("get", "/api/auth/google/config", {}),
-            ("get", "/api/health", {}),
+            ("get", "/api/health/live", {}),
         ]:
             r = await getattr(c, method)(url, **kw)
             check(f"public {method.upper()} {url.split('?')[0]} not 401/403",

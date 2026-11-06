@@ -38,6 +38,17 @@ Callers never see provider exceptions: ``run()`` always returns an
 :class:`LLMOutcome` whose ``status`` is one of contracts.ANSWER_STATUSES
 (``ready`` / ``rate_limited`` / ``error``).
 
+* **Users before uploads.** A ``background=True`` caller (the upload parser
+  and case cards) may take a call only while ``LLM_USER_RESERVE`` calls of
+  the minute are still free, holds at most one concurrency slot, and waits
+  its turn (``LLM_BACKGROUND_MAX_WAIT_S``) instead of failing. A batch of
+  uploads used to bypass this module entirely (the parser called Gemini
+  directly) and spend the allowance users' answers needed.
+* **The daily allowance.** When the provider says the per-DAY quota is used
+  up, every caller pauses for ``DAILY_QUOTA_PAUSE_S`` at a time (one probe per
+  pause, not a retry per request), and an ERROR is logged (at most hourly) so
+  it reaches errors.log and Sentry: the operator learns AI is off for the day.
+
 Scope: the window is per process. A bulk card wave run as a separate process
 (``case_card --all``) has its own window and shares the provider quota; it
 already backs off on 429, and its 429s now also cool this process down.
@@ -117,6 +128,16 @@ def is_rate_limit_error(error: BaseException) -> bool:
         return True
     text = str(error)
     return "RESOURCE_EXHAUSTED" in text or text.startswith("429")
+
+
+# Gemini names the exhausted quota in the 429: "...PerDay..." for the daily one
+# (e.g. GenerateRequestsPerDayPerProjectPerModel-FreeTier).
+_DAILY = re.compile(r"per\s*day|perday|requests_per_day|daily", re.I)
+DAILY_QUOTA_PAUSE_S = 600.0
+
+
+def is_daily_quota_error(error: BaseException) -> bool:
+    return bool(_DAILY.search(str(error)))
 
 
 def _is_transient(error: BaseException) -> bool:
@@ -221,7 +242,8 @@ class LLMLimiter:
         period: Window length; 60 in production, shortened by tests.
     """
 
-    def __init__(self, rpm: int, concurrency: int, max_wait: float, period: float = WINDOW_SECONDS):
+    def __init__(self, rpm: int, concurrency: int, max_wait: float, period: float = WINDOW_SECONDS,
+                 user_reserve: int = 0, background_wait: float = 600.0):
         # The safety margin scales with the period so shortened test windows
         # keep their proportions.
         self.window = _Window(rpm, period, margin=WINDOW_MARGIN_S * period / WINDOW_SECONDS)
@@ -230,6 +252,11 @@ class LLMLimiter:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._sem: asyncio.Semaphore | None = None
         self._order: asyncio.Lock | None = None
+        self._background: asyncio.Semaphore | None = None
+        # Calls per window kept free for people; never more than rpm - 1.
+        self.user_reserve = max(0, min(int(user_reserve), self.window.rpm - 1))
+        self.background_wait = float(background_wait)
+        self._daily_alerted = 0.0
         self.stats = {"issued": 0, ANSWER_READY: 0, ANSWER_RATE_LIMITED: 0, ANSWER_ERROR: 0,
                       "provider_429": 0}
 
@@ -239,6 +266,7 @@ class LLMLimiter:
             self._loop = loop
             self._sem = asyncio.Semaphore(self.concurrency)
             self._order = asyncio.Lock()
+            self._background = asyncio.Semaphore(1)
         return self._sem, self._order  # type: ignore[return-value]
 
     def cooldown(self, seconds: float) -> None:
@@ -262,6 +290,34 @@ class LLMLimiter:
         return outcome
 
     async def run(
+        self,
+        call: Callable[[], Awaitable[str]],
+        *,
+        max_wait: float | None = None,
+        label: str = "llm",
+        background: bool = False,
+    ) -> LLMOutcome:
+        if not background:
+            return await self._run(call, max_wait=max_wait, label=label)
+        # Background work: one at a time, and only while the user reserve is free.
+        self._primitives()
+        budget = self.background_wait if max_wait is None else float(max_wait)
+        deadline = time.monotonic() + budget
+        async with self._background:  # type: ignore[union-attr]
+            while True:
+                now = time.monotonic()
+                busy = self.window.in_window(now) >= self.window.rpm - self.user_reserve
+                cooling = self.window.blocked_until > now
+                if not busy and not cooling:
+                    break
+                if now >= deadline:
+                    return self._finish(LLMOutcome(
+                        ANSWER_RATE_LIMITED, detail="background call found no spare quota within its wait",
+                        attempts=0, waited_s=budget), label)
+                await asyncio.sleep(min(1.0, max(0.05, deadline - now)))
+            return await self._run(call, max_wait=max(1.0, deadline - time.monotonic()), label=label)
+
+    async def _run(
         self,
         call: Callable[[], Awaitable[str]],
         *,
@@ -358,6 +414,20 @@ class LLMLimiter:
                 return self._finish(LLMOutcome(
                     ANSWER_READY, text=text.strip(), attempts=attempts, waited_s=waited()), label)
 
+            if is_rate_limit_error(error) and is_daily_quota_error(error):
+                self.stats["provider_429"] += 1
+                self.cooldown(DAILY_QUOTA_PAUSE_S)
+                now = time.monotonic()
+                if now - self._daily_alerted > 3600 or not self._daily_alerted:
+                    self._daily_alerted = now
+                    logger.error(
+                        "Gemini's DAILY allowance is used up: AI answers, summaries, comparisons and upload "
+                        f"parsing are paused (re-checked every {DAILY_QUOTA_PAUSE_S / 60:.0f} min) until it resets "
+                        "at midnight Pacific time. A paid Gemini tier removes this limit.")
+                return self._finish(LLMOutcome(
+                    ANSWER_RATE_LIMITED, detail="provider daily quota exhausted",
+                    attempts=attempts, waited_s=waited()), label)
+
             if is_rate_limit_error(error):
                 self.stats["provider_429"] += 1
                 hint = retry_after_seconds(error)
@@ -394,9 +464,11 @@ def get_limiter() -> LLMLimiter:
             rpm=int(getattr(settings, "LLM_RPM_LIMIT", 14) or 14),
             concurrency=int(getattr(settings, "LLM_MAX_CONCURRENCY", 3) or 3),
             max_wait=float(getattr(settings, "LLM_MAX_WAIT_S", 20.0) or 20.0),
+            user_reserve=int(getattr(settings, "LLM_USER_RESERVE", 5) or 0),
+            background_wait=float(getattr(settings, "LLM_BACKGROUND_MAX_WAIT_S", 600.0) or 600.0),
         )
         logger.info(f"LLM limiter: {_limiter.window.rpm}/min, {_limiter.concurrency} concurrent, "
-                    f"{_limiter.max_wait:.0f}s wait budget")
+                    f"{_limiter.max_wait:.0f}s wait budget, {_limiter.user_reserve}/min kept for users")
     return _limiter
 
 

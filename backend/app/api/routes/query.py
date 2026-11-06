@@ -37,6 +37,8 @@ from app.api.schemas import (
     SummarizeRequest,
     SummarizeResponse,
 )
+from app.api.search_slots import search_slots
+from app.retrieval.readiness import ensure_ready
 from app.retrieval.comparator import compare_judgments
 from app.retrieval.llm_responder import status_of
 from app.retrieval.orchestrator import answer_for_judgment, more_results, retrieve_and_answer, summarize_judgment
@@ -76,6 +78,9 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
     """Run the retrieval pipeline and analyse the best match."""
     started = time.perf_counter()
     await _await_warmup(request)
+    # Before counting: a server whose models or indexes are missing says so
+    # (503, not counted) instead of answering "no case found".
+    await ensure_ready()
 
     # Daily search limit (Free 2, Standard 20, Premium 50 — modules/payment/plans.py)
     await plan_guard(request)
@@ -90,6 +95,10 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
         top_k = min(top_k, plan["max_results"])
 
     try:
+        # A search that has to compute takes a place in the search queue
+        # (app/api/search_slots.py, inside orchestrator._retrieve_v2_cached); a
+        # cached or already-running identical search does not. When the queue
+        # is full the user is told "busy" and the search is not counted.
         result = await retrieve_and_answer(
             raw_query=body.query,
             top_k_judgments=top_k,
@@ -97,6 +106,9 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
             mode=mode,
             user_id=_user_id(request),
         )
+    except HTTPException:
+        await refund_query(request)
+        raise
     except Exception:
         logger.exception("Error in /query/search")
         # Refund query counter on pipeline failure
@@ -145,10 +157,14 @@ async def more(body: MoreRequest, request: Request) -> MoreResponse:
     # Filtering every candidate is the "filter" feature; plain paging is "see all".
     await require_feature(request, "filter" if filters else "see_all")
     await _await_warmup(request)
+    await ensure_ready()
     try:
-        result = await more_results(
-            body.query, body.shown, top_k_sections=body.top_k_sections, filters=filters
-        )
+        async with search_slots().slot():
+            result = await more_results(
+                body.query, body.shown, top_k_sections=body.top_k_sections, filters=filters
+            )
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("Error in /query/more")
         raise HTTPException(status_code=500, detail=SERVER_ERROR)

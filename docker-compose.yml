@@ -6,6 +6,9 @@
 #   backend/chroma_db/      vector store       (copy it in before `up`)
 #   backend/lexical.db      keyword index      (copy it in before `up`)
 #   backend/uploads/        uploaded PDFs, avatars and blog covers
+#   backend/logs/           errors.log (app/monitoring.py)
+#   backend/backups/        daily database backups (scripts/backup_db.py);
+#                           copy them OFF this machine too (BACKUP_COPY_DIR)
 #   backend/secrets/        Google Drive files: client_secret.json and token.json
 #                           (token.json is rewritten when Google refreshes it)
 #   mongo_data volume       the MongoDB database
@@ -13,19 +16,40 @@
 # Settings come from backend/.env (git-ignored). Missing search data stops
 # `docker compose up` with an error instead of starting a site that finds nothing.
 #
-#   FRONTEND_URL=https://your-site.example docker compose up -d --build
+#   DOMAIN=your-site.example FRONTEND_URL=https://your-site.example #   MONGO_ROOT_USER=legalrag MONGO_ROOT_PASSWORD=<long random, letters and digits> #   docker compose up -d --build
+#
+# MongoDB requires a password. The image creates that user only when the data
+# volume is first created; on a server that already has data, add it once:
+#   docker compose exec mongodb mongosh --eval #     'db.getSiblingDB("admin").createUser({user: "legalrag", pwd: "<password>", roles: ["root"]})'
+#
+# HTTPS: the "caddy" service answers on ports 80/443, gets and renews the
+# certificate for DOMAIN itself (deploy/Caddyfile) and passes requests on to the
+# backend. The backend is NOT published to the internet: it trusts the
+# client address the proxy forwards, so it must only be reachable through it.
+# Sign-in tokens live in the browser for 30 days; without HTTPS anyone on the
+# network path could read them.
 
 services:
   backend:
     build: .
+    # Size the machine for the app: at least 4 GB of memory and 4 CPU cores
+    # (searches are CPU-bound; one holds ~1.6 GB, a few at once ~2 GB, and an
+    # upload being OCR'd adds more). Run ONE backend: limits, the search queue
+    # and the search index files belong to a single process.
+    # Only this machine can reach the backend directly (for checks such as
+    # curl http://127.0.0.1:8001/api/health); everyone else goes through caddy.
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
+    # Start only once MongoDB answers (after a reboot it can be slower than the
+    # app); the app itself also waits up to MONGO_CONNECT_WAIT_S.
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     env_file:
       - ./backend/.env
     environment:
-      MONGO_URL: mongodb://mongodb:27017
+      # Letters and digits only in the password, or URL-encode it here.
+      MONGO_URL: mongodb://${MONGO_ROOT_USER:?Set MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD (long and random)}@mongodb:27017/?authSource=admin
       DB_NAME: legal_rag
       # Links in emails (password reset, reactivation) and the Stripe return
       # address use this; localhost would point users at their own machine.
@@ -45,14 +69,45 @@ services:
           create_host_path: false
       - ./backend/uploads:/app/backend/uploads
       - ./backend/secrets:/app/backend/secrets
+      - ./backend/logs:/app/backend/logs
+      - ./backend/backups:/app/backend/backups
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8.4
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN to the site's domain name, e.g. your-site.example (its DNS must point here)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates: keep them, or Let's Encrypt rate-limits re-issuing
+      - caddy_config:/config
     restart: unless-stopped
 
   mongodb:
     image: mongo:7
+    # A password even though the port is private: anything else that ever runs
+    # on this Docker network (or a port opened by mistake) cannot read the data.
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?Set MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD (long and random)}
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     # Not published to the host: only the backend talks to the database.
     restart: unless-stopped
 
 volumes:
   mongo_data:
+  caddy_data:
+  caddy_config:

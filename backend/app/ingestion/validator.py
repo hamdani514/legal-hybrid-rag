@@ -148,5 +148,6 @@ def validate_judgment(pdf_path: str) -> tuple[bool, str]:
         return False, "The uploaded PDF is not a Pakistan Supreme Court judgment."
 
     except Exception as e:
+        # The message is shown to the admin; the error (with file paths) goes to the log.
         logger.exception(f"Error validating PDF judgment: {e}")
-        return False, f"Failed to validate PDF judgment: {e}"
+        return False, "This PDF could not be read. It may be damaged or password-protected."

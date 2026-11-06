@@ -19,7 +19,7 @@ Pipeline, for orientation:
           --J--> LLM judge                 (Candidate.scores["judge"], reason)
 """
 
-from typing import Literal, Protocol, TypedDict, runtime_checkable
+from typing import Literal, Protocol, TypedDict, runtime_checkable, NotRequired
 
 # ── Query types ──────────────────────────────────────────────────────────────
 # What kind of question it is decides which retrievers and which sections to
@@ -315,3 +315,4 @@ class TokenPayload(TypedDict):
     sub: str                         # user id (users collection) or admin id
     role: Literal["user", "admin"]
     exp: int                         # unix seconds
+    iat: NotRequired[int]            # issued at, unix seconds (sessions end on a password change)

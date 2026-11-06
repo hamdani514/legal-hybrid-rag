@@ -363,7 +363,7 @@ async def _llm_card(prompt: str, judgment_id: str, attempts: int = 2) -> tuple[d
         hits: list[str] = []
         token = _rl_watch.set(hits)
         try:
-            response = await _complete(SYSTEM_PROMPT, prompt, MAX_OUTPUT_TOKENS)
+            response = await _complete(SYSTEM_PROMPT, prompt, MAX_OUTPUT_TOKENS, background=True)
         except Exception as e:  # noqa: BLE001 - a raising limiter is a failure, not a crash
             response, hits = ERROR_RESPONSE, hits + [f"{type(e).__name__}: {e}"]
         finally:
@@ -672,7 +672,7 @@ if __name__ == "__main__":
         truncated = '```json {"subject": "Taxation", "headnote": "the tobacco quota fixed'
         original, calls = llm_responder._complete, []
 
-        async def fake(_system, _prompt, _max_tokens):
+        async def fake(_system, _prompt, _max_tokens, **_kw):
             calls.append(1)
             return truncated
 

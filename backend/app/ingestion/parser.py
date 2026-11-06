@@ -606,8 +606,20 @@ async def call_gemini(prompt: str, system: str) -> str:
 
         # Without this an overloaded model returned "" here, and the judgment was
         # silently parsed by the rule-based outline instead.
-        response = await call_with_fallback(on_model)
-        return response.text or ""
+        async def call() -> str:
+            response = await call_with_fallback(on_model)
+            return response.text or ""
+
+        # Through the shared limiter as background work (app/llm/limiter.py):
+        # it counts against the same per-minute allowance as users' answers,
+        # but only uses calls the users' reserve leaves free, and waits for them.
+        from app.llm.limiter import get_limiter
+
+        outcome = await get_limiter().run(call, label="parse/gemini", background=True)
+        if not outcome.ok:
+            logger.error(f"Gemini parse call {outcome.status}: {outcome.detail}")
+            return ""
+        return outcome.text
     except Exception as e:
         logger.error(f"Gemini API error in parser: {e}")
         return ""

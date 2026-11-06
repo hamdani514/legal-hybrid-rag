@@ -9,7 +9,7 @@ import EmptyState from './EmptyState';
 import ResultsPanel from './ResultsPanel';
 import CopyButton from './CopyButton';
 import RetrievalLoadingState from './RetrievalLoadingState';
-import apiFetch, { clearToken } from '../../lib/api';
+import apiFetch, { clearToken, retryWhileRestarting } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { toast } from '../../lib/toast';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
@@ -320,28 +320,31 @@ const WelcomeContent = () => {
     setComposerFilters(EMPTY_FILTERS);
 
     try {
-      const res = await apiFetch('/query/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: queryText,
-          top_k_judgments: PAGE_SIZE,
-          top_k_sections: 3,
-          mode: 'answer',
-        }),
-      });
+      const res = await retryWhileRestarting(() =>
+        apiFetch('/query/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: queryText,
+            top_k_judgments: PAGE_SIZE,
+            top_k_sections: 3,
+            mode: 'answer',
+          }),
+        })
+      );
 
       if (!res.ok) {
         const detail = await errorDetail(res);
         console.error('Search API returned status', res.status, detail);
-        // 429 is a rate limit (per user, or the shared service): say "busy",
+        // 429 is a rate limit (per user, or the shared service) and 503 a full
+        // search queue (backend/app/api/search_slots.py): say "busy",
         // with the server's own explanation when it gave one.
         // 403 with a message is the plan's daily search limit.
         const limitReached = res.status === 403 && Boolean(detail);
         const text =
-          res.status === 429
+          (res.status === 429 || res.status === 503)
             ? detail || 'The service is busy right now. Please try again in a minute.'
             : limitReached
               ? detail

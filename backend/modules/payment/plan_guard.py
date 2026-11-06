@@ -76,57 +76,10 @@ async def plan_guard(request: Request):
            if plan_key != plans.PREMIUM else "Your searches reset at midnight UTC.")
     )
 
-    # Daily reset check
-    dq = user.get("dailyQueries") or {"count": 0, "date": now}
-    last_reset = dq.get("date")
-    if isinstance(last_reset, str):
-        try:
-            last_reset = datetime.fromisoformat(last_reset.replace("Z", "+00:00"))
-        except Exception:
-            last_reset = None
-    if isinstance(last_reset, datetime) and last_reset.tzinfo is None:
-        last_reset = last_reset.replace(tzinfo=timezone.utc)
-
-    # No counter on the record yet (older and some Google accounts): create it, or
-    # the atomic update below finds no field to compare and reports the limit reached.
-    if not last_reset or last_reset < today_start or "count" not in (user.get("dailyQueries") or {}):
-        # Reset counter for a fresh day
-        await _users().update_one(
-            {"_id": user["_id"]},
-            {"$set": {"dailyQueries": {"count": 0, "date": now}}}
-        )
-        current_count = 0
-    else:
-        current_count = int(dq.get("count", 0))
-
     reset_time = (today_start + timedelta(days=1)).isoformat()
 
-    # Check limit before incrementing
-    if current_count >= daily_limit:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "message": limit_message,
-                "requiresUpgrade": plan_key != plans.PREMIUM,
-                "plan": plan_key,
-                "dailyLimit": daily_limit,
-                "queriesUsed": current_count,
-                "resetAt": reset_time
-            }
-        )
-
-    # Atomic increment - prevents race conditions across tabs/requests
-    result = await _users().update_one(
-        {
-            "_id": user["_id"],
-            "dailyQueries.count": {"$lt": daily_limit}
-        },
-        {"$inc": {"dailyQueries.count": 1}}
-    )
-
-    if result.modified_count == 0:
-        # Another concurrent request took the final slot
-        raise HTTPException(
+    def limit_reached() -> HTTPException:
+        return HTTPException(
             status_code=403,
             detail={
                 "message": limit_message,
@@ -134,13 +87,49 @@ async def plan_guard(request: Request):
                 "plan": plan_key,
                 "dailyLimit": daily_limit,
                 "queriesUsed": daily_limit,
-                "resetAt": reset_time
-            }
+                "resetAt": reset_time,
+            },
         )
+
+    # Two single-document writes, each atomic, so parallel requests cannot
+    # count past the limit. (Before, the "new day" reset was an unconditional
+    # write based on what this request had read earlier: a request that read
+    # the record before the others counted reset the counter to 0 and handed
+    # out fresh slots. 40 parallel searches got a Free account 6-10 searches.)
+    #
+    # 1. Start today's counter, only if the stored one is from an earlier day
+    #    (or missing, or an old string date). The match is checked at write
+    #    time, so of many parallel requests exactly one performs the reset.
+    await _users().update_one(
+        {
+            "_id": user["_id"],
+            "$or": [
+                {"dailyQueries.date": {"$lt": today_start}},
+                {"dailyQueries.date": {"$exists": False}},
+                {"dailyQueries.date": {"$type": "string"}},
+                {"dailyQueries.count": {"$exists": False}},
+            ],
+        },
+        {"$set": {"dailyQueries": {"count": 0, "date": now}}},
+    )
+
+    # 2. Take one of today's slots, only while some are left.
+    result = await _users().update_one(
+        {
+            "_id": user["_id"],
+            "dailyQueries.date": {"$gte": today_start},
+            "dailyQueries.count": {"$lt": daily_limit},
+        },
+        {"$inc": {"dailyQueries.count": 1}},
+    )
+    if result.modified_count == 0:
+        raise limit_reached()
 
     # Save state on request for refund-on-failure
     request.state.plan_guard_incremented = True
     request.state.plan_guard_user_id = user["_id"]
+    # The day the slot was taken: a refund after midnight must not add to the new day.
+    request.state.plan_guard_day = today_start
     request.state.effective_plan = plan_key
 
     return user
@@ -185,10 +174,11 @@ async def refund_query(request: Request) -> None:
         if user_id:
             try:
                 target_id = ObjectId(str(user_id)) if ObjectId.is_valid(str(user_id)) else user_id
-                await _users().update_one(
-                    {"$or": [{"_id": target_id}, {"id": str(user_id)}], "dailyQueries.count": {"$gt": 0}},
-                    {"$inc": {"dailyQueries.count": -1}}
-                )
+                match = {"$or": [{"_id": target_id}, {"id": str(user_id)}], "dailyQueries.count": {"$gt": 0}}
+                day = getattr(request.state, "plan_guard_day", None)
+                if day is not None:
+                    match["dailyQueries.date"] = {"$gte": day}
+                await _users().update_one(match, {"$inc": {"dailyQueries.count": -1}})
                 logger.info(f"Query quota refunded for user {user_id} due to pipeline failure")
             except Exception as e:
                 logger.warning(f"Could not refund query quota: {e}")

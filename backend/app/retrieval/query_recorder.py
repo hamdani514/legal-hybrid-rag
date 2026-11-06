@@ -33,6 +33,7 @@ Now:
 
 import asyncio
 import json
+import time
 import sys
 import threading
 import uuid
@@ -117,6 +118,42 @@ def _prune(directory: Path, max_files: int) -> int:
             except OSError:
                 continue
         return removed
+
+
+def forget_user(user_id: str) -> int:
+    """Delete every search-log record of one user (their account was deleted)."""
+    if not user_id or not QUERY_DIR.is_dir():
+        return 0
+    needle = f'"user_id": "{user_id}"'
+    removed = 0
+    with _prune_lock:
+        for path in QUERY_DIR.glob("*.json"):
+            try:
+                text = path.read_text(encoding="utf-8")
+                if needle in text or json.loads(text).get("user_id") == user_id:
+                    path.unlink()
+                    removed += 1
+            except (OSError, ValueError):
+                continue
+    return removed
+
+
+def prune_older_than(days: float) -> int:
+    """Delete search-log records older than ``days`` (QUERY_LOG_RETENTION_DAYS).
+    Searches are personal: a user's research is not kept longer than needed."""
+    if days <= 0 or not QUERY_DIR.is_dir():
+        return 0
+    cutoff = time.time() - days * 86400
+    removed = 0
+    with _prune_lock:
+        for path in QUERY_DIR.glob("*.json"):
+            try:
+                if path.stat().st_mtime < cutoff:
+                    path.unlink()
+                    removed += 1
+            except OSError:
+                continue
+    return removed
 
 
 def record_query(
