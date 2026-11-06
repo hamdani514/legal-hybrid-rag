@@ -26,4 +26,4 @@ async def generate_embeddings(body: Optional[GenerateRequest] = None):
         return result
     except Exception as e:
         logger.exception("Error in generate_embeddings API endpoint")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Embedding generation failed. See the server log for details.")

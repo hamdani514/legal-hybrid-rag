@@ -3,6 +3,9 @@ import { apiFetch } from '../../../lib/api';
 import { toast } from '../../../lib/toast';
 import useToastOn from '../../../lib/useToastOn';
 
+const CODE_TTL_SECONDS = 10 * 60;
+const RESEND_AFTER_SECONDS = 60;
+
 /**
  * Step 2: OTP Verification Component
  * Features 6-digit input boxes, paste handling, keyboard navigation, and countdown timer.
@@ -21,23 +24,22 @@ const OtpVerificationStep = ({
   useToastOn(errorMsg, 'error');
   useToastOn(infoMsg, 'success');
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  // A code lasts 10 minutes (backend OTP_TTL_MINUTES); a new one can be asked
+  // for after a minute, in case the email is slow or lost.
+  const [expiresIn, setExpiresIn] = useState(CODE_TTL_SECONDS);
+  const [resendIn, setResendIn] = useState(RESEND_AFTER_SECONDS);
+  const canResend = resendIn <= 0;
 
   const inputRefs = useRef([]);
 
-  // Countdown timer for resend
   useEffect(() => {
-    let timer;
-    if (countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    } else {
-      setCanResend(true);
-    }
+    if (expiresIn <= 0 && resendIn <= 0) return undefined;
+    const timer = setInterval(() => {
+      setExpiresIn((prev) => Math.max(0, prev - 1));
+      setResendIn((prev) => Math.max(0, prev - 1));
+    }, 1000);
     return () => clearInterval(timer);
-  }, [countdown]);
+  }, [expiresIn, resendIn]);
 
   // Focus first input on mount
   useEffect(() => {
@@ -119,8 +121,8 @@ const OtpVerificationStep = ({
         setErrorMsg(data.detail || data.message || 'Failed to resend code.');
         return;
       }
-      setCountdown(60);
-      setCanResend(false);
+      setExpiresIn(CODE_TTL_SECONDS);
+      setResendIn(RESEND_AFTER_SECONDS);
       setInfoMsg(data.message || `A fresh verification code has been dispatched to ${email || 'your email'}.`);
       inputRefs.current[0]?.focus();
     } catch (err) {
@@ -257,30 +259,29 @@ const OtpVerificationStep = ({
           ))}
         </div>
 
-        {/* Resend & Expiry Timer section */}
-        <div className="flex items-center justify-between font-prose text-xs pt-1">
-          {canResend ? (
-            <div className="flex items-center justify-between w-full">
-              <span className="text-amber-700 font-medium flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">schedule</span>
-                Code expired (1-min limit)
-              </span>
-              <button
-                type="button"
-                onClick={handleResend}
-                className="font-bold text-ash-900 hover:text-brand-700 underline decoration-brand-500 transition-colors ml-auto"
-              >
-                Resend OTP Code
-              </button>
-            </div>
+        {/* Expiry and resend */}
+        <div className="flex items-center justify-between gap-3 font-prose text-xs pt-1">
+          {expiresIn > 0 ? (
+            <span className="text-amber-800 bg-amber-50/80 px-2.5 py-1 rounded-full border border-amber-200 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">timer</span>
+              Expires in {formatTime(expiresIn)}
+            </span>
           ) : (
-            <div className="flex items-center justify-between w-full text-ash-500">
-              <span>Security validity:</span>
-              <span className="text-amber-800 bg-amber-50/80 px-2.5 py-1 rounded-full border border-amber-200 font-medium flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">timer</span>
-                Expires in {formatTime(countdown)}
-              </span>
-            </div>
+            <span className="text-amber-700 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">schedule</span>
+              Code expired. Request a new one.
+            </span>
+          )}
+          {canResend ? (
+            <button
+              type="button"
+              onClick={handleResend}
+              className="font-bold text-ash-900 hover:text-brand-700 underline decoration-brand-500 transition-colors ml-auto"
+            >
+              Resend code
+            </button>
+          ) : (
+            <span className="text-ash-500 ml-auto">Resend in {formatTime(resendIn)}</span>
           )}
         </div>
 

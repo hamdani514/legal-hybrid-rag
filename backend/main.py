@@ -173,7 +173,13 @@ async def lifespan(app: FastAPI):
 # ----------------------------
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.monitoring import setup_monitoring, unhandled_error
+
+setup_monitoring()
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(api_guard)])
+# Anything no route handled: the full error to the log (and Sentry), a plain
+# sentence to the user.
+app.add_exception_handler(Exception, unhandled_error)
 
 def _allowed_origins() -> list[str]:
     """Sites allowed to call the API from a browser: the app's own address(es).

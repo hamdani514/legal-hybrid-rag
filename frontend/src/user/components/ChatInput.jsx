@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import FilterDialog, { EMPTY_FILTERS, activeFilterCount } from './ResultsFilter';
+import FilterDialog from './ResultsFilter';
+import { EMPTY_FILTERS, activeFilterCount } from '../lib/filters';
 import { LockedButton, UpgradeDialog } from './LockedFeature';
 import Modal from './Modal';
 import FilterIcon from './FilterIcon';

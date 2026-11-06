@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -6,10 +6,12 @@ import AdminStatsCard from '../components/AdminStatsCard';
 import AdminDeleteModal from '../components/AdminDeleteModal';
 import IngestionProgress from '../components/IngestionProgress';
 import AdminPagination from '../components/AdminPagination';
-import UploadQueue, { isTerminalJob, isRowFinished, isRowProblem } from '../components/UploadQueue';
+import UploadQueue from '../components/UploadQueue';
+import { isTerminalJob, isRowFinished, isRowProblem } from '../components/uploadRows';
 import { apiFetch, ADMIN_TOKEN_KEY } from '../../lib/api';
 import { toast } from '../../lib/toast';
 import useToastOn from '../../lib/useToastOn';
+import { readStoredAdmin } from '../session';
 
 // Files uploaded at the same time from the browser. The server queues them
 // anyway (ADMIN_INGEST_CONCURRENCY); this only bounds the upload requests.
@@ -101,27 +103,79 @@ const canRetry = (job) => {
   return state === 'failed' || state === 'stalled' || state === 'searchable';
 };
 
+// Progress-bar span (percent) for each server status of a single upload.
+const STAGE_RANGES = {
+  verifying: { start: 0, end: 5 },
+  uploaded: { start: 5, end: 10 },
+  queued: { start: 5, end: 10 },
+  extracting: { start: 10, end: 40 },
+  extracted: { start: 40, end: 55 },
+  parsing: { start: 55, end: 80 },
+  parsed: { start: 80, end: 85 },
+  tree: { start: 85, end: 88 },
+  embedding: { start: 88, end: 99 },
+  indexing: { start: 88, end: 99 },
+  searchable: { start: 100, end: 100 },
+  complete: { start: 100, end: 100 },
+  extraction_failed: { start: 10, end: 40 },
+  parse_failed: { start: 55, end: 80 },
+  tree_failed: { start: 85, end: 88 },
+  embedding_failed: { start: 88, end: 99 },
+  index_failed: { start: 88, end: 99 },
+};
+
+const safeReadJson = async (response) => {
+  const raw = await response.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {
+      detail: 'Backend returned non-JSON response. Check FastAPI server and Vite proxy target.',
+    };
+  }
+};
+
+// Tag every upload with the signed-in admin; shown back in the "Uploaded by"
+// column.
+const appendUploader = (formData, admin) => {
+  formData.append('uploaded_by', admin?.name || '');
+  formData.append('uploaded_by_id', admin?.adminid || admin?.email || '');
+};
+
+/** The status summary: {data} or {error} (a sentence to show). */
+const requestStatus = async () => {
+  try {
+    const response = await apiFetch('/api/admin/status');
+    const data = await safeReadJson(response);
+    if (!response.ok) return { error: data?.detail || 'Failed to fetch recent uploads.' };
+    return { data: data || {} };
+  } catch (error) {
+    return { error: error.message || 'Failed to fetch recent uploads.' };
+  }
+};
+
+/** Every upload: {data} or {error} (a sentence to show). */
+const requestAllJobs = async () => {
+  try {
+    const response = await apiFetch('/api/admin/jobs');
+    const data = await safeReadJson(response);
+    if (!response.ok) return { error: data?.detail || 'Failed to fetch all uploads.' };
+    return { data: data || {} };
+  } catch (error) {
+    return { error: error.message || 'Failed to fetch all uploads.' };
+  }
+};
+
 const AdminCasesPage = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [currentAdmin] = useState(readStoredAdmin);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedAdmin = localStorage.getItem('currentAdmin');
-    if (!storedAdmin) {
-      navigate('/admin-login');
-    } else {
-      try {
-        setCurrentAdmin(JSON.parse(storedAdmin));
-      } catch (err) {
-        console.error('Error parsing admin data:', err);
-        navigate('/admin-login');
-      }
-    }
-  }, [navigate]);
+    if (!currentAdmin) navigate('/admin-login');
+  }, [currentAdmin, navigate]);
 
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [uploadNotice, setUploadNotice] = useState('');
   const [recentLoading, setRecentLoading] = useState(true);
@@ -149,7 +203,6 @@ const AdminCasesPage = () => {
   const [activeJobId, setActiveJobId] = useState(null);
   const [activeJobStatus, setActiveJobStatus] = useState(null);
   const abortControllerRef = useRef(null);
-  const [animatedProgress, setAnimatedProgress] = useState(0);
 
   const getStageStatus = (stageId) => {
     if (!activeJobStatus) return 'pending';
@@ -189,49 +242,28 @@ const AdminCasesPage = () => {
     return 'pending';
   };
 
-  const stageRanges = {
-    verifying: { start: 0, end: 5 },
-    uploaded: { start: 5, end: 10 },
-    queued: { start: 5, end: 10 },
-    extracting: { start: 10, end: 40 },
-    extracted: { start: 40, end: 55 },
-    parsing: { start: 55, end: 80 },
-    parsed: { start: 80, end: 85 },
-    tree: { start: 85, end: 88 },
-    embedding: { start: 88, end: 99 },
-    indexing: { start: 88, end: 99 },
-    searchable: { start: 100, end: 100 },
-    complete: { start: 100, end: 100 },
-    extraction_failed: { start: 10, end: 40 },
-    parse_failed: { start: 55, end: 80 },
-    tree_failed: { start: 85, end: 88 },
-    embedding_failed: { start: 88, end: 99 },
-    index_failed: { start: 88, end: 99 },
-  };
+  // Where the bar stands for the current stage: 0 with no job, 100 when done,
+  // the stage's end when it failed, else its start. While a stage runs, the
+  // interval below eases the bar toward the stage's end; that animated value
+  // belongs to one job and stage, so a new stage starts from its own base.
+  const activeStatus = activeJobStatus?.status;
+  const effectiveStatus = activeJobId === 'verifying' ? 'verifying' : activeStatus;
+  const stageKey = activeStatus ? `${activeJobId}|${effectiveStatus}` : '';
+  const stageRange = STAGE_RANGES[effectiveStatus];
+  const stageFailed = (effectiveStatus || '').endsWith('_failed');
+  const stageDone = DONE_STATUSES.includes(effectiveStatus);
+  const stageRunning = Boolean(activeStatus && stageRange) && !stageDone && !stageFailed;
+  let baseProgress = 0;
+  if (activeStatus && stageDone) baseProgress = 100;
+  else if (activeStatus && stageRange) baseProgress = stageFailed ? stageRange.end : stageRange.start;
+  const [progressAnim, setProgressAnim] = useState({ key: '', value: 0 });
+  const animatedProgress =
+    stageRunning && progressAnim.key === stageKey ? progressAnim.value : baseProgress;
 
   useEffect(() => {
-    if (!activeJobStatus) {
-      setAnimatedProgress(0);
-      return;
-    }
-
-    const effectiveStatus = activeJobId === 'verifying' ? 'verifying' : activeJobStatus.status;
-    const range = stageRanges[effectiveStatus];
-    if (!range) return;
-
-    if (DONE_STATUSES.includes(effectiveStatus)) {
-      setAnimatedProgress(100);
-      return;
-    }
-    if ((effectiveStatus || '').endsWith('_failed')) {
-      setAnimatedProgress(range.end);
-      return;
-    }
-
-    setAnimatedProgress(range.start);
-    const ceiling = range.end - 1;
-    let current = range.start;
-
+    if (!stageRunning) return undefined;
+    const ceiling = stageRange.end - 1;
+    let current = stageRange.start;
     const interval = setInterval(() => {
       const remaining = ceiling - current;
       if (remaining <= 0.1) {
@@ -239,11 +271,10 @@ const AdminCasesPage = () => {
         return;
       }
       current += Math.max(0.1, remaining * 0.08);
-      setAnimatedProgress(Math.round(current));
+      setProgressAnim({ key: stageKey, value: Math.round(current) });
     }, 200);
-
     return () => clearInterval(interval);
-  }, [activeJobId, activeJobStatus?.status]);
+  }, [stageKey, stageRunning, stageRange]);
 
   const handleCancelIngestion = async () => {
     const jobToCancel = activeJobId;
@@ -264,20 +295,16 @@ const AdminCasesPage = () => {
     setActiveJobId(null);
     setActiveJobStatus(null);
     setUploading(false);
-    fetchRecentJobs(false);
+    fetchRecentJobs();
     fetchAllJobs();
   };
 
-  const safeReadJson = async (response) => {
-    const raw = await response.text();
-    try {
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {
-        detail: 'Backend returned non-JSON response. Check FastAPI server and Vite proxy target.',
-      };
-    }
-  };
+  // The clock the "uploaded ... ago" column reads, ticking so it stays current.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const formatRelativeTime = (dateValue) => {
     if (!dateValue) return 'Unknown time';
@@ -289,7 +316,7 @@ const AdminCasesPage = () => {
     const date = new Date(needsZ ? `${dateValue}Z` : dateValue);
     if (Number.isNaN(date.getTime())) return 'Unknown time';
 
-    const diffSeconds = Math.round((Date.now() - date.getTime()) / 1000);
+    const diffSeconds = Math.round((now - date.getTime()) / 1000);
     if (diffSeconds < 5) return 'Just now';
     if (diffSeconds < 60) return `${diffSeconds} sec${diffSeconds === 1 ? '' : 's'} ago`;
 
@@ -311,57 +338,36 @@ const AdminCasesPage = () => {
     return by.name || by.id || '—';
   };
 
-  // Tag every upload with the signed-in admin (auth is off, so the server
-  // cannot derive it yet); shown back in the "Uploaded by" column.
-  const appendUploader = (formData) => {
-    formData.append('uploaded_by', currentAdmin?.name || '');
-    formData.append('uploaded_by_id', currentAdmin?.adminid || currentAdmin?.email || '');
-  };
 
-  const fetchRecentJobs = async (showLoader = false) => {
-    if (showLoader) setRecentLoading(true);
-    setRecentError('');
-
-    try {
-      const response = await apiFetch('/api/admin/status');
-      const data = await safeReadJson(response);
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Failed to fetch recent uploads.');
-      }
-      const fetchedAll = Array.isArray(data?.all_jobs)
-        ? data.all_jobs
-        : Array.isArray(data?.recent_jobs)
-        ? data.recent_jobs
-        : [];
-      setAllJobs(fetchedAll);
-      setStats({
-        total_documents: data?.total_documents || 0,
-        by_status: data?.by_status || {},
-      });
-    } catch (error) {
-      setRecentError(error.message || 'Failed to fetch recent uploads.');
-    } finally {
-      if (showLoader) setRecentLoading(false);
+  // `recentLoading` starts true for the first load; every later refresh (the
+  // 15-second timer, after an upload, delete or retry) updates in place.
+  const showStatus = useCallback(({ data, error }) => {
+    if (data) {
+      setRecentError('');
+      setAllJobs(
+        Array.isArray(data.all_jobs) ? data.all_jobs : Array.isArray(data.recent_jobs) ? data.recent_jobs : []
+      );
+      setStats({ total_documents: data.total_documents || 0, by_status: data.by_status || {} });
+    } else {
+      setRecentError(error);
     }
-  };
-
-  const fetchAllJobs = async () => {
+    setRecentLoading(false);
+  }, []);
+  const showAllJobs = useCallback(({ data, error }) => {
+    if (data) {
+      setAllJobsError('');
+      if (Array.isArray(data.jobs) && data.jobs.length > 0) setAllJobs(data.jobs);
+    } else {
+      setAllJobsError(error);
+    }
+    setAllJobsLoading(false);
+  }, []);
+  const fetchRecentJobs = useCallback(() => requestStatus().then(showStatus), [showStatus]);
+  // Silent, for timers and effects; fetchAllJobs also shows the modal's loader.
+  const refreshAllJobs = useCallback(() => requestAllJobs().then(showAllJobs), [showAllJobs]);
+  const fetchAllJobs = () => {
     setAllJobsLoading(true);
-    setAllJobsError('');
-    try {
-      const response = await apiFetch('/api/admin/jobs');
-      const data = await safeReadJson(response);
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Failed to fetch all uploads.');
-      }
-      if (Array.isArray(data?.jobs) && data.jobs.length > 0) {
-        setAllJobs(data.jobs);
-      }
-    } catch (error) {
-      setAllJobsError(error.message || 'Failed to fetch all uploads.');
-    } finally {
-      setAllJobsLoading(false);
-    }
+    return refreshAllJobs();
   };
 
   const openAllUploadsModal = async () => {
@@ -412,15 +418,14 @@ const AdminCasesPage = () => {
   const paginatedJobs = filteredJobs.slice(startIndex, startIndex + JOBS_PER_PAGE);
 
   useEffect(() => {
-    fetchRecentJobs(true);
-    fetchAllJobs();
-    const intervalId = setInterval(() => {
-      fetchRecentJobs(false);
-      fetchAllJobs();
-    }, 15000);
-
+    const refresh = () => {
+      requestStatus().then(showStatus);
+      requestAllJobs().then(showAllJobs);
+    };
+    refresh();
+    const intervalId = setInterval(refresh, 15000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [showStatus, showAllJobs]);
 
   useEffect(() => {
     if (!activeJobId || activeJobId === 'verifying') return;
@@ -429,11 +434,11 @@ const AdminCasesPage = () => {
       setActiveJobId(null);
       setActiveJobStatus(null);
       setUploading(false);
-      fetchRecentJobs(false);
-      fetchAllJobs();
+      fetchRecentJobs();
+      refreshAllJobs();
     };
 
-    if (activeJobStatus && DONE_STATUSES.includes(activeJobStatus.status)) {
+    if (DONE_STATUSES.includes(activeStatus)) {
       finish();
       return;
     }
@@ -452,8 +457,8 @@ const AdminCasesPage = () => {
             } else if ((data.status || '').endsWith('_failed')) {
               clearInterval(pollInterval);
               setUploading(false);
-              fetchRecentJobs(false);
-              fetchAllJobs();
+              fetchRecentJobs();
+              refreshAllJobs();
             }
           }
         } else if (res.status === 404) {
@@ -473,7 +478,7 @@ const AdminCasesPage = () => {
       isSubscribed = false;
       clearInterval(pollInterval);
     };
-  }, [activeJobId, activeJobStatus?.status]);
+  }, [activeJobId, activeStatus, fetchRecentJobs, refreshAllJobs]);
 
   const handlePickFile = () => {
     if (!uploading) {
@@ -510,7 +515,7 @@ const AdminCasesPage = () => {
     setQueue((existing) => [...existing, ...rows]);
   };
 
-  const uploadQueued = async (row) => {
+  const uploadQueued = useCallback(async (row) => {
     const file = queueFilesRef.current.get(row.key);
     if (!file) {
       updateRow(row.key, { state: 'cancelled' });
@@ -520,7 +525,7 @@ const AdminCasesPage = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      appendUploader(formData);
+      appendUploader(formData, currentAdmin);
       const response = await apiFetch('/api/admin/upload', { method: 'POST', body: formData });
       const data = await safeReadJson(response);
       if (!response.ok) {
@@ -540,12 +545,12 @@ const AdminCasesPage = () => {
           notice: data.resumed ? data.message : '',
         });
       }
-    } catch (error) {
+    } catch {
       updateRow(row.key, { state: 'rejected', error: 'Could not reach the server.' });
     } finally {
       queueFilesRef.current.delete(row.key);
     }
-  };
+  }, [currentAdmin]);
 
   // Scheduler: keep UPLOAD_PARALLEL uploads in flight while files wait.
   useEffect(() => {
@@ -559,7 +564,7 @@ const AdminCasesPage = () => {
         startedRef.current.add(row.key);
         uploadQueued(row);
       });
-  }, [queue]);
+  }, [queue, uploadQueued]);
 
   // Poll the server for the batch's jobs until each one is finished.
   useEffect(() => {
@@ -585,7 +590,7 @@ const AdminCasesPage = () => {
               return { ...row, status: job.status, active: job.active, error: job.error || row.error };
             })
           );
-          if (finishedNow) fetchRecentJobs(false);
+          if (finishedNow) fetchRecentJobs();
         }
       } catch (error) {
         console.error('Error polling batch status:', error);
@@ -594,7 +599,7 @@ const AdminCasesPage = () => {
       }
     }, QUEUE_POLL_MS);
     return () => clearTimeout(timer);
-  }, [queue, pollTick]);
+  }, [queue, pollTick, fetchRecentJobs]);
 
   // Files still in the browser are lost if the page closes: warn first.
   useEffect(() => {
@@ -628,7 +633,7 @@ const AdminCasesPage = () => {
           )
       )
     );
-    fetchRecentJobs(false);
+    fetchRecentJobs();
   };
 
   // A batch that finished cleanly closes itself: the rows are already in the
@@ -640,10 +645,10 @@ const AdminCasesPage = () => {
     if (queue.some(isRowProblem)) return undefined;
     const timer = setTimeout(() => {
       setQueue([]);
-      fetchRecentJobs(false);
+      fetchRecentJobs();
     }, BATCH_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [queue]);
+  }, [queue, fetchRecentJobs]);
 
   const batchBusy = queue.some(
     (row) =>
@@ -678,7 +683,6 @@ const AdminCasesPage = () => {
   };
 
   const uploadSingle = async (selectedFile) => {
-    setUploadResult(null);
 
     if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
       setUploadError('Please select a PDF file.');
@@ -695,7 +699,7 @@ const AdminCasesPage = () => {
 
       const formData = new FormData();
       formData.append('file', selectedFile);
-      appendUploader(formData);
+      appendUploader(formData, currentAdmin);
 
       abortControllerRef.current = new AbortController();
       const response = await apiFetch('/api/admin/upload', {
@@ -722,10 +726,9 @@ const AdminCasesPage = () => {
       // Re-uploading a PDF that failed before resumes that record.
       if (data.resumed) setUploadNotice(data.message || 'Resuming the earlier upload of this PDF.');
       else toast.success(`${data.filename || 'Judgment'} uploaded. Processing has started.`);
-      setUploadResult(data);
       setActiveJobId(data.job_id);
       setActiveJobStatus(data);
-      fetchRecentJobs(false);
+      fetchRecentJobs();
       if (showAllModal) fetchAllJobs();
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -756,7 +759,7 @@ const AdminCasesPage = () => {
         setActiveJobId(jobId);
         setActiveJobStatus({ ...data, filename: job.filename });
       }
-      await fetchRecentJobs(false);
+      await fetchRecentJobs();
       if (showAllModal) await fetchAllJobs();
     } catch (error) {
       setUploadError(error.message || 'Retry failed.');
@@ -777,7 +780,7 @@ const AdminCasesPage = () => {
         throw new Error(data?.detail || 'Failed to delete case.');
       }
       toast.success('Case deleted.');
-      await fetchRecentJobs(false);
+      await fetchRecentJobs();
       if (showAllModal) await fetchAllJobs();
     } catch (error) {
       setUploadError(error.message || 'Failed to delete case.');
@@ -831,7 +834,7 @@ const AdminCasesPage = () => {
       setUploadNotice(`Successfully deleted ${data.deleted_count ?? selectedJobIds.length} case(s).`);
       setSelectedJobIds([]);
       setShowBatchDeleteModal(false);
-      await fetchRecentJobs(false);
+      await fetchRecentJobs();
       if (showAllModal) await fetchAllJobs();
     } catch (error) {
       setUploadError(error.message || 'Failed to delete selected cases.');
@@ -967,7 +970,6 @@ const AdminCasesPage = () => {
           {/* Progress Section */}
           <IngestionProgress
             activeJobId={activeJobId}
-            activeJobStatus={activeJobStatus}
             animatedProgress={animatedProgress}
             getStageStatus={getStageStatus}
             handleCancelIngestion={handleCancelIngestion}

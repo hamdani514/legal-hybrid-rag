@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import { apiFetch } from '../../lib/api';
@@ -20,34 +20,38 @@ const SignupForm = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [emailUniqueStatus, setEmailUniqueStatus] = useState('idle');
+  // The last availability answer, for the address it was asked about. The
+  // status shown is derived from it, so typing never needs a state update in
+  // the effect: an address not yet answered simply reads as "checking".
+  const [emailCheck, setEmailCheck] = useState({ email: '', status: 'idle' });
   const navigate = useNavigate();
+  const emailTrim = formData.email.trim();
+  const emailCheckable = Boolean(emailTrim) && emailTrim.toLowerCase().endsWith('@gmail.com');
+  const emailUniqueStatus = !emailCheckable
+    ? 'idle'
+    : emailCheck.email === emailTrim
+      ? emailCheck.status
+      : 'checking';
 
-  // Email availability check
+  // Email availability check, debounced while typing.
   useEffect(() => {
-    const emailTrim = formData.email.trim();
-    if (!emailTrim || !emailTrim.toLowerCase().endsWith('@gmail.com')) {
-      setEmailUniqueStatus('idle');
-      return;
-    }
-    setEmailUniqueStatus('checking');
+    if (!emailCheckable) return undefined;
     const delayDebounce = setTimeout(async () => {
+      let status = 'idle';
       try {
         const res = await apiFetch(`/api/admin/users/check-email?email=${encodeURIComponent(emailTrim)}`);
         if (res.ok) {
           const data = await res.json();
-          setEmailUniqueStatus(data.available ? 'available' : 'taken');
-        } else {
-          setEmailUniqueStatus('idle');
+          status = data.available ? 'available' : 'taken';
         }
       } catch (err) {
         console.error('Error checking email:', err);
-        setEmailUniqueStatus('idle');
       }
+      setEmailCheck({ email: emailTrim, status });
     }, 500);
 
     return () => clearTimeout(delayDebounce);
-  }, [formData.email]);
+  }, [emailTrim, emailCheckable]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,7 +77,7 @@ const SignupForm = () => {
       return;
     }
 
-    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
+    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
     if (!pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain at least one capital letter, one special character, and one number.');
       setLoading(false);

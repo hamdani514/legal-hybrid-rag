@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import ChatInput from './ChatInput';
 import useIsMobile from '../hooks/useIsMobile';
-import { EMPTY_FILTERS, activeFilterCount } from './ResultsFilter';
+import { EMPTY_FILTERS, activeFilterCount } from '../lib/filters';
 import EmptyState from './EmptyState';
 import ResultsPanel from './ResultsPanel';
 import CopyButton from './CopyButton';

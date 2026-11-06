@@ -734,7 +734,7 @@ async def download_judgment(judgment_id: str, request: Request):
                 filename=filename,
                 media_type="application/pdf",
             )
-        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail="The PDF could not be downloaded. Please try again later.")
 
 
 async def _perform_delete_job(job_id: str) -> dict:
@@ -935,7 +935,7 @@ async def batch_delete_jobs(body: BatchDeleteJobsRequest):
             deleted_count += 1
         except Exception as e:
             logger.error(f"Failed to delete job {jid} during batch delete: {e}")
-            results.append({"job_id": jid, "success": False, "error": str(e)})
+            results.append({"job_id": jid, "success": False, "error": "Could not delete this job. See the server log."})
             failed_count += 1
 
     return {
@@ -984,7 +984,6 @@ class UserCreate(BaseModel):
     name: Optional[str] = ""
     username: Optional[str] = ""
     org: Optional[str] = ""
-    plan: Optional[str] = "Standard"
     dob: Optional[str] = ""
     gender: Optional[str] = "Male"
     phone_no: Optional[str] = ""
@@ -1171,8 +1170,11 @@ async def create_user(user: UserCreate):
     next_num = max(user_ids) + 1 if user_ids else 1001
     user_id = f"USr-{next_num}"
     
-    plan = user.plan or "Standard"
-    plan_color = "bg-[#E9C176] text-[#261900]" if plan == "Pro" else "bg-[#E7E8EA] text-[#44474D]"
+    # Every account starts on Free, as at sign-up. A paid plan comes only from a
+    # Stripe payment (modules/payment); admins cannot grant one, and a "plan"
+    # field in the request is ignored.
+    from app.api.auth import PLAN_COLORS
+    plan, plan_color = "Free", PLAN_COLORS["Free"]
     
     new_user = {
         "id": user_id,

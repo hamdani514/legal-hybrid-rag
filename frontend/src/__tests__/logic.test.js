@@ -2,7 +2,7 @@
 // plan unlocks, how a case is named and how chat addresses are built.
 // Run with `npm test`; the Docker build runs them too, so a failure stops it.
 import { describe, expect, it } from 'vitest';
-import { EMPTY_FILTERS, activeFilterCount, caseDate, matchesFilters } from '../user/components/ResultsFilter';
+import { EMPTY_FILTERS, activeFilterCount, caseDate, matchesFilters } from '../user/lib/filters';
 import { filterChips } from '../user/lib/filterSummary';
 import { FEATURES, PLANS, planKey } from '../user/lib/plan';
 import { slugify, slugifyTyping } from '../lib/slug';

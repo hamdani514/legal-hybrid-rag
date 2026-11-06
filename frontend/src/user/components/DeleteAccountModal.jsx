@@ -52,7 +52,9 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }) {
       setTimeout(() => {
         try {
           localStorage.removeItem('currentUser');
-        } catch {}
+        } catch {
+          // storage unavailable (private mode): nothing stored to remove
+        }
         clearToken();
         navigate('/');
       }, 2000);

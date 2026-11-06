@@ -348,6 +348,8 @@ async def run() -> None:
               f"{r.status_code}")
         bdoc = await users.find_one({"email": "bilal@gmail.com"})
         check("POST /users stores bcrypt hash", bdoc and security.is_bcrypt_hash(bdoc.get("password")))
+        check("an admin-created account starts on Free, even when the request asks for Standard",
+              bdoc and bdoc.get("plan") == "Free", bdoc and bdoc.get("plan"))
         r = await c.post("/api/auth/login", json={"email": "bilal@gmail.com", "password": "Admin#Made1"})
         check("admin-created user can log in", r.status_code == 200, f"{r.status_code}")
         # Admins may view and delete users, never edit them.

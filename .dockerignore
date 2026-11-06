@@ -59,3 +59,7 @@ backend/test_judgment.pdf
 backend/ingest_reports/
 # Evaluation tools and datasets: run from a checkout, not inside the server.
 backend/eval/
+
+# Server data, not part of the image.
+backend/logs/
+backend/backups/

@@ -98,3 +98,8 @@ backend/eval/labels/narrative_negative_candidates.json
 
 # Google Drive credentials for Docker (docker-compose.yml mounts this folder)
 backend/secrets/
+
+# Error log (app/monitoring.py) and database backups (scripts/backup_db.py):
+# server data, never committed.
+backend/logs/
+backend/backups/

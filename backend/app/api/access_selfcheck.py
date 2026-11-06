@@ -204,6 +204,21 @@ async def routes_part(c) -> None:
         if re.search(r"""["']x-user-id["']|query_params\.get\(\s*["']user_id["']""", text):
             trusting.append(p.name)
     check("nothing reads a user id from a header or query string", not trusting, trusting)
+
+    # Exception text can carry paths, database or Stripe details, so it goes to
+    # the log, not the response. Our own validation messages (raised as
+    # ValueError by the password/email/age checks) are written for users.
+    leaking = []
+    exc_text = r"(?:str\(\s*(?:e|err|exc|ex|error)\s*\)|f[\"'][^\"']*\{(?:str\()?(?:e|err|exc|ex|error)\b)"
+    raw = re.compile(r"HTTPException\([^\n]*\bdetail\s*=\s*" + exc_text + r"|[\"']detail[\"']\s*:\s*" + exc_text)
+    for p in sources:
+        if p.name.endswith("selfcheck.py"):
+            continue
+        lines = p.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if raw.search(line) and not any("except ValueError" in prev for prev in lines[max(0, i - 3):i]):
+                leaking.append(f"{p.relative_to(backend)}:{i + 1}".replace("\\", "/"))
+    check("no response sends raw exception text", not leaking, leaking)
     for name, path in (("profile", "app/api/auth.py"), ("subscription", "modules/payment/controller.py"),
                        ("chat", "app/api/chat.py")):
         src = (backend / path).read_text(encoding="utf-8")
@@ -237,6 +252,18 @@ async def routes_part(c) -> None:
     check("no authentication off-switch exists", "AUTH_REQUIRED" not in fields and not hasattr(settings, "AUTH_REQUIRED"))
     check("JWT_SECRET has no default in the code", fields["JWT_SECRET"].default == "")
     check("SUPER_ADMIN_PASSWORD has no default in the code", fields["SUPER_ADMIN_PASSWORD"].default == "")
+    check("SUPER_ADMIN_EMAIL has no default in the code (the admin login is not published)",
+          fields["SUPER_ADMIN_EMAIL"].default == "")
+
+    # Emailed codes: from the OS's secure random source, valid long enough for mail.
+    auth_src = (backend / "app/api/auth.py").read_text(encoding="utf-8")
+    from app.api import auth as auth_module
+    check("emailed codes come from `secrets`, not `random`",
+          "secrets.randbelow" in auth_src and not re.search(r"^import random|random\.randint", auth_src, re.M))
+    codes = {auth_module.new_otp() for _ in range(200)}
+    check("emailed codes are 6 digits and vary", all(len(x) == 6 and x.isdigit() for x in codes) and len(codes) > 190)
+    check("emailed codes last 10 minutes", auth_module.OTP_TTL_MINUTES == 10
+          and auth_src.count("timedelta(minutes=OTP_TTL_MINUTES)") == 3)
 
 
 async def accounts_part(c) -> None:

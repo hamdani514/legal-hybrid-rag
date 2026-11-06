@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -9,11 +9,27 @@ import AdminTable from '../components/AdminTable';
 import AdminFormModal from '../components/AdminFormModal';
 import { apiFetch } from '../../lib/api';
 import useToastOn from '../../lib/useToastOn';
+import { readStoredAdmin } from '../session';
+
+/** The admin list with its counts: {data} or {error} (a sentence to show). */
+const requestAdmins = async () => {
+  try {
+    const res = await apiFetch('/api/admin/admins');
+    const data = await res.json().catch(() => null);
+    if (res.ok) return { data };
+    return { error: data?.detail || 'Failed to load system administrators.' };
+  } catch (err) {
+    console.error('Error fetching admins:', err);
+    return { error: 'Failed to connect to the backend server.' };
+  }
+};
+
+const isSuperAdmin = (admin) => Boolean(admin && (admin.role === 'super_admin' || admin.is_super_admin));
 
 const ADMINS_PER_PAGE = 5;
 
 const AdminManagementPage = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [currentAdmin] = useState(readStoredAdmin);
   const [admins, setAdmins] = useState([]);
   const [stats, setStats] = useState({ total: 0, super_admins: 0, standard_admins: 0 });
   const [loading, setLoading] = useState(true);
@@ -43,53 +59,36 @@ const AdminManagementPage = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedAdmin = localStorage.getItem('currentAdmin');
-    if (!storedAdmin) {
-      navigate('/admin-login');
-      return;
-    }
-
-    try {
-      const parsedAdmin = JSON.parse(storedAdmin);
-      if (parsedAdmin.role !== 'super_admin' && !parsedAdmin.is_super_admin) {
-        navigate('/admin/dashboard');
-        return;
-      }
-      setCurrentAdmin(parsedAdmin);
-    } catch (err) {
-      console.error('Error parsing admin data:', err);
-      navigate('/admin-login');
-      return;
-    }
-
-    fetchAdmins();
-  }, [navigate]);
-
-  const fetchAdmins = async () => {
-    try {
-      setLoading(true);
+  // `loading` starts true for the first load; later refreshes (after an add,
+  // edit or delete) update the table in place.
+  const showAdmins = useCallback(({ data, error }) => {
+    if (data) {
       setErrorMsg('');
-      const res = await apiFetch('/api/admin/admins');
-      if (res.ok) {
-        const data = await res.json();
-        setAdmins(data.admins || []);
-        setStats({
-          total: data.total || 0,
-          super_admins: data.super_admins || 0,
-          standard_admins: data.standard_admins || 0
-        });
-      } else {
-        const data = await res.json();
-        setErrorMsg(data?.detail || 'Failed to load system administrators.');
-      }
-    } catch (err) {
-      console.error('Error fetching admins:', err);
-      setErrorMsg('Failed to connect to the backend server.');
-    } finally {
-      setLoading(false);
+      setAdmins(data.admins || []);
+      setStats({
+        total: data.total || 0,
+        super_admins: data.super_admins || 0,
+        standard_admins: data.standard_admins || 0,
+      });
+    } else {
+      setErrorMsg(error);
     }
-  };
+    setLoading(false);
+  }, []);
+  const fetchAdmins = () => requestAdmins().then(showAdmins);
+
+  // Only a super admin manages admins; anyone else goes back where they belong.
+  useEffect(() => {
+    if (!currentAdmin) {
+      navigate('/admin-login');
+      return;
+    }
+    if (!isSuperAdmin(currentAdmin)) {
+      navigate('/admin/dashboard');
+      return;
+    }
+    requestAdmins().then(showAdmins);
+  }, [currentAdmin, navigate, showAdmins]);
 
   const getInitials = (name) => {
     if (!name) return 'A';
@@ -181,7 +180,7 @@ const AdminManagementPage = () => {
       return;
     }
 
-    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
+    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
     if ((!isEditMode || formData.password) && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
       return;

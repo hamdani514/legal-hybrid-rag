@@ -7,16 +7,18 @@ import useToastOn from '../../lib/useToastOn';
 export default function ReactivateAccountPage() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
-  const [message, setMessage] = useState('');
+  const [result, setResult] = useState({ status: 'loading', message: '' }); // 'loading' | 'success' | 'error'
+  // A link too short to be one of ours fails at once, without asking the server.
+  const badLink = !token || token.length < 32;
+  const { status, message } = badLink
+    ? { status: 'error', message: 'Invalid reactivation link. Please check your email for the correct link.' }
+    : result;
+  const setStatus = (next) => setResult((r) => ({ ...r, status: next }));
+  const setMessage = (next) => setResult((r) => ({ ...r, message: next }));
   useToastOn(status === 'loading' ? '' : message, status === 'success' ? 'success' : 'error');
 
   useEffect(() => {
-    if (!token || token.length < 32) {
-      setStatus('error');
-      setMessage('Invalid reactivation link. Please check your email for the correct link.');
-      return;
-    }
+    if (badLink) return;
 
     const reactivate = async () => {
       try {
@@ -44,7 +46,7 @@ export default function ReactivateAccountPage() {
     };
 
     reactivate();
-  }, [token, navigate]);
+  }, [token, badLink, navigate]);
 
   return (
     <AuthShell>

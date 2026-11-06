@@ -45,6 +45,10 @@ from modules.payment.plan_guard import plan_guard, refund_query, require_feature
 
 router = APIRouter()
 
+# What the user sees when a step fails. The real error goes to the log only:
+# it can carry file paths, database or provider details.
+SERVER_ERROR = "Something went wrong on our side. Please try again in a moment."
+
 # How long a request may wait for the start-up warm-up before going ahead.
 WARMUP_WAIT_S = 90.0
 
@@ -93,11 +97,11 @@ async def search(body: SearchRequest, request: Request) -> SearchResponse:
             mode=mode,
             user_id=_user_id(request),
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Error in /query/search")
         # Refund query counter on pipeline failure
         await refund_query(request)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=SERVER_ERROR)
 
     judgments = result["judgments"]
     has_more = result.get("has_more", False)
@@ -145,9 +149,9 @@ async def more(body: MoreRequest, request: Request) -> MoreResponse:
         result = await more_results(
             body.query, body.shown, top_k_sections=body.top_k_sections, filters=filters
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Error in /query/more")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=SERVER_ERROR)
 
     return MoreResponse(
         judgments=[JudgmentResult(**j) for j in result["judgments"]],
@@ -169,9 +173,9 @@ async def answer(body: AnswerRequest, request: Request) -> AnswerResponse:
     await _await_warmup(request)
     try:
         result = await answer_for_judgment(body.query, body.judgment_id)
-    except Exception as e:
+    except Exception:
         logger.exception("Error in /query/answer")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=SERVER_ERROR)
 
     if not result["found"]:
         raise HTTPException(status_code=404, detail="Judgment not found.")
@@ -189,9 +193,9 @@ async def summarize(body: SummarizeRequest, request: Request) -> SummarizeRespon
     await require_feature(request, "summarize")
     try:
         filename, summary = await summarize_judgment(body.judgment_id)
-    except Exception as e:
+    except Exception:
         logger.exception("Error in /query/summarize")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=SERVER_ERROR)
 
     return SummarizeResponse(
         judgment_id=body.judgment_id,
@@ -215,8 +219,8 @@ async def compare(body: CompareRequest, request: Request) -> CompareResponse:
 
     try:
         table = await compare_judgments(body.judgment_ids)
-    except Exception as e:
+    except Exception:
         logger.exception("Error in /query/compare")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=SERVER_ERROR)
 
     return CompareResponse(**table)

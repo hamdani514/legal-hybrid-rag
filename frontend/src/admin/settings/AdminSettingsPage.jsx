@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import AdminSettingsForm from '../components/AdminSettingsForm';
 import { apiFetch } from '../../lib/api';
 import useToastOn from '../../lib/useToastOn';
+import { readStoredAdmin } from '../session';
+
+/** This admin's profile: {data} or {error} (a sentence to show). */
+const requestProfile = async (adminid) => {
+  try {
+    const res = await apiFetch(`/api/admin/profile?adminid=${encodeURIComponent(adminid)}`);
+    const data = await res.json().catch(() => null);
+    if (res.ok) return { data };
+    return { error: data?.detail || 'Failed to fetch account details.' };
+  } catch (err) {
+    console.error('Error fetching admin profile:', err);
+    return { error: 'Failed to connect to the backend server.' };
+  }
+};
 
 const AdminSettingsPage = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [currentAdmin, setCurrentAdmin] = useState(readStoredAdmin);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,52 +39,30 @@ const AdminSettingsPage = () => {
     role: ''
   });
 
+  const showProfile = useCallback(({ data, error }) => {
+    if (data) {
+      setFormData({
+        adminid: data.adminid || '',
+        name: data.name || '',
+        dob: data.dob || '',
+        // The server never returns passwords; blank keeps the current one.
+        password: '',
+        role: data.role || 'admin',
+      });
+    } else {
+      setErrorMsg(error);
+    }
+    setLoading(false);
+  }, []);
+
+  const adminid = currentAdmin?.adminid;
   useEffect(() => {
-    const storedAdmin = localStorage.getItem('currentAdmin');
-    if (!storedAdmin) {
+    if (!adminid) {
       navigate('/admin-login');
       return;
     }
-
-    let parsedAdmin;
-    try {
-      parsedAdmin = JSON.parse(storedAdmin);
-      setCurrentAdmin(parsedAdmin);
-    } catch (err) {
-      console.error('Error parsing admin data:', err);
-      navigate('/admin-login');
-      return;
-    }
-
-    fetchProfile(parsedAdmin.adminid);
-  }, [navigate]);
-
-  const fetchProfile = async (adminid) => {
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      const res = await apiFetch(`/api/admin/profile?adminid=${encodeURIComponent(adminid)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setFormData({
-          adminid: data.adminid || '',
-          name: data.name || '',
-          dob: data.dob || '',
-          // The server never returns passwords; blank keeps the current one.
-          password: '',
-          role: data.role || 'admin'
-        });
-      } else {
-        const data = await res.json();
-        setErrorMsg(data?.detail || 'Failed to fetch account details.');
-      }
-    } catch (err) {
-      console.error('Error fetching admin profile:', err);
-      setErrorMsg('Failed to connect to the backend server.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    requestProfile(adminid).then(showProfile);
+  }, [adminid, navigate, showProfile]);
 
   const getInitials = (name) => {
     if (!name) return 'AD';
@@ -97,7 +89,7 @@ const AdminSettingsPage = () => {
       return;
     }
 
-    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
+    const pwRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{}|;:',.<>?/`~"\\-]).{8,}$/;
     if (formData.password && !pwRegex.test(formData.password)) {
       setErrorMsg('Password must be at least 8 characters long, contain a capital letter, a small letter, a number, and a special character.');
       return;

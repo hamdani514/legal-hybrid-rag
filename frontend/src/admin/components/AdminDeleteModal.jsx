@@ -1,4 +1,3 @@
-import React from 'react';
 
 const AdminDeleteModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Delete' }) => {
   if (!isOpen) return null;

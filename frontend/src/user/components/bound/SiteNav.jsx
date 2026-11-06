@@ -91,7 +91,9 @@ const SiteNav = () => {
     clearToken();
     try {
       localStorage.removeItem('currentUser');
-    } catch {}
+    } catch {
+      // storage unavailable (private mode): nothing stored to remove
+    }
     setCurrentUser(null);
     setUserDropdownOpen(false);
     setMenuOpen(false);

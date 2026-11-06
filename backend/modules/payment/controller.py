@@ -94,7 +94,8 @@ async def cancel_subscription(request: Request):
                 cancel_at_period_end=True
             )
         except stripe.error.StripeError as err:
-            raise HTTPException(status_code=400, detail=str(err))
+            logger.error(f"Stripe subscription update failed: {err}")
+            raise HTTPException(status_code=400, detail="The subscription could not be updated. Please try again or contact support.")
 
     # Version-agnostic period_end extraction (Stripe Basil API + legacy)
     period_end = _extract_period_end(subscription)
@@ -151,7 +152,8 @@ async def reactivate_subscription(request: Request):
                 cancel_at_period_end=False
             )
         except stripe.error.StripeError as err:
-            raise HTTPException(status_code=400, detail=str(err))
+            logger.error(f"Stripe subscription update failed: {err}")
+            raise HTTPException(status_code=400, detail="The subscription could not be updated. Please try again or contact support.")
 
     period_end = _extract_period_end(subscription)
 
@@ -350,7 +352,8 @@ async def create_checkout_session(request: Request, body: Optional[CheckoutReque
                 params["customer_email"] = user["email"]
             session = client.checkout.Session.create(**params)
         else:
-            raise HTTPException(status_code=502, detail=f"Stripe checkout creation failed: {e}")
+            logger.error(f"Stripe checkout creation failed: {e}")
+            raise HTTPException(status_code=502, detail="Checkout could not be started. Please try again in a moment.")
 
     return {"url": session.url, "session_id": session.id}
 
@@ -368,7 +371,8 @@ async def confirm_checkout(request: Request, body: ConfirmRequest):
     try:
         session = client.checkout.Session.retrieve(body.session_id.strip()).to_dict()
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"That payment could not be found: {e}")
+        logger.warning(f"Checkout session lookup failed: {e}")
+        raise HTTPException(status_code=404, detail="That payment could not be found.")
 
     owner = session.get("client_reference_id") or (session.get("metadata") or {}).get("user_id")
     if owner and owner != user_id:

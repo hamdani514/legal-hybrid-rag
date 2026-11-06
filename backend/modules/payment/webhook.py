@@ -566,7 +566,7 @@ async def stripe_webhook(
         )
     except Exception as e:
         logger.warning(f"Stripe signature verification failed: {e}")
-        raise HTTPException(status_code=400, detail=f"Invalid webhook signature: {e}")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature.")
 
     # The signature is verified, so the body is Stripe's. Work on it as plain
     # dicts: from stripe-python 8 on, an Event is not a dict and has no .get(),

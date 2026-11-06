@@ -6,7 +6,8 @@ import Modal from './Modal';
 import FilterIcon from './FilterIcon';
 import { toast } from '../../lib/toast';
 import useToastOn from '../../lib/useToastOn';
-import FilterDialog, { EMPTY_FILTERS, activeFilterCount, matchesFilters } from './ResultsFilter';
+import FilterDialog from './ResultsFilter';
+import { EMPTY_FILTERS, activeFilterCount, matchesFilters } from '../lib/filters';
 import { FreePlanNote, LockedButton, UpgradeDialog } from './LockedFeature';
 import { refreshPlan, upgradeDetail, usePlan } from '../lib/plan';
 import { filterChips } from '../lib/filterSummary';
@@ -654,6 +655,32 @@ const useMorePages = (message, onLocked) => {
  * itself ran without them; the panel opens already filtering, showing the
  * "applying" state rather than a flash of the unfiltered list.
  */
+// Restoring the filters a search was sent with is one request, however often
+// the panel mounts: StrictMode mounts it twice in development, and a remount
+// (a reopened conversation, a re-render of the list) must not re-run a search
+// that is already on its way or just answered. Keyed by query and filters;
+// kept while in flight and briefly after, then a reopen fetches fresh results.
+const RESTORE_REUSE_MS = 10_000;
+const restoreRequests = new Map();
+const restoreOnce = (query, filters, run) => {
+  const key = JSON.stringify([query, filters]);
+  const hit = restoreRequests.get(key);
+  if (hit && (hit.pending || Date.now() - hit.at < RESTORE_REUSE_MS)) return hit.promise;
+  const entry = { pending: true, at: 0 };
+  entry.promise = run().then(
+    (out) => {
+      Object.assign(entry, { pending: false, at: Date.now() });
+      return out;
+    },
+    (error) => {
+      restoreRequests.delete(key); // a failure is not reused: the next mount tries again
+      throw error;
+    }
+  );
+  restoreRequests.set(key, entry);
+  return entry.promise;
+};
+
 const useFilteredPages = (message, onLocked, initialFilters) => {
   const [view, setView] = useState(() =>
     initialFilters
@@ -687,7 +714,9 @@ const useFilteredPages = (message, onLocked, initialFilters) => {
     const settle = (patch) =>
       setView((v) => (v && v.filters === filters ? { ...v, loading: false, ...patch } : v));
     try {
-      const out = await request(filters, [], silent);
+      const out = silent
+        ? await restoreOnce(message.query, filters, () => request(filters, [], true))
+        : await request(filters, [], false);
       if (out.locked) {
         setView(null);
         return true;

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { apiFetch, clearToken } from '../../lib/api';
+import { apiFetch } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
-import { toast } from '../../lib/toast';
 import useToastOn from '../../lib/useToastOn';
 import { startCheckout, paymentStatus, cancelSubscription, reactivateSubscription } from '../lib/payments';
 import DeactivateModal from '../components/DeactivateModal';
@@ -18,8 +17,7 @@ const SettingsPage = () => {
   // Active sub-section tab: 'profile' or 'subscription'
   const [activeSection, setActiveSection] = useState('profile');
 
-  // Loading & notification states
-  const [loading, setLoading] = useState(true);
+  // Notification states
   const [saving, setSaving] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -51,21 +49,45 @@ const SettingsPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Profile data
-  const [profile, setProfile] = useState({
-    id: '',
-    name: '',
-    username: '',
-    email: '',
-    phone_no: '',
-    org: '',
-    dob: '',
-    gender: 'Male',
-    status: 'Active',
-    plan: 'Free',
-    avatar_url: '',
-    created_at: '',
-    plan_activated_at: '',
-    subscription_history: [],
+  // First filled from the account saved at sign-in, so the page shows at once;
+  // the effect below then loads the full profile from the server.
+  const [profile, setProfile] = useState(() => {
+    const blank = {
+      id: '',
+      name: '',
+      username: '',
+      email: '',
+      phone_no: '',
+      org: '',
+      dob: '',
+      gender: 'Male',
+      status: 'Active',
+      plan: 'Free',
+      avatar_url: '',
+      created_at: '',
+      plan_activated_at: '',
+      subscription_history: [],
+    };
+    try {
+      const stored = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      if (!stored) return blank;
+      return {
+        ...blank,
+        id: stored.id || '',
+        name: stored.name || '',
+        username: stored.username || '',
+        email: stored.email || '',
+        plan: stored.plan || 'Free',
+        status: stored.status || 'Active',
+        avatar_url: stored.avatar_url || '',
+        org: stored.org || '',
+        phone_no: stored.phone_no || '',
+        dob: stored.dob || '',
+        gender: stored.gender || 'Male',
+      };
+    } catch {
+      return blank;
+    }
   });
 
   // Fetch full profile and subscription information
@@ -75,29 +97,6 @@ const SettingsPage = () => {
       // Signed out: there is no account to show, so go and sign in.
       navigate('/login', { replace: true });
       return undefined;
-    }
-
-    // Fast initial fill from localStorage
-    try {
-      const stored = JSON.parse(localStorage.getItem('currentUser') || 'null');
-      if (stored) {
-        setProfile((prev) => ({
-          ...prev,
-          id: stored.id || '',
-          name: stored.name || '',
-          username: stored.username || '',
-          email: stored.email || '',
-          plan: stored.plan || 'Free',
-          status: stored.status || 'Active',
-          avatar_url: stored.avatar_url || '',
-          org: stored.org || '',
-          phone_no: stored.phone_no || '',
-          dob: stored.dob || '',
-          gender: stored.gender || 'Male',
-        }));
-      }
-    } catch {
-      /* ignore */
     }
 
     const fetchProfileData = async () => {
@@ -119,8 +118,6 @@ const SettingsPage = () => {
         }
       } catch (err) {
         console.error('Error fetching user profile:', err);
-      } finally {
-        if (isMounted) setLoading(false);
       }
     };
 
@@ -147,7 +144,7 @@ const SettingsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate]);
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -355,21 +352,13 @@ const SettingsPage = () => {
           message: res.message || 'Could not reactivate subscription.',
         });
       }
-    } catch (err) {
+    } catch {
       setSubFeedback({ type: 'error', message: 'Failed to communicate with payment server.' });
     } finally {
       setReactivatingSub(false);
     }
   };
 
-  const handleLogout = () => {
-    clearToken();
-    try {
-      localStorage.removeItem('currentUser');
-    } catch {}
-    toast.success('Signed out successfully.');
-    navigate('/');
-  };
 
   // Helper date formatter
   const formatDate = (isoString) => {

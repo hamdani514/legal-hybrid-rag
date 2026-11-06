@@ -20,7 +20,6 @@ import asyncio
 import hashlib
 import hmac
 import re
-import random
 import secrets
 from typing import Optional
 
@@ -52,6 +51,17 @@ from app.services.email_service import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Emailed codes (password reset, sign-up, re-sending either). Ten minutes gives
+# mail time to arrive; five wrong guesses still end a code, so a longer window
+# does not make guessing practical.
+OTP_TTL_MINUTES = 10
+
+
+def new_otp() -> str:
+    """A 6-digit code from the OS's secure random source (not `random`, whose
+    output can be predicted from earlier values)."""
+    return f"{secrets.randbelow(900000) + 100000}"
 
 
 # -------------------------------------------------------------
@@ -170,9 +180,9 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request):
         return {"message": generic_msg}
 
     # Generate 6-digit numeric OTP
-    otp = f"{random.randint(100000, 999999)}"
+    otp = new_otp()
     otp_hash = _hash_otp(clean_email, otp)
-    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=1)
+    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
 
     # Save to MongoDB user document
     await db.database.users.update_one(
@@ -839,7 +849,8 @@ async def admin_login(body: AdminLoginBody, request: Request):
 
     # Check ENV Super Admin credentials
     if (
-        super_pass
+        super_email
+        and super_pass
         and input_adminid.lower() == super_email.lower()
         and hmac.compare_digest(input_password.encode("utf-8"), super_pass.encode("utf-8"))
     ):
@@ -925,9 +936,9 @@ async def signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=409, detail="Email is already registered.")
 
     # Generate 6-digit numeric OTP
-    otp = f"{random.randint(100000, 999999)}"
+    otp = new_otp()
     otp_hash = _hash_otp(email, otp)
-    otp_expires = now + timedelta(minutes=1)
+    otp_expires = now + timedelta(minutes=OTP_TTL_MINUTES)
 
     # Store exclusively in pending_registrations (NOT in users collection)
     pending_record = {
@@ -1092,9 +1103,9 @@ async def resend_signup_otp(body: ResendSignupOtpRequest, request: Request):
         )
 
     # Generate fresh 6-digit OTP
-    otp = f"{random.randint(100000, 999999)}"
+    otp = new_otp()
     otp_hash = _hash_otp(clean_email, otp)
-    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=1)
+    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
 
     await db.database.pending_registrations.update_one(
         {"email": clean_email},

@@ -178,7 +178,7 @@ async def send_otp_email(user_name: str, user_email: str, otp: str) -> bool:
                 ⏱️ Security Notice: 1-Minute Expiration
             </div>
             <p style="margin: 0; font-size: 13px; color: #B91C1C; line-height: 1.5;">
-                This code expires in exactly <strong>60 seconds (1 minute)</strong>. Please enter it immediately on the verification screen.
+                This code expires in exactly <strong>10 minutes</strong>. Please enter it on the verification screen.
             </p>
         </div>
 
@@ -221,7 +221,7 @@ async def send_signup_otp_email(user_name: str, user_email: str, otp: str) -> bo
                 ⏱️ Security Notice: 1-Minute Expiration
             </div>
             <p style="margin: 0; font-size: 13px; color: #B91C1C; line-height: 1.5;">
-                This registration code expires in exactly <strong>60 seconds (1 minute)</strong>. Please enter it immediately on the verification screen to activate your account.
+                This registration code expires in exactly <strong>10 minutes</strong>. Please enter it on the verification screen to activate your account.
             </p>
         </div>
 

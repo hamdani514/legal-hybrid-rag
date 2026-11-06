@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -9,24 +9,27 @@ import SupportQueriesTable from '../components/SupportQueriesTable';
 import { apiFetch } from '../../lib/api';
 import { toast } from '../../lib/toast';
 import useToastOn from '../../lib/useToastOn';
+import { readStoredAdmin } from '../session';
+
+/** Support messages with their counts: {data} or {error} (a sentence to show). */
+const requestQueries = async () => {
+  try {
+    const res = await apiFetch('/api/admin/support');
+    const data = await res.json().catch(() => null);
+    if (res.ok) return { data };
+    return { error: data?.detail || 'Failed to load support queries.' };
+  } catch {
+    return { error: 'Failed to load support queries.' };
+  }
+};
 
 const AdminSupportPage = () => {
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [currentAdmin] = useState(readStoredAdmin);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedAdmin = localStorage.getItem('currentAdmin');
-    if (!storedAdmin) {
-      navigate('/admin-login');
-    } else {
-      try {
-        setCurrentAdmin(JSON.parse(storedAdmin));
-      } catch (err) {
-        console.error('Error parsing admin data:', err);
-        navigate('/admin-login');
-      }
-    }
-  }, [navigate]);
+    if (!currentAdmin) navigate('/admin-login');
+  }, [currentAdmin, navigate]);
 
   const [queries, setQueries] = useState([]);
   const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0, urgent: 0 });
@@ -40,13 +43,11 @@ const AdminSupportPage = () => {
   const [deleteQueryId, setDeleteQueryId] = useState(null);
   const QUERIES_PER_PAGE = 5;
 
-  const fetchQueries = async (showLoader = false) => {
-    if (showLoader) setLoading(true);
-    setError('');
-    try {
-      const res = await apiFetch('/api/admin/support');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Failed to load support queries.');
+  // `loading` starts true for the first load; the 15-second refresh and the
+  // refresh after a change update the list in place.
+  const showQueries = useCallback(({ data, error: problem }) => {
+    if (data) {
+      setError('');
       setQueries(data.queries || []);
       setStats({
         total: data.total || 0,
@@ -54,18 +55,18 @@ const AdminSupportPage = () => {
         pending: data.pending || 0,
         urgent: data.urgent || 0,
       });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      if (showLoader) setLoading(false);
+    } else {
+      setError(problem);
     }
-  };
+    setLoading(false);
+  }, []);
+  const fetchQueries = () => requestQueries().then(showQueries);
 
   useEffect(() => {
-    fetchQueries(true);
-    const interval = setInterval(() => fetchQueries(false), 15000);
+    requestQueries().then(showQueries);
+    const interval = setInterval(() => requestQueries().then(showQueries), 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showQueries]);
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -114,7 +115,7 @@ const AdminSupportPage = () => {
         prev.map((q) => (q.query_id === queryId ? { ...q, status: newStatus } : q))
       );
       toast.success(`Query marked as ${newStatus}.`);
-      fetchQueries(false);
+      fetchQueries();
     } catch (err) {
       setError(err.message);
     }
@@ -131,7 +132,7 @@ const AdminSupportPage = () => {
       }
       setQueries((prev) => prev.filter((q) => q.query_id !== queryId));
       toast.success('Support query deleted.');
-      fetchQueries(false);
+      fetchQueries();
     } catch (err) {
       setError(err.message);
     }

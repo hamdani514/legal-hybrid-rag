@@ -235,7 +235,7 @@ class Settings(BaseSettings):
     # ── Authentication (Agent S) ─────────────────────────────────────────
     # Always on: see app/api/security.py. No secret has a usable default, so a
     # server without them cannot run with values anyone can read in this file.
-    SUPER_ADMIN_EMAIL: str = "admindaniyal@cst.com"
+    SUPER_ADMIN_EMAIL: str = ""      # set in .env; empty: the env super admin cannot log in
     SUPER_ADMIN_PASSWORD: str = ""   # empty: the env super admin cannot log in
     # A token's lifetime. The frontend renews it silently once half has passed
     # (sessionManager.refreshSessionIfNeeded), so someone using the app stays
@@ -316,6 +316,11 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASS: str = ""
+
+    # ── Error monitoring (app/monitoring.py) ─────────────────────────────
+    ERROR_LOG_DIR: str = ""            # empty = backend/logs (errors.log, rotated)
+    SENTRY_DSN: str = ""               # empty = no Sentry; errors stay in the log
+    SENTRY_ENVIRONMENT: str = ""       # e.g. "production" or "staging"
     FRONTEND_URL: str = "http://localhost:5173"
     # Other addresses the frontend is served from (comma-separated origins,
     # e.g. "https://verdict.example.com,https://www.verdict.example.com").

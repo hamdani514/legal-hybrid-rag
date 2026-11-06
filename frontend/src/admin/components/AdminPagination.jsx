@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 /*
  * Pagination for the admin tables.
@@ -18,7 +18,7 @@ const JUMP_ABOVE = 5;
 const WINDOW = 1;
 
 /** Page buttons to render: {page} entries and {gap} separators, in order. */
-export const pageItems = (currentPage, totalPages) => {
+const pageItems = (currentPage, totalPages) => {
   if (totalPages <= COMPACT_ABOVE) {
     return Array.from({ length: totalPages }, (_, i) => ({ page: i + 1 }));
   }
@@ -42,13 +42,13 @@ export const pageItems = (currentPage, totalPages) => {
 };
 
 const AdminPagination = ({ currentPage, totalPages, onPageChange }) => {
-  const [jumpValue, setJumpValue] = useState('');
-
-  // Clear a half-typed page number when the page changes under us (a filter
-  // was applied, a row was deleted, another button was clicked).
-  useEffect(() => {
-    setJumpValue('');
-  }, [currentPage, totalPages]);
+  // A half-typed page number belongs to the page it was typed on: when the
+  // page changes under us (a filter was applied, a row was deleted, another
+  // button was clicked) the box reads empty again, without an extra render.
+  const pageKey = `${currentPage}/${totalPages}`;
+  const [jump, setJump] = useState({ pageKey, value: '' });
+  const jumpValue = jump.pageKey === pageKey ? jump.value : '';
+  const setJumpValue = (value) => setJump({ pageKey, value });
 
   if (totalPages <= 0) return null;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
@@ -8,27 +8,29 @@ import AdminDeleteModal from '../components/AdminDeleteModal';
 import UserTable from '../components/UserTable';
 import { apiFetch } from '../../lib/api';
 import useToastOn from '../../lib/useToastOn';
+import { readStoredAdmin } from '../session';
 
 const USERS_PER_PAGE = 10;
 
+/** Every user with the plan counts, or null if the list could not be loaded. */
+const requestUsers = async () => {
+  try {
+    const res = await apiFetch('/api/admin/users');
+    return res.ok ? await res.json() : null;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return null;
+  }
+};
+
 const AdminDashboardPage = () => {
   const [users, setUsers] = useState([]);
-  const [currentAdmin, setCurrentAdmin] = useState(null);
+  const [currentAdmin] = useState(readStoredAdmin);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedAdmin = localStorage.getItem('currentAdmin');
-    if (!storedAdmin) {
-      navigate('/admin-login');
-    } else {
-      try {
-        setCurrentAdmin(JSON.parse(storedAdmin));
-      } catch (err) {
-        console.error('Error parsing admin data:', err);
-        navigate('/admin-login');
-      }
-    }
-  }, [navigate]);
+    if (!currentAdmin) navigate('/admin-login');
+  }, [currentAdmin, navigate]);
 
   const [stats, setStats] = useState({ total_users: 0, premium_users: 0, standard_users: 0 });
   const [loading, setLoading] = useState(true);
@@ -43,29 +45,24 @@ const AdminDashboardPage = () => {
   useToastOn(errorMsg, 'error');
   useToastOn(successMsg, 'success');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await apiFetch('/api/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-        setStats({
-          total_users: data.total_users || 0,
-          premium_users: data.premium_users || 0,
-          standard_users: data.standard_users || 0
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoading(false);
+  // `loading` starts true for the first load; a refresh after a delete updates
+  // the table in place rather than flashing the loader again.
+  const showUsers = useCallback((data) => {
+    if (data) {
+      setUsers(data.users || []);
+      setStats({
+        total_users: data.total_users || 0,
+        premium_users: data.premium_users || 0,
+        standard_users: data.standard_users || 0,
+      });
     }
-  };
+    setLoading(false);
+  }, []);
+  const fetchUsers = () => requestUsers().then(showUsers);
+
+  useEffect(() => {
+    requestUsers().then(showUsers);
+  }, [showUsers]);
 
   const handleDeleteClick = (user) => {
     setDeleteUserId(user.id);
