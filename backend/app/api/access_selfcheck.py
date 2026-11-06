@@ -85,12 +85,21 @@ def token_for(sub: str, role: str = "user") -> dict:
     return bearer(security.create_access_token(sub, role))
 
 
-def all_routes() -> list[tuple[str, str]]:
-    keys = []
-    for route in main.app.routes:
+def _walk(routes, prefix: str = ""):
+    """Every APIRoute with its full path. FastAPI 0.162+ keeps included routers
+    nested (route.path is the path inside the router; each level carries its
+    include prefix); older versions flatten them. Both are handled."""
+    for route in routes:
         if isinstance(route, APIRoute):
-            keys += [(method, route.path) for method in sorted(route.methods)]
-    return keys
+            yield prefix + route.path, route.methods
+        inner = getattr(route, "original_router", None)
+        if inner is not None:
+            include = getattr(getattr(route, "include_context", None), "prefix", "") or ""
+            yield from _walk(inner.routes, prefix + include)
+
+
+def all_routes() -> list[tuple[str, str]]:
+    return [(method, path) for path, methods in _walk(main.app.routes) for method in sorted(methods)]
 
 
 async def call(c, method: str, path: str, headers=None):
@@ -107,12 +116,24 @@ async def routes_part(c) -> None:
 
     # ── every route, no token ────────────────────────────────────────────
     protected = [k for k in routes if k not in security.PUBLIC_ROUTES]
-    open_routes = []
-    for method, path in protected:
-        r = await call(c, method, path)
-        if r.status_code != 401:
-            open_routes.append(f"{method} {path} -> {r.status_code}")
+    open_routes, misfiled = [], []
+    # Record the key the guard files each request under: it must be the route's
+    # full template, or the public/admin lists silently stop applying (this is
+    # what broke when FastAPI 0.162 started nesting included routers).
+    seen, real_required_access = [], security.required_access
+    security.required_access = lambda key: (seen.append(key), real_required_access(key))[1]
+    try:
+        for method, path in protected:
+            seen.clear()
+            r = await call(c, method, path)
+            if r.status_code != 401:
+                open_routes.append(f"{method} {path} -> {r.status_code}")
+            if seen != [(method, path)]:
+                misfiled.append(f"{method} {path} filed as {seen}")
+    finally:
+        security.required_access = real_required_access
     check(f"no token: all {len(protected)} protected routes answer 401", not open_routes, "; ".join(open_routes[:8]))
+    check("the guard files every request under its route's full path", not misfiled, "; ".join(misfiled[:8]))
 
     claiming = {"x-user-id": "USr-VICTIM"}
     leaks = []

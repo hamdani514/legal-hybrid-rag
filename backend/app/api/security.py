@@ -328,10 +328,26 @@ DOWNLOAD_ROUTES = frozenset({
 ADMIN_ROUTES = frozenset({("POST", "/embeddings/generate")})
 
 
+def route_template(request: Request) -> str:
+    """The full path template of the matched route, e.g. /api/payments/config.
+
+    FastAPI 0.162+ keeps included routers nested, so scope["route"].path is the
+    path INSIDE the router ("/config") and the full template lives on the
+    per-request route context. Older versions flatten routes, so route.path is
+    already full. A wrong template would misfile a route (a public one would
+    answer 401), so both are read here and the self-check runs real requests
+    through this on every build.
+    """
+    context = (request.scope.get("fastapi") or {}).get("effective_route_context")
+    for source in (context, request.scope.get("route")):
+        path = getattr(source, "path", None)
+        if isinstance(path, str) and path:
+            return path
+    return request.url.path
+
+
 def _route_key(request: Request) -> Tuple[str, str]:
-    route = request.scope.get("route")
-    path = getattr(route, "path", None) or request.url.path
-    return request.method.upper(), path
+    return request.method.upper(), route_template(request)
 
 
 def required_access(key: Tuple[str, str]) -> Literal["public", "download", "admin", "user"]:

@@ -1,79 +1,84 @@
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic
-pydantic-settings
+# Every version is pinned to what the test suites ran against. Unpinned, a
+# fresh build picked up FastAPI 0.162, which nests included routers and
+# changed what the access guard sees (public routes answered 401). Upgrade
+# deliberately: change a pin, then run the self-checks before shipping.
+fastapi==0.136.1
+starlette==1.0.0
+uvicorn[standard]==0.47.0
+python-multipart==0.0.29
+pydantic==2.13.4
+pydantic-settings==2.14.1
 
-pymongo
-motor
+pymongo==4.17.0
+motor==3.7.1
 # The ODM behind app/models/*.py (User, Chat, Message, Blog). It was imported
 # by main.py's lifespan while missing from this file, so a fresh install
 # started and then crashed on startup with ModuleNotFoundError.
 # Below 2.0: beanie 2.x no longer accepts the motor database this app passes
 # to init_beanie (TypeError: MotorDatabase object is not callable), and the
 # startup code re-raises it, so the server would not start.
-beanie<2
+beanie==1.30.0
 # Short ids for chat slugs (app/utils/slug.py).
-nanoid
+nanoid==2.0.0
 
-python-jose
-bcrypt
-python-dotenv
+python-jose==3.5.0
+bcrypt==5.0.0
+python-dotenv==1.2.2
 
-pymupdf
-pdfplumber
-pdf2image
-pytesseract
-easyocr
-opencv-python-headless
-Pillow
+pymupdf==1.27.2.3
+pdfplumber==0.11.9
+pdf2image==1.17.0
+pytesseract==0.3.13
+easyocr==1.7.2
+opencv-python-headless==4.13.0.92
+Pillow==12.2.0
 
-numpy
-pandas
-scikit-learn
-torch
-transformers
-sentence-transformers
-accelerate
+numpy==2.4.6
+pandas==3.0.3
+scikit-learn==1.8.0
+torch==2.12.0
+transformers==5.8.1
+sentence-transformers==5.5.1
+accelerate==1.13.0
 
-faiss-cpu
+faiss-cpu==1.13.2
 # The live vector store. It was missing from this file while being imported at
 # module load by app/vectorstore/chroma_store.py, so the Docker image crashed on
 # startup with ModuleNotFoundError. Pinned to the 1.x line: the code uses the
 # PersistentClient API, which 0.x did not have.
-chromadb>=1.0,<2
+chromadb==1.5.9
 # Used by the bulk ingestion workers to size the OCR pool to free RAM.
-psutil
+psutil==7.2.2
 
-langchain
-langchain-community
-langchain-core
-langchain-text-splitters
+langchain==1.3.1
+langchain-community==0.4.1
+langchain-core==1.4.0
+langchain-text-splitters==1.1.2
 
-rank-bm25
+rank-bm25==0.2.2
 
-httpx
-aiofiles
-requests
+httpx==0.28.1
+aiofiles==25.1.0
+requests==2.34.2
 
-redis
-celery
+redis==7.4.0
+celery==5.6.3
 
-tqdm
-orjson
-ujson
-loguru
+tqdm==4.67.3
+orjson==3.11.9
+ujson==5.12.1
+loguru==0.7.3
 
-pytest
-pytest-asyncio
+pytest==9.0.3
+pytest-asyncio==1.3.0
 
-openai
-ollama
+openai==2.37.0
+ollama==0.6.2
 # Card payments (Stripe Checkout + webhooks); see app/api/payments.py
-stripe
-google-genai
-tiktoken
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
-apscheduler
+stripe==16.0.0
+google-genai==2.23.0
+tiktoken==0.14.0
+google-api-python-client==2.200.0
+google-auth-httplib2==0.4.2
+google-auth-oauthlib==1.4.1
+apscheduler==3.11.3

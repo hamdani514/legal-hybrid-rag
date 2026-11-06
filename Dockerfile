@@ -7,7 +7,9 @@ COPY frontend/ ./
 RUN npm test
 RUN npm run build
 
-FROM python:3.10-slim
+# Same Python as the tested environment: requirements.txt pins versions
+# (numpy 2.4, pandas 3, scikit-learn 1.8) that need 3.11 or newer.
+FROM python:3.11-slim
 WORKDIR /app
 
 # System packages the ingestion stack needs. Without these the image builds
