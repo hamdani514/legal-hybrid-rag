@@ -30,3 +30,20 @@ async def init_mongodb_indexes():
         logger.info("MongoDB unique, relational, and subscription indexes initialized successfully.")
     except Exception as e:
         logger.error(f"Error during database index creation: {e}")
+
+    # 5. One account per email / Google account. These existed only in the
+    # original database (made by hand long ago), so a database filled by
+    # importing collections (Compass, Atlas) had none, and two sign-ups at the
+    # same moment could create two accounts for one email. Each on its own: a
+    # failure (e.g. duplicates already in the data) is reported by name and
+    # does not stop the others.
+    for keys, options in (
+        ("email", {"unique": True}),
+        ("googleId", {"unique": True, "sparse": True}),
+        ("isActive", {}),
+    ):
+        try:
+            await db.database.users.create_index(keys, **options)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Could not create the users.{keys} index {options or ''}: {e}. "
+                         "If it says duplicate key, two accounts share that value: merge or remove one.")

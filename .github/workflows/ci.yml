@@ -8,7 +8,15 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # Built and tested twice, in parallel: on x86 and on ARM64. The production
+    # server (Oracle Cloud Ampere A1) is ARM64, so a package or base image that
+    # has no ARM build fails here, not on the server. (Free ARM runners need a
+    # public repository.)
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
 
     services:
       mongodb:
