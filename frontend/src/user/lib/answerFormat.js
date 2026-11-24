@@ -53,7 +53,9 @@ export const parseAnswer = (answer) => {
  */
 export const isEmptyAnswer = (answer) => {
   if (!answer) return true;
-  if (answer.includes(NO_AUTHORITY_MARKER)) return true;
+  // The marker with an analysis after it is an off-point analysis (see
+  // offPointReason), not an empty answer; the marker alone is empty.
+  if (answer.includes(NO_AUTHORITY_MARKER)) return !hasAnalysis(answer);
 
   // The fit check is about the user's case, not the judgment; it cannot make
   // an otherwise empty analysis non-empty.
@@ -80,8 +82,30 @@ export const meaningfulSections = (answer) =>
     (s) =>
       s.body &&
       s.heading !== FIT_HEADING &&
-      !s.body.toLowerCase().includes(NOT_FOUND)
+      !s.body.toLowerCase().includes(NOT_FOUND) &&
+      // The off-point notice is shown on its own (offPointReason).
+      !s.body.includes(NO_AUTHORITY_MARKER)
   );
+
+/** Whether an answer analyses the judgment under at least one heading. */
+function hasAnalysis(answer) {
+  return parseAnswer(answer).some(
+    (s) => s.heading && s.heading !== FIT_HEADING && s.body && !s.body.toLowerCase().includes(NOT_FOUND)
+  );
+}
+
+/**
+ * When the judgment does not address the query, the analysis still covers the
+ * judgment on its own terms, after the marker and a one-line reason. Returns
+ * that reason ("The query concerns ...; this judgment decides ..."), or null
+ * when the analysis is on point (or is the marker alone: isEmptyAnswer).
+ */
+export const offPointReason = (answer) => {
+  if (!answer || !answer.includes(NO_AUTHORITY_MARKER) || !hasAnalysis(answer)) return null;
+  const after = answer.split(NO_AUTHORITY_MARKER)[1] || '';
+  const line = after.split('\n').map((l) => stripEmphasis(l).trim()).find(Boolean) || '';
+  return HEADING_RE.test(line) ? '' : line.replace(/^why:\s*/i, '');
+};
 
 /**
  * The fit check as `{ verdict, body }`, or null when there is none to show.
@@ -155,8 +179,15 @@ export const judgmentShareText = (cite, answer, query) => {
   const name = prettyCaseName(cite.filename, (cite.judgment_id || '').slice(0, 8));
   const label = CONFIDENCE_LABEL[cite.confidence] || '';
   const out = [label ? `${name} — ${label}` : name];
+  const sections = caseSectionsText(cite.card);
+  if (sections) out.push(`${caseSectionsLabel(cite.card)}: ${sections}`);
 
   if (query) out.push('', `Question asked: ${query.trim()}`);
+  const offPoint = answer ? offPointReason(answer) : null;
+  if (offPoint !== null) {
+    out.push('', `Note: this judgment does not directly address the question.${offPoint ? ` ${offPoint}` : ''} `
+      + 'Its decision is not an answer to the question.');
+  }
 
   for (const section of answer ? meaningfulSections(answer) : []) {
     out.push('', section.heading || '', section.body);
@@ -232,11 +263,24 @@ export const caseSummaryLines = (card) => {
   const holding = firstSentence(card.holding);
   const decision = [outcome && `${outcome}.`, holding].filter(Boolean).join(' ');
 
+  const sections = caseSectionsText(card);
   const lines = [
     parties && { label: 'Parties', text: parties },
     problem && { label: 'Legal problem', text: `${subject}${problem}` },
+    sections && { label: caseSectionsLabel(card), text: sections },
     decision && { label: 'Decision', text: decision },
   ].filter(Boolean);
 
   return lines.length ? lines : null;
 };
+
+/**
+ * The legal sections a case is about, from its card (the server's
+ * app/retrieval/case_sections.py): "Section 302(b) PPC · Section 34 PPC".
+ * `sections_source` "summary" means the case's own summary names them; "cited"
+ * means it names none and these are the first provisions the judgment cites,
+ * which is said as such rather than claimed as the case's subject.
+ */
+export const caseSections = (card) => (Array.isArray(card?.sections) ? card.sections.filter(Boolean) : []);
+export const caseSectionsLabel = (card) => (card?.sections_source === 'cited' ? 'Sections cited' : 'Sections');
+export const caseSectionsText = (card) => caseSections(card).join(' · ');

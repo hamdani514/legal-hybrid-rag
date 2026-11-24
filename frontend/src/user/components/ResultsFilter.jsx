@@ -30,13 +30,15 @@ const FilterDialog = ({ cases = [], filters, onApply, onClose, Modal, searchesAl
     ? OUTCOMES
     : uniq(cases.map((c) => c.card?.outcome)).filter((o) => o !== 'unknown');
   const judges = uniq(cases.flatMap((c) => caseJudges(c.card)));
+  // Suggestions: the sections the cases on screen are about.
+  const sections = uniq(cases.flatMap((c) => c.card?.sections || []));
 
   const preview = cases.filter((c) => matchesFilters(c, draft)).length;
 
   return (
     <Modal
       title="Filter results"
-      subtitle="Every field is optional — leave one blank and it will not narrow anything. A case whose decision, date or judges could not be read from the judgment is left out when you filter on that field."
+      subtitle="Every field is optional — leave one blank and it will not narrow anything. A case whose decision, date, judges or sections could not be read from the judgment is left out when you filter on that field."
       onClose={onClose}
     >
       <div className="flex flex-col gap-5">
@@ -75,6 +77,18 @@ const FilterDialog = ({ cases = [], filters, onApply, onClose, Modal, searchesAl
                  onChange={(e) => set('judge', e.target.value)} className={inputCls} />
           <datalist id="filter-judges">
             {judges.map((j) => <option key={j} value={j} />)}
+          </datalist>
+        </Field>
+
+        <Field
+          label="Section of law"
+          hint="The number is enough: 302 finds 302 and 302(b). Add the law to narrow it (302 PPC, 497 CrPC). Separate several with commas: every one must apply."
+        >
+          <input type="search" list="filter-sections" value={draft.section || ''}
+                 placeholder="e.g. 302 PPC, 377, 489-F, 497 CrPC, Article 199"
+                 onChange={(e) => set('section', e.target.value)} className={inputCls} />
+          <datalist id="filter-sections">
+            {sections.map((s) => <option key={s} value={s} />)}
           </datalist>
         </Field>
 

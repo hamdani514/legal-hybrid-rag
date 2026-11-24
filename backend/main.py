@@ -11,6 +11,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
 
+# Before anything imports the model libraries: use the models already on this
+# machine instead of first asking huggingface.co, which fails on some networks
+# (a phone hotspot) and left search "NOT ready". app/local_models.py.
+from app.local_models import prefer_local_models
+
+_MODELS_MODE = prefer_local_models()
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -59,6 +66,7 @@ def _warn_about_deployment() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Starting application...")
+    logger.info(f"AI models: {_MODELS_MODE}")
 
     # Refuses to start with a weak JWT_SECRET.
     check_security_config()
@@ -235,7 +243,9 @@ def _content_security_policy(index_file: Path) -> str:
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: blob: https:",
         f"connect-src 'self' {google}/gsi/",
-        f"frame-src {google}/gsi/",
+        # 'self': the "View judgment" pop-up shows the PDF from this site's own
+        # /api/.../download?inline=1 (which alone allows same-origin framing).
+        f"frame-src 'self' {google}/gsi/",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -366,9 +376,9 @@ app.include_router(query_router, prefix="/query", tags=["Query"])
 
 
 @app.get("/api/judgments/{judgment_id}/download")
-async def download_judgment_alias(judgment_id: str, request: Request):
+async def download_judgment_alias(judgment_id: str, request: Request, inline: bool = False):
     from app.api.admin import download_judgment
-    return await download_judgment(judgment_id, request)
+    return await download_judgment(judgment_id, request, inline)
 
 
 @app.get("/{full_path:path}")

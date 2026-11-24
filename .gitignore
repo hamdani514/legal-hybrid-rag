@@ -74,6 +74,9 @@ backend/lexical.db
 backend/lexical.db-wal
 backend/lexical.db-shm
 backend/lexical.db-journal
+# Copies made before a change to the index (scripts/refresh_statutes.py):
+# the full text of every judgment, never pushed.
+backend/lexical.db.*
 
 # Google Credentials & Secrets
 token.json

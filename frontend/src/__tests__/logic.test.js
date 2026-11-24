@@ -2,13 +2,16 @@
 // plan unlocks, how a case is named and how chat addresses are built.
 // Run with `npm test`; the Docker build runs them too, so a failure stops it.
 import { describe, expect, it } from 'vitest';
-import { EMPTY_FILTERS, activeFilterCount, caseDate, matchesFilters } from '../user/lib/filters';
+import { EMPTY_FILTERS, activeFilterCount, caseDate, matchesFilters, matchesSections } from '../user/lib/filters';
 import { filterChips } from '../user/lib/filterSummary';
 import { FEATURES, PLANS, planKey } from '../user/lib/plan';
 import { slugify, slugifyTyping } from '../lib/slug';
 import { retryWhileRestarting } from '../lib/api';
 import { chatPath, chatSlug, slugMatches } from '../user/lib/chatSlug';
-import { caseJudges, isEmptyAnswer, prettyCaseName, prettyOutcome, NO_AUTHORITY_MARKER } from '../user/lib/answerFormat';
+import {
+  caseJudges, caseSummaryLines, isEmptyAnswer, meaningfulSections, offPointReason, prettyCaseName, prettyOutcome,
+  NO_AUTHORITY_MARKER,
+} from '../user/lib/answerFormat';
 
 const cite = {
   judgment_id: 'abc',
@@ -65,6 +68,85 @@ describe('filters', () => {
     const chips = filterChips(f({ outcome: 'partly_allowed', judge: 'Afridi', query: '3031' }));
     expect(chips).toEqual(['Partly allowed', 'Case or party: 3031', 'Judge: Afridi']);
     expect(activeFilterCount(f({ outcome: 'allowed', judge: ' ' }))).toBe(1);
+    expect(filterChips(f({ section: '302 PPC' }))).toEqual(['Section: 302 PPC']);
+    expect(activeFilterCount(f({ section: '302' }))).toBe(1);
+  });
+});
+
+describe('analysis of a judgment that does not address the question', () => {
+  const offPoint = [
+    '[NO RELEVANT AUTHORITY]',
+    'Why: The query concerns pre-arrest bail under Section 377 PPC; this judgment decides a conviction appeal.',
+    '[RELEVANT FACTS]', 'The appellant was convicted of murder and sodomy.',
+    '[FINAL DECISION]', 'In this judgment, the appeal was dismissed.',
+    '[FIT WITH YOUR SITUATION]', 'Distinguishable: it is not a bail matter.',
+  ].join('\n');
+
+  it('is shown as an analysis with its reason, not as empty', () => {
+    expect(isEmptyAnswer(offPoint)).toBe(false);
+    expect(offPointReason(offPoint)).toBe(
+      'The query concerns pre-arrest bail under Section 377 PPC; this judgment decides a conviction appeal.');
+    expect(meaningfulSections(offPoint).map((s) => s.heading)).toEqual(['RELEVANT FACTS', 'FINAL DECISION']);
+  });
+
+  it('the marker alone is still empty, and an on-point analysis has no reason', () => {
+    const bare = '[NO RELEVANT AUTHORITY]\nThe retrieved judgments do not address this query.';
+    expect(isEmptyAnswer(bare)).toBe(true);
+    expect(offPointReason(bare)).toBe(null);
+    expect(offPointReason('[RELEVANT FACTS]\nBail was refused.')).toBe(null);
+  });
+});
+
+// The same card and inputs as the server's self-test (app/retrieval/case_sections.py),
+// so the browser and the server agree on what a Section filter keeps.
+describe('section filter', () => {
+  const card = {
+    provisions: ['Article 185(3)', 'Section 302(b) PPC', 'Section 34 PPC', 'Section 342 CrPC',
+                 'Section 497(2) CrPC', 'Section 489-F PPC'],
+  };
+  const withCard = { ...cite, card: { ...cite.card, ...card } };
+
+  it('keeps a case for every way of writing a section it involves', () => {
+    for (const t of ['302', 'section 302', 's. 302 PPC', '302(b)', '302 (b) Pakistan Penal Code', '34',
+                     '302, 34', '302 and 34 PPC', '489-F', '489F', '489 F', '497(2) Cr.P.C.', 'Article 185(3)',
+                     'art. 185', 'murder', '', 'u/s 302 PPC', '302 b', '302-B PPC']) {
+      expect(matchesSections(card, t), t).toBe(true);
+    }
+  });
+
+  it('leaves out a case that does not involve it', () => {
+    for (const t of ['302(c)', '302 CrPC', '377', '302, 377', 'Article 199', '489-G', 'section 185']) {
+      expect(matchesSections(card, t), t).toBe(false);
+    }
+  });
+
+  it('a lettered section matches its sub-clause form, both ways', () => {
+    const cnsa = { provisions: ['Section 9-C CNSA'] };
+    for (const t of ['9(c) CNSA', '9-C', '9c']) expect(matchesSections(cnsa, t), t).toBe(true);
+    // A lettered section is its own section: 489-F (cheque) is not 489 (currency notes).
+    expect(matchesSections({ provisions: ['Section 489-F PPC'] }, '489')).toBe(false);
+    expect(matchesSections(cnsa, '9(b)')).toBe(false);
+  });
+
+  it('an older spelling without the hyphen is the same lettered section', () => {
+    const old = { provisions: ['Section 377B PPC'] };
+    expect(matchesSections(old, '377-B')).toBe(true);
+    expect(matchesSections(old, '377')).toBe(false);   // 377-B is not 377
+  });
+
+  it('works through the filter dialog, and a case with no sections is left out', () => {
+    expect(matchesFilters(withCard, f({ section: '302 PPC' }))).toBe(true);
+    expect(matchesFilters(withCard, f({ section: '377' }))).toBe(false);
+    expect(matchesFilters(cite, f({ section: '302' }))).toBe(false);
+  });
+
+  it('the summary names the sections, and says "cited" when they are only cited', () => {
+    const about = caseSummaryLines({ appellant: 'A', respondent: 'B', sections: ['Section 302(b) PPC', 'Section 34 PPC'],
+                                     sections_source: 'summary' });
+    expect(about).toContainEqual({ label: 'Sections', text: 'Section 302(b) PPC · Section 34 PPC' });
+    const cited = caseSummaryLines({ appellant: 'A', respondent: 'B', sections: ['Section 497 CrPC'], sections_source: 'cited' });
+    expect(cited).toContainEqual({ label: 'Sections cited', text: 'Section 497 CrPC' });
+    expect(caseSummaryLines({ appellant: 'A', respondent: 'B' }).some((l) => l.label.startsWith('Sections'))).toBe(false);
   });
 });
 

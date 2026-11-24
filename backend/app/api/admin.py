@@ -676,11 +676,40 @@ async def get_tree(pdf_id: str):
     return tree
 
 
+def _pdf_headers(filename: str, inline: bool) -> dict:
+    """Content-Disposition for a judgment PDF, plus, when it is shown inline,
+    permission for this site's own pages to frame it.
+
+    The app forbids framing everywhere (main.py: X-Frame-Options DENY and
+    frame-ancestors 'none'), so a page cannot be embedded by another site. The
+    "View judgment" pop-up must embed the PDF on our own page, so the inline
+    response relaxes that to the same origin only; a download keeps DENY.
+    """
+    safe = filename.replace('"', "").replace("\r", "").replace("\n", "")
+    headers = {
+        "Content-Disposition": f'{"inline" if inline else "attachment"}; filename="{safe}"',
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    if inline:
+        headers["X-Frame-Options"] = "SAMEORIGIN"
+        headers["Content-Security-Policy"] = "frame-ancestors 'self'"
+    return headers
+
+
+def _local_pdf(path, filename: str, inline: bool):
+    from fastapi.responses import FileResponse
+    return FileResponse(path=str(path), media_type="application/pdf", headers=_pdf_headers(filename, inline))
+
+
 @router.get("/judgments/{judgment_id}/download")
-async def download_judgment(judgment_id: str, request: Request):
+async def download_judgment(judgment_id: str, request: Request, inline: bool = False):
     """
     Downloads the original PDF judgment from Google Drive (or local fallback).
     Streams binary content directly with appropriate Content-Disposition header.
+
+    ?inline=1 serves the same file to be SHOWN, not saved: the "View judgment"
+    pop-up, where a reader checks the judgment before downloading it. It is the
+    same PDF, so it needs the same plan feature as downloading.
 
     Downloading is a paid feature (modules/payment/plans.py); a signed-in
     admin always may.
@@ -699,12 +728,7 @@ async def download_judgment(judgment_id: str, request: Request):
         # Fallback check if file exists on disk
         local_path = UPLOADS_DIR / f"{judgment_id}.pdf"
         if local_path.exists():
-            from fastapi.responses import FileResponse
-            return FileResponse(
-                path=str(local_path),
-                filename=f"{judgment_id}.pdf",
-                media_type="application/pdf",
-            )
+            return _local_pdf(local_path, f"{judgment_id}.pdf", inline)
         raise HTTPException(status_code=404, detail="Judgment not found.")
 
     drive_meta = doc.get("drive") if isinstance(doc.get("drive"), dict) else {}
@@ -722,25 +746,16 @@ async def download_judgment(judgment_id: str, request: Request):
         )
 
         from fastapi.responses import StreamingResponse
-        headers = {
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Access-Control-Expose-Headers": "Content-Disposition",
-        }
         return StreamingResponse(
             stream,
             media_type=mime_type or "application/pdf",
-            headers=headers,
+            headers=_pdf_headers(filename, inline),
         )
     except Exception as e:
         logger.error(f"Error downloading judgment {judgment_id}: {e}")
         local_path = UPLOADS_DIR / f"{judgment_id}.pdf"
         if local_path.exists():
-            from fastapi.responses import FileResponse
-            return FileResponse(
-                path=str(local_path),
-                filename=filename,
-                media_type="application/pdf",
-            )
+            return _local_pdf(local_path, filename, inline)
         raise HTTPException(status_code=500, detail="The PDF could not be downloaded. Please try again later.")
 
 

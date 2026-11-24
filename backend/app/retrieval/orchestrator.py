@@ -303,14 +303,25 @@ async def _cards_for(judgment_ids: list[str]) -> dict[str, dict]:
     """Map judgment ids to the display fields of their case cards ({} if none)."""
     if db.database is None or not judgment_ids:
         return {}
+    from app.retrieval.case_sections import case_sections, provisions
     try:
         cursor = db.database.case_cards.find(
             {"judgment_id": {"$in": judgment_ids}},
-            {"_id": 0, "judgment_id": 1, **{f: 1 for f in CARD_FIELDS}},
+            {"_id": 0, "judgment_id": 1, "statutes": 1, "issues": 1, **{f: 1 for f in CARD_FIELDS}},
         )
         cards = {}
         async for c in cursor:
             card = {f: c[f] for f in CARD_FIELDS if c.get(f) not in (None, "", [])}
+            # Which sections the case is about (shown on the result, its summary
+            # and its analysis), and every provision it involves (what the
+            # Section filter matches): app/retrieval/case_sections.py.
+            shown = case_sections(c)
+            if shown["sections"]:
+                card["sections"] = shown["sections"]
+                card["sections_source"] = shown["source"]
+            involved = provisions(c)
+            if involved:
+                card["provisions"] = involved
             if card:
                 cards[c["judgment_id"]] = card
         return cards
@@ -699,6 +710,13 @@ def matches_filters(judgment_id: str, card: dict, filename: str, filters: dict) 
                                                 card.get("appellant"), card.get("respondent"),
                                                 card.get("subject")) if x))
         if not all(w in hay for w in query_words):
+            return False
+
+    # Section: "302", "302(b) PPC", "489-F", "302, 34" (every one must apply).
+    section = str(filters.get("section") or "").strip()
+    if section:
+        from app.retrieval.case_sections import matches_sections
+        if not matches_sections(card, section):
             return False
     return True
 

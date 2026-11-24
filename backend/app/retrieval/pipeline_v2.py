@@ -798,6 +798,16 @@ def _ground(category: str, items: list[FusedJudgment], texts: dict[str, list[str
 # (irrelevant 11 -> 4, NAB-but-not-bail 34 -> 9). The first page is not
 # filtered: on 4,012 earlier test queries the same rule would have hidden the
 # expected judgment in 39 of the 601 where it ranked below first.
+#
+# "Contains" was still too loose (users saw NAB cases under other laws, and
+# bail cases with no NAB, at the bottom of "NAB bail" results): a NAB
+# reference mentions bail once in its history. A judgment with a case summary
+# must now be ABOUT the key terms: they appear in its summary (subject,
+# headnote, issues, holding, keywords, parties), abbreviations matching their
+# spelled-out form ("NAB" = "National Accountability"; lexical.TERM_EQUIVALENTS).
+# Judgments without a summary keep the "contains" rule. On "NAB case on bail
+# nab ordinance", pages 2+: 38 shown before, 16 of them not NAB bail cases;
+# after, all 22 NAB bail cases kept and none of the 16.
 
 PAGE_SIZE = 10
 MAX_RESULTS = 100
@@ -902,12 +912,19 @@ async def _with_key_terms(session: dict, ids: list[str]) -> list[str]:
         if not terms:
             return ids
         found = await asyncio.to_thread(lexical.judgments_with_terms, terms, ids)
+        # About, not merely mentioned: a judgment with a case summary passes
+        # on what its summary says (see "Key terms" above).
+        about, summarised = await asyncio.to_thread(lexical.judgments_about_terms, terms, ids)
     except Exception as e:
         logger.warning(f"key-term check failed, not filtering: {e}")
         return ids
     need = len(terms) if len(terms) <= KEY_TERM_ALL_UP_TO else math.ceil(KEY_TERM_COVERAGE * len(terms))
     pinned = {item["judgment_id"] for item in session["fused"] if item.get("pinned")}
-    return [jid for jid in ids if jid in pinned or len(found.get(jid, ())) >= need]
+
+    def has(jid: str) -> set:
+        return about.get(jid, set()) if jid in summarised else found.get(jid, set())
+
+    return [jid for jid in ids if jid in pinned or len(has(jid)) >= need]
 
 
 async def _next_page(session: dict, shown: set[str]) -> list[str]:
@@ -920,12 +937,16 @@ async def _next_page(session: dict, shown: set[str]) -> list[str]:
     while (len(page) < size and budget > 0 and session["tail_pass"]
            and session["scanned"] < len(session["fused"])):
         batch = session["fused"][session["scanned"]: session["scanned"] + SCAN_SLICE]
-        passing = await _with_key_terms(session, await _score_slice(session, batch))
+        relevant = await _score_slice(session, batch)
+        passing = await _with_key_terms(session, relevant)
         session["scanned"] += len(batch)
         budget -= len(batch)
         known = set(session["order"])
         session["order"] += [jid for jid in passing if jid not in known]
-        session["tail_pass"] = _tail_pass(batch, set(passing))
+        # Relevance has run out when the cross-encoder passes nothing at the
+        # end of a slice; the key-term check only says which relevant ones to
+        # show (it is strict, and would otherwise stop the scan early).
+        session["tail_pass"] = _tail_pass(batch, set(relevant))
         page += [jid for jid in passing if jid not in shown and jid not in page][: size - len(page)]
     return page
 
@@ -977,11 +998,12 @@ async def _filtered_page(session: dict, shown: set[str], allowed: set[str]) -> t
     exhausted = False
     while len(unseen()) < size and pending and budget > 0:
         batch, pending = pending[:SCAN_SLICE], pending[SCAN_SLICE:]
-        ok = await _with_key_terms(session, await _score_slice(session, batch))
+        relevant = await _score_slice(session, batch)
+        ok = await _with_key_terms(session, relevant)
         judged.update(item["judgment_id"] for item in batch)
         passed.update(ok)
         budget -= len(batch)
-        if not ok:
+        if not relevant:
             exhausted = True   # relevance has run out for this filter
             break
 
@@ -1003,10 +1025,7 @@ async def more_v2(raw_query: str, shown: list[str], top_k_sections: int = 3, mat
     judgments matching the researcher's filters; the page is then drawn from
     every candidate of the query that matches (see "Filtered paging").
     """
-    raw_query = raw_query or ""
-    if opt("NORMALISE_SPELLING", True):
-        from app.retrieval.spelling import normalise
-        raw_query = normalise(raw_query)
+    raw_query, _ = await _prepare_query(raw_query or "")
     shown_set = set(shown or [])
     empty = {"parent_results": [], "stage2_results": {}, "candidates": [], "reasons": {}, "has_more": False}
 
@@ -1142,14 +1161,174 @@ async def _browse_category(raw_query, category, analysis, timings, mark,
     }
 
 
+async def _understand(raw_query: str, analysis: QueryAnalysis) -> QueryAnalysis | None:
+    """The LLM's legal restatement of a query (app/retrieval/query_analyzer:
+    a rewrite and 0-2 expansions, checked to add no party, statute or number
+    the user did not write), merged into the search's own analysis; None when
+    it has nothing new to search with (LLM unavailable, too slow, or it only
+    repeated the query). Given RESCUE_ANALYZER_TIMEOUT: the default 3 s is
+    too short for this call, and this path runs only when nothing was found."""
+    try:
+        from app.retrieval import query_analyzer
+
+        llm = await query_analyzer.analyze(raw_query, timeout=float(opt("RESCUE_ANALYZER_TIMEOUT", 10.0)))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"second look: query understanding failed: {e}")
+        return None
+    if (llm or {}).get("source") != "llm":
+        return None
+    same = " ".join(str(llm.get("rewrite") or "").lower().split()) == " ".join(raw_query.lower().split())
+    expansions = [e for e in (llm.get("expansions") or []) if e]
+    if same and not expansions:
+        return None
+    merged = dict(analysis)
+    merged.update(source="llm", rewrite="" if same else llm.get("rewrite", ""), expansions=expansions)
+    for key in ("subject", "query_type"):
+        if llm.get(key):
+            merged[key] = llm[key]
+    last_debug["second_look"] = {"rewrite": merged["rewrite"], "expansions": expansions}
+    return merged
+
+
+async def _judge_rows(raw_query: str, rows: list[dict], evidence: dict) -> tuple | None:
+    """The LLM judge over the top JUDGE_TOP_N rows (app/retrieval/judge.py):
+    (rows with the judged head reordered, {judgment_id: relevant}, reasons),
+    or None when the judge was not usable (timeout, error, garbage): the
+    caller then keeps what it had. Never raises."""
+    try:
+        from app.retrieval import judge
+
+        top_n = int(opt("JUDGE_TOP_N"))
+        verdict = await judge.judge(raw_query, rows[:top_n], evidence)
+        if not verdict.get("used"):
+            return None
+        order = {jid: i for i, jid in enumerate(verdict["ranking"])}
+        head = sorted(rows[:top_n], key=lambda r: (not r["pinned"], order.get(r["judgment_id"], 10 ** 6)))
+        return head + rows[top_n:], verdict.get("relevant") or {}, verdict.get("reasons") or {}
+    except Exception as e:  # noqa: BLE001 - the judge is an aid, never a failure
+        logger.warning(f"judge failed, keeping reranker order: {e}")
+        return None
+
+
+async def _prepare_query(raw_query: str) -> tuple[str, list[tuple[str, str]]]:
+    """The query as searched: transliterations in the judgments' spelling
+    ("nikkah" -> "nikah": app.retrieval.spelling), then typing mistakes
+    corrected against the judgments' words ("bael" -> "bail":
+    app.retrieval.query_spelling). Returns it and the typo corrections made.
+    The first page and every "more" page prepare the query the same way, so
+    they find the same session."""
+    if opt("NORMALISE_SPELLING", True):
+        from app.retrieval.spelling import normalise
+        raw_query = normalise(raw_query)
+    corrections: list[tuple[str, str]] = []
+    if opt("CORRECT_TYPOS", True) and raw_query.strip():
+        from app.retrieval import query_spelling
+        try:
+            raw_query, corrections = await asyncio.to_thread(query_spelling.correct, raw_query)
+        except Exception as e:
+            logger.warning(f"typo correction failed, searching as typed: {e}")
+    return raw_query, corrections
+
+
+def _correction_note(query: str, corrections: list[tuple[str, str]]) -> str:
+    if not corrections:
+        return ""
+    changes = ", ".join(f"“{typed}” → “{fixed}”" for typed, fixed in corrections)
+    return f"Showing results for “{query}” (spelling corrected: {changes})."
+
+
 def _empty(analysis, timings, reranked=False, judge_used=False, candidates=None) -> dict:
     return {"analysis": analysis, "parent_results": [], "stage2_results": {},
             "candidates": candidates or [], "reranked": reranked, "judge_used": judge_used,
             "reasons": {}, "no_results": True, "timings_ms": {k: round(v, 1) for k, v in timings.items()}}
 
 
-async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: int = 3) -> dict:
-    """Rank judgments for one query; see the module docstring for the contract."""
+# ── Section-aware search ─────────────────────────────────────────────────────
+#
+# A query that names a section ("pre arrest bail in 377", "bail u/s 302/34
+# PPC") is about THAT section. Ranking by similarity of wording cannot honour
+# that: the models treat 337, 377 and 379 as near-identical, and asked about
+# 377 (an offence within the prohibitory clause of s.497 CrPC) the search put
+# a 337-H(ii) hurt case first as its "Strong match", where the bail law is not
+# the same. So, when a query names sections (case_sections.query_sections):
+#
+# * the judgments that involve every named section (their case card's cited
+#   provisions, or its summary) join the cross-encoder's window, up to
+#   SECTION_EXTRA of them, so they are found even when their wording differs;
+# * they are listed FIRST; a judgment that does not involve the section is
+#   at most "related", never a "match";
+# * if none of them closely matches the rest of the query, or none exists,
+#   a notice says so instead of the list implying otherwise.
+SECTION_EXTRA = 10
+
+
+def _with_section_judgments(window: list[FusedJudgment], fused: list[FusedJudgment],
+                            hits: dict[str, int]) -> tuple[list, list]:
+    """The window plus up to SECTION_EXTRA judgments that involve the named
+    sections and are not in it (first those further down the fused list, then
+    ones no retriever found, those whose summary names the section first)."""
+    in_window = {i["judgment_id"] for i in window}
+    later = [i for i in fused[len(window):] if i["judgment_id"] in hits and i["judgment_id"] not in in_window]
+    known = {i["judgment_id"] for i in fused}
+    unseen = sorted((j for j in hits if j not in known), key=lambda j: -hits[j])
+    extra = later[:SECTION_EXTRA]
+    extra += [{"judgment_id": j, "evidence": [], "ranks": {}, "rrf": 0.0, "heading": "", "pinned": False}
+              for j in unseen][: SECTION_EXTRA - len(extra)]
+    extra_ids = {i["judgment_id"] for i in extra}
+    rest = [i for i in fused[len(window):] if i["judgment_id"] not in extra_ids]
+    new_window = window + extra
+    return new_window, new_window + rest
+
+
+def _matching_rest(rest: str, ids: list[str]) -> set[str] | None:
+    """Which of `ids` are ABOUT what the query asks besides its sections
+    ("pre-arrest bail"): its key terms in their case summary (the rule the
+    later pages use, "Key terms"). None when the rest has no key term (the
+    query is only a section): then every judgment involving it qualifies."""
+    from app.retrieval import lexical
+    terms = lexical.key_terms({"cleaned": rest, "raw": rest}, KEY_TERM_MAX_SHARE) if rest else []
+    if not terms or not ids:
+        return None
+    about, summarised = lexical.judgments_about_terms(terms, ids)
+    text = lexical.judgments_with_terms(terms, ids)
+    need = len(terms) if len(terms) <= KEY_TERM_ALL_UP_TO else math.ceil(KEY_TERM_COVERAGE * len(terms))
+    return {j for j in ids if len((about if j in summarised else text).get(j, ())) >= need}
+
+
+def _section_order(rows: list[dict], kept: list[dict], hits: dict[str, int], label: str,
+                   floor: float, rest: str, rest_ok: set[str] | None) -> tuple[list[dict], str]:
+    """The judgments involving the named sections first (those also about the
+    rest of the query, then the closest by summary and relevance), then the
+    others that passed the gate; and the notice to show, if any."""
+    def fits(r: dict) -> bool:
+        return rest_ok is None or r["judgment_id"] in rest_ok
+
+    involved = sorted((r for r in rows if r["judgment_id"] in hits),
+                      key=lambda r: (not (r["pinned"] or fits(r)), r["relevance"] < floor and not r["pinned"],
+                                     -hits[r["judgment_id"]], -r["relevance"]))
+    others = [r for r in kept if r["judgment_id"] not in hits]
+    asked = f"“{rest}”" if rest else "the rest of your query"
+    if not involved:
+        return others, (f"No judgment in the archive involves {label}. The cases below match {asked} "
+                        f"under other provisions: check which offence or provision each one is about "
+                        f"before relying on it.") if others else ""
+    if not any(r["pinned"] or (fits(r) and r["relevance"] >= floor) for r in involved):
+        return involved + others, (
+            f"No judgment in the archive involves {label} and is about {asked}. The judgments that "
+            f"involve {label} are listed first; the cases after them concern {asked} under other "
+            f"provisions.") if others else (
+            f"No judgment in the archive involves {label} and is about {asked}. These are the "
+            f"judgments that involve {label}.")
+    return involved + others, ""
+
+
+async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: int = 3,
+                      _understood: QueryAnalysis | None = None, _corrections: list | None = None) -> dict:
+    """Rank judgments for one query; see the module docstring for the contract.
+
+    ``_understood`` / ``_corrections`` are internal: the second look searches
+    again with the LLM's legal restatement of the query (see "Second look").
+    """
     from app.retrieval import reranker
 
     timings: dict[str, float] = {}
@@ -1161,14 +1340,20 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
         timings[stage] = (now - clock[0]) * 1000
         clock[0] = now
 
-    raw_query = raw_query or ""
-    # Transliterated terms in the judgments' spelling ("nikkah" -> "nikah"),
-    # before anything reads the query; see app.retrieval.spelling.
-    if opt("NORMALISE_SPELLING", True):
-        from app.retrieval.spelling import normalise
-        raw_query = normalise(raw_query)
-    analysis = await _analysis(raw_query)
+    if _understood is not None:          # the second look: query already prepared and understood
+        raw_query, corrections, analysis = raw_query, list(_corrections or []), _understood
+    else:
+        raw_query, corrections = await _prepare_query(raw_query or "")
+        analysis = await _analysis(raw_query)
     mark("analysis")
+    # What the judge reads: the user's own words; on the second look also the
+    # LLM's legal restatement, so a story that never says "bail" can still be
+    # matched to a bail judgment it is in substance asking about.
+    judge_query = raw_query
+    if _understood is not None:
+        legal = [x for x in [_understood.get("rewrite")] + list(_understood.get("expansions") or []) if x]
+        if legal:
+            judge_query = raw_query + " (In legal terms: " + "; ".join(legal) + ")"
     if not raw_query.strip():
         return _empty(analysis, timings)
 
@@ -1220,7 +1405,23 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
         logger.warning(f"fusion failed, using dense order: {e}")
         fused = fuse({"dense_chunks": lists.get("dense_chunks") or []}, mode="union")
     mark("fusion")
-    if not fused:
+
+    # Section-aware search (see above): the judgments that involve the
+    # sections the query names.
+    section_terms: list[dict] = []
+    section_hits: dict[str, int] = {}
+    section_label = ""
+    if opt("V2_SECTION_AWARE", True):
+        from app.retrieval import case_sections
+        section_terms = case_sections.query_sections(raw_query)
+        if section_terms:
+            section_label = case_sections.sections_label(section_terms)
+            try:
+                section_hits = await case_sections.judgments_with_sections(section_terms)
+            except Exception as e:
+                logger.warning(f"section lookup failed, ranking without it: {e}")
+            mark("sections_lookup")
+    if not fused and not section_hits:
         return _empty(analysis, timings)
 
     # Outcome soft signal (narratives that state the SC outcome): a fraction of
@@ -1234,6 +1435,8 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
         mark("outcome")
 
     window = fused[: int(opt("V2_RERANK_JUDGMENTS"))]
+    if section_hits:
+        window, fused = _with_section_judgments(window, fused, section_hits)
     if narrative:
         evidence = await asyncio.to_thread(build_facet_evidence, window, analysis, vectors)
         if not evidence:   # no chunk vectors for the window: the whole-query path
@@ -1307,21 +1510,19 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
     reasons: dict[str, str] = {}
     judge_used = False
     judge_relevant: dict[str, bool] | None = None
-    if opt("USE_LLM_JUDGE", False) and rows:
-        try:
-            from app.retrieval import judge
-
-            top_n = int(opt("JUDGE_TOP_N"))
-            verdict = await judge.judge(raw_query, rows[:top_n], evidence)
-            if verdict.get("used"):
-                judge_used = True
-                order = {jid: i for i, jid in enumerate(verdict["ranking"])}
-                head = sorted(rows[:top_n], key=lambda r: (not r["pinned"], order.get(r["judgment_id"], 10 ** 6)))
-                rows = head + rows[top_n:]
-                judge_relevant = verdict.get("relevant") or {}
-                reasons = verdict.get("reasons") or {}
-        except Exception as e:
-            logger.warning(f"judge failed, keeping reranker order: {e}")
+    # The LLM judge reads the query against the shortlist's case summaries, in
+    # the user's own words: it matches "my brother was caught with hashish and
+    # kept in jail a year" to a CNSA bail judgment that the cross-encoder (web
+    # questions, one passage at a time) scores ~0.001. Used for every query
+    # with USE_LLM_JUDGE; otherwise for case descriptions only
+    # (JUDGE_DESCRIPTIONS), so short queries keep their exact results. See
+    # also the second look below (JUDGE_RESCUE).
+    if (opt("USE_LLM_JUDGE", False) or (is_narrative and opt("JUDGE_DESCRIPTIONS", True))) and rows \
+            and reranked and not rerank_failed:
+        verdict = await _judge_rows(judge_query, rows, evidence)
+        if verdict:
+            judge_used = True
+            rows, judge_relevant, reasons = verdict
     mark("judge")
 
     last_debug.update(rows=[dict(r) for r in rows], lists={k: len(v) for k, v in lists.items()},
@@ -1344,11 +1545,57 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
             kept = _agreement_gate(rows, floor, gate_confident, lexical_min)
     else:
         kept = _agreement_gate(rows, floor, gate_confident, lexical_min)
+
+    # A second look before giving up (JUDGE_RESCUE): the cross-encoder found
+    # nothing it trusts, which for a plain-language description usually means
+    # it could not read the wording, not that the archive has no answer (on
+    # narrative_dev, 5 of 12 layperson descriptions had the right judgment
+    # ranked #1-3 and were refused). The judge reads the shortlist; what it
+    # finds relevant is shown, its top as "medium" ("Possible match - verify").
+    # A query that already shows results never gets here, so its results are
+    # unchanged; a judge that finds nothing leaves the refusal as it was.
+    rescued = False
+    if not kept and not judge_used and rows and reranked and not rerank_failed and opt("JUDGE_RESCUE", True):
+        verdict = await _judge_rows(judge_query, rows, evidence)
+        if verdict:
+            rescued_rows, relevant, rescued_reasons = verdict
+            kept = [r for r in rescued_rows if r["pinned"] or relevant.get(r["judgment_id"], False)]
+            if kept:
+                judge_used, judge_relevant, rows, reasons = True, relevant, rescued_rows, rescued_reasons
+                rescued = True
+                last_debug["judge_rescue"] = True
+        mark("judge_rescue")
+
+        # Still nothing: a plain story often does not say its legal question
+        # ("kept in jail a year" means bail for delay in trial), so the
+        # shortlist holds the wrong kind of case (narcotics convictions, not
+        # narcotics bail). The LLM restates the query in legal terms and the
+        # search runs once more with that restatement, the judge reading the
+        # new shortlist. Only for a search that would show nothing, and once.
+        if not kept and _understood is None and opt("RESCUE_REWRITE", True):
+            understood = await _understand(raw_query, analysis)
+            if understood is not None:
+                return await retrieve_v2(raw_query, top_k_judgments, top_k_sections,
+                                         _understood=understood, _corrections=corrections)
+    notice = ""
+    rest_ok: set[str] | None = None
+    if section_terms and not rerank_failed:
+        rest = case_sections.query_without_sections(raw_query)
+        involved_ids = [r["judgment_id"] for r in rows if r["judgment_id"] in section_hits]
+        try:
+            rest_ok = await asyncio.to_thread(_matching_rest, rest, involved_ids)
+        except Exception as e:
+            logger.warning(f"rest-of-query check failed, not applying it: {e}")
+        kept, notice = _section_order(rows, kept, section_hits, section_label, floor, rest, rest_ok)
     passed = kept
     kept = kept[:top_k_judgments]
     if not kept:
         mark("abstain")
-        return _empty(analysis, timings, reranked, judge_used, candidates)
+        out = _empty(analysis, timings, reranked, judge_used, candidates)
+        if section_terms and not rerank_failed:
+            out["message"] = (f"No judgment in the archive involves {section_label} and matches your query. "
+                              f"Try the query without the section, or check the section number.")
+        return out
 
     # Keep what a "more" request needs to score the rest of the fused list.
     # A failed cross-encoder shows only case-number hits and pages nothing.
@@ -1372,9 +1619,23 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
     # 7 out-of-archive descriptions passed both the cross-encoder and the
     # agreement gate on a same-area case, one at 0.361 ("high"). A case number
     # the user typed is verified by construction and keeps "high".
-    cap = str(opt("NARRATIVE_MAX_CONFIDENCE", "medium")) if is_narrative and not judge_used else ""
+    # The judge run for descriptions only (JUDGE_DESCRIPTIONS) or as a second
+    # look (JUDGE_RESCUE) decides WHICH judgments are shown, not how sure the
+    # match is: a description's top stays "Possible match - verify". Only the
+    # judge switched on for every query (USE_LLM_JUDGE) lifts the cap, as before.
+    judge_verified = judge_used and bool(opt("USE_LLM_JUDGE", False))
+    cap = str(opt("NARRATIVE_MAX_CONFIDENCE", "medium")) if is_narrative and not judge_verified else ""
+    if rescued:
+        cap = "medium"   # found on the judge's second look: "Possible match - verify", never a strong match
 
     def label(i: int, r: dict) -> str:
+        if section_terms and not r["pinned"]:
+            # A judgment that does not involve the named section is never a
+            # "match"; one that does but is not about the rest of the query
+            # ("pre-arrest bail") is only "related".
+            if (r["judgment_id"] not in section_hits or r["relevance"] < floor
+                    or (rest_ok is not None and r["judgment_id"] not in rest_ok)):
+                return "related"
         base = ("high" if r["pinned"]
                 else ("high" if r["relevance"] >= confident else "medium") if i == 0
                 else "related")
@@ -1402,7 +1663,7 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
     stage2 = await _sections(query_vector, ids, [c for c in candidates if c.get("mongo_doc_id")], top_k_sections)
     mark("sections")
 
-    return {
+    out = {
         "analysis": analysis,
         "parent_results": parent_results,
         "stage2_results": stage2,
@@ -1415,6 +1676,10 @@ async def retrieve_v2(raw_query: str, top_k_judgments: int = 5, top_k_sections: 
         "no_results": False,
         "timings_ms": {k: round(v, 1) for k, v in timings.items()},
     }
+    notice = " ".join(x for x in (_correction_note(raw_query, corrections), notice) if x)
+    if notice:
+        out["notice"] = notice
+    return out
 
 
 if __name__ == "__main__":

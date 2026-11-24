@@ -116,6 +116,12 @@ async def run():
         token = create_access_token("USr-F", "user")
         r = await c.get(f"/api/admin/judgments/nope/download?token={token}")
         check("a Free download link with ?token= is refused too", r.status_code == 403, r.status_code)
+        # "View judgment" is the same file shown inline: the same plan feature.
+        for path in ("/api/admin/judgments/nope/download?inline=1", "/api/judgments/nope/download?inline=1"):
+            r = await c.get(f"{path}&token={token}")
+            check(f"Free is refused the viewer {path}", r.status_code == 403, r.status_code)
+            r = await c.get(path, headers=auth("USr-P"))
+            check(f"Premium passes the viewer check {path}", r.status_code == 404, r.status_code)
 
         # ── checkout ───────────────────────────────────────────────────
         r = await c.post("/api/payments/create-checkout-session", json={"plan": "gold"}, headers=auth("USr-F"))

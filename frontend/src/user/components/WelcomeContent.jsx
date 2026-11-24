@@ -12,6 +12,7 @@ import RetrievalLoadingState from './RetrievalLoadingState';
 import apiFetch, { clearToken, retryWhileRestarting } from '../../lib/api';
 import { validateSessionOrPurge } from '../../lib/sessionManager';
 import { toast } from '../../lib/toast';
+import { markFresh } from '../../lib/typing';
 import { ANSWER_STATUS, answerStatusOf } from '../lib/answerFormat';
 import { refreshPlan, setPlanFromServer } from '../lib/plan';
 import {
@@ -293,6 +294,9 @@ const WelcomeContent = () => {
    * refusal or an error, which are part of the record too.
    */
   const addAiReply = (userMessage, aiMessage) => {
+    // A reply produced now types itself in (lib/typing.js); the same
+    // conversation reopened later shows at once.
+    markFresh(aiMessage);
     setChatHistory((prev) => [...prev, aiMessage]);
     saveExchange(userMessage.text, [userMessage, aiMessage]);
   };

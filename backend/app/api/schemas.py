@@ -92,12 +92,14 @@ class ResultFilters(BaseModel):
     to: str = Field(default="", max_length=10)
     query: str = Field(default="", max_length=200)
     judge: str = Field(default="", max_length=120)
+    # Legal sections: "302", "302(b) PPC", "489-F, 420" (app/retrieval/case_sections.py).
+    section: str = Field(default="", max_length=120)
 
     model_config = {"populate_by_name": True}
 
     def as_dict(self) -> dict:
         return {"outcome": self.outcome, "from": self.from_, "to": self.to,
-                "query": self.query, "judge": self.judge}
+                "query": self.query, "judge": self.judge, "section": self.section}
 
 
 class MoreRequest(BaseModel):

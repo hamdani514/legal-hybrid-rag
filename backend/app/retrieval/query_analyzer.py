@@ -790,11 +790,13 @@ def clear_cache() -> None:
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
-async def analyze(raw: str) -> QueryAnalysis:
+async def analyze(raw: str, timeout: float | None = None) -> QueryAnalysis:
     """Understand a query. Never raises, never waits longer than the timeout.
 
     Args:
         raw: The query as typed.
+        timeout: Seconds for the LLM call, instead of QUERY_ANALYZER_TIMEOUT
+            (the search's second look gives it longer: pipeline_v2).
 
     Returns:
         A QueryAnalysis. source="llm" when the LLM answered and was validated;
@@ -818,7 +820,7 @@ async def analyze(raw: str) -> QueryAnalysis:
     started = time.perf_counter()
     narrative = bool(base.get("is_narrative")) and _facets_enabled()
     system = SYSTEM_PROMPT + (NARRATIVE_ADDENDUM if narrative else "")
-    budget = _narrative_timeout() if narrative else _timeout()
+    budget = timeout if timeout is not None else (_narrative_timeout() if narrative else _timeout())
     try:
         content = await asyncio.wait_for(
             _call_llm(system, _user_prompt(raw), NARRATIVE_MAX_TOKENS if narrative else MAX_TOKENS),

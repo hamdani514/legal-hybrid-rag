@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
+import { LoadingDots } from './TypedText';
 
-const STAGES = [
-  { text: 'Scanning reported Supreme Court judgments…', icon: 'travel_explore' },
-  { text: 'Matching query across semantic nodes & precedent database…', icon: 'hub' },
-  { text: 'Extracting ratio decidendi & relevant case holdings…', icon: 'balance' },
-  { text: 'Synthesizing authorities and preparing judicial brief…', icon: 'auto_awesome' },
-];
+// What the search is doing, alternating while it runs: finding the judgments,
+// then reading them against the question.
+const STAGES = ['Fetching', 'Analyzing'];
+const STAGE_MS = 2200;
 
 const RetrievalLoadingState = () => {
   const [stageIndex, setStageIndex] = useState(0);
@@ -13,11 +12,9 @@ const RetrievalLoadingState = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % STAGES.length);
-    }, 2400);
+    }, STAGE_MS);
     return () => clearInterval(timer);
   }, []);
-
-  const currentStage = STAGES[stageIndex];
 
   return (
     <div className="flex justify-start w-full animate-[fadeIn_0.3s_ease-out]">
@@ -34,41 +31,19 @@ const RetrievalLoadingState = () => {
         </div>
 
         <div className="flex-1 flex flex-col gap-3 min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span className="font-display text-[15px] font-semibold text-ash-900">Verdict AI</span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-brand-50 text-brand-700 border border-brand-200/60 font-ui">
-              <span className="material-symbols-outlined text-[13px] animate-spin text-brand-600">
-                sync
-              </span>
-              <span>Researching precedents</span>
-            </span>
-          </div>
+          <span className="font-display text-[15px] font-semibold text-ash-900">Verdict AI</span>
 
           {/* Sleek Gradient Progress Bar */}
           <div className="w-full max-w-md h-1.5 bg-ash-100 rounded-full overflow-hidden relative border border-ash-200/40">
             <div className="absolute top-0 bottom-0 rounded-full bg-gradient-to-r from-brand-600 via-cyan-400 to-indigo-600 animate-retrieval-bar" />
           </div>
 
-          {/* Cycling Status Phase */}
-          <div className="flex items-center gap-2 text-xs font-prose text-ash-600 mt-0.5 transition-all duration-300">
-            <span className="material-symbols-outlined text-[15px] text-cyan-600 shrink-0">
-              {currentStage.icon}
-            </span>
-            <span className="truncate">{currentStage.text}</span>
-          </div>
-
-          {/* Shimmer Skeleton Card */}
-          <div className="mt-2 rounded-2xl border border-ash-200/80 bg-white/70 p-5 shadow-soft flex flex-col gap-3 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="h-4 w-28 bg-ash-200/70 rounded-full animate-pulse" />
-              <div className="h-4 w-16 bg-ash-100 rounded-full animate-pulse" />
-            </div>
-            <div className="space-y-2">
-              <div className="h-3 w-5/6 bg-ash-100 rounded-full animate-pulse" />
-              <div className="h-3 w-full bg-ash-100/80 rounded-full animate-pulse" />
-              <div className="h-3 w-4/6 bg-ash-100/60 rounded-full animate-pulse" />
-            </div>
-          </div>
+          {/* Fetching... / Analyzing... */}
+          <LoadingDots
+            key={stageIndex}
+            label={STAGES[stageIndex]}
+            className="animate-[fadeIn_0.3s_ease-out] font-prose text-[15px] font-medium text-ash-700"
+          />
         </div>
       </div>
     </div>

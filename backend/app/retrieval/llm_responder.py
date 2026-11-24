@@ -76,22 +76,30 @@ FIRST, decide whether the judgment text is about the same subject matter as
 the query. This is the most important judgement you make.
 
 If it is NOT - if the query asks about a case, a party, a situation or an area
-of law the judgment text does not concern - reply with exactly this and
-nothing else:
+of law the judgment text does not concern - the researcher still asked to have
+THIS judgment analysed, so analyse it on its own terms, clearly marked as not
+answering their query. Begin with exactly these two lines:
 
 [NO RELEVANT AUTHORITY]
-The retrieved judgments do not address this query.
+Why: <one sentence: what the query asks and what this judgment is about instead, e.g. "The query concerns pre-arrest bail under Section 377 PPC; this judgment decides an appeal against a conviction for murder and sodomy.">
 
-Do not fill any heading in that case. In particular, do not report a
-disposition. A disposition belongs to the case that produced it: reporting
-"appeal allowed" from an unrelated judgment tells the researcher that their
-case was allowed, which is a fabrication even though every word came from the
-context.
+Then fill the headings below with what THIS judgment itself was about and
+decided. Under [FINAL DECISION] begin with "In this judgment," so its
+disposition cannot be read as an answer to the query: reporting "appeal
+allowed" as though it answered an unrelated query would tell the researcher
+their case was allowed, a fabrication even though every word came from the
+context. Under [FIT WITH YOUR SITUATION] begin with "Distinguishable:" and
+name the difference.
 
 If the judgment text IS about the same subject matter, fill every heading the
 text supports. Report what the judgment actually decided, even where that is
 narrower than the question asked: if the Court disposed of the case on a
 different ground, state that ground rather than declining to answer.
+
+[LEGAL ISSUE] names the statutory provisions the case turns on - the sections,
+articles or orders, with their law (for example "Section 302(b) PPC",
+"Section 497(2) CrPC", "Article 199 of the Constitution") - exactly as the
+judgment text names them. Name none that the text does not.
 
 [FINAL DECISION] states the disposition of the judgment being discussed, and
 only where that judgment is genuinely responsive to the query.
@@ -120,8 +128,10 @@ NO_AUTHORITY_MARKER = "[NO RELEVANT AUTHORITY]"
 
 SUMMARY_SYSTEM_PROMPT = """You are a legal research assistant specialising in
 Pakistan Supreme Court judgments. Summarise this judgment in one paragraph
-covering: case type, parties, core legal issue, court decision, and key
-principle. Use formal legal English. Use only the provided judgment text."""
+covering: case type, parties, core legal issue, the statutory provisions it
+turns on (sections, articles or orders, with their law, e.g. "Section 302(b)
+PPC", as the text names them), court decision, and key principle. Use formal
+legal English. Use only the provided judgment text."""
 
 # Low but non-zero: factual legal answers, not creative ones.
 TEMPERATURE = 0.1

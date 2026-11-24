@@ -12,13 +12,15 @@ Canonical forms
     Article 185(3)                   sub-clauses kept, they change the meaning
     Section 302 PPC                  sections of the major codes, by abbreviation
     Section 497 CrPC
+    Section 489-F PPC                lettered sections ("489-F", "22-A", "489F")
+    Section 144(4) Elections Act 2017  a section of any other named Act
     Order 21 Rule 1 CPC              CPC orders, roman numerals converted
     Civil Servants Act 1973          named Acts, comma before the year dropped
 
 The major codes are recognised by full name and by abbreviation:
 PPC (Pakistan Penal Code), CrPC (Code of Criminal Procedure), CPC (Code of
 Civil Procedure), QSO (Qanun-e-Shahadat Order), CNSA (Control of Narcotic
-Substances Act).
+Substances Act), ATA (Anti-Terrorism Act).
 """
 
 import re
@@ -29,6 +31,8 @@ _CODES: list[tuple[str, str]] = [
     (r"code\s+of\s+civil\s+procedure|c\.?\s*p\.?\s*c\.?", "CPC"),
     (r"qanun[-\s]e[-\s]shahadat(?:\s+order)?|q\.?\s*s\.?\s*o\.?", "QSO"),
     (r"control\s+of\s+narcotic\s+substances\s+act(?:,?\s*1997)?|c\.?\s*n\.?\s*s\.?\s*a\.?", "CNSA"),
+    # The abbreviation only in capitals: lower-case "at a" is ordinary English.
+    (r"anti[-\s]?terrorism\s+act(?:,?\s*1997)?|(?-i:A\.?\s*T\.?\s*A\.?)", "ATA"),
 ]
 _CODE_ALT = "|".join(f"(?:{p})" for p, _ in _CODES)
 _CODE_RES = [(re.compile(rf"^(?:{p})$", re.IGNORECASE), c) for p, c in _CODES]
@@ -36,13 +40,17 @@ _CODE_RES = [(re.compile(rf"^(?:{p})$", re.IGNORECASE), c) for p, c in _CODES]
 # Sub-clauses: "(3)", "(1)(a)", "(b)(ii)".
 _SUB = r"(?:\s*\(\s*[0-9a-z]{1,4}\s*\))*"
 
+# A section number, with the letter Pakistani statutes add: "489-F", "22-A",
+# "489F". The letter must end the word ("5Act" is not section 5-A).
+_NUM = r"\d{1,4}(?:-?[A-Za-z](?![A-Za-z]))?"
+
 _ARTICLE_RE = re.compile(
     rf"\b(?:articles?|arts?\.)\s*(\d{{1,3}}[A-Z]?{_SUB})",
     re.IGNORECASE,
 )
 
 _SECTION_RE = re.compile(
-    rf"\b(?:sections?|secs?\.|ss?\.)\s*(\d{{1,4}}[A-Z]?{_SUB})"
+    rf"\b(?:sections?|secs?\.|ss?\.|u/s\.?)\s*({_NUM}{_SUB})"
     rf"(?:\s*(?:of\s+the|of|,)?\s*({_CODE_ALT}))?",
     re.IGNORECASE,
 )
@@ -61,6 +69,27 @@ _CONNECTOR = r"(?:of|the|and|for|on|in|to)"
 _ACT_RE = re.compile(
     rf"\b({_CAP}(?:\s+(?:{_CAP}|{_CONNECTOR})){{0,9}}?\s+(?:Act|Ordinance|Order|Rules))"
     r"\s*,?\s*((?:18|19|20)\d{2})\b"
+)
+
+# Several sections sharing one code, as FIRs and judgments write them:
+# "Sections 448/380 PPC", "sections 302, 324 and 34 PPC", "302/34 P.P.C.".
+# Every number gets the code named at the end.
+_SECTION_LIST_RE = re.compile(
+    rf"\b(?:sections?|secs?\.|ss?\.|u/s\.?)\s*"
+    rf"({_NUM}{_SUB}(?:\s*(?:/|,|&|\band\b)\s*{_NUM}{_SUB})+)"
+    rf"\s*(?:of\s+the|of|,)?\s*({_CODE_ALT})",
+    re.IGNORECASE,
+)
+_LIST_ITEM_RE = re.compile(rf"{_NUM}{_SUB}", re.IGNORECASE)
+
+# A section of a named Act that is not one of the codes above: "section 144(4)
+# of the Elections Act, 2017", "section 122 of the Income Tax Ordinance 2001".
+# The Act's name must be capitalised (so "of the said Act" is not one); the
+# year is optional. Case-sensitive except for the word "section".
+_SECTION_OF_ACT_RE = re.compile(
+    rf"\b(?i:sections?|secs?\.|ss?\.)\s*({_NUM}{_SUB})\s*,?\s+of\s+(?:the\s+)?"
+    rf"({_CAP}(?:\s+(?:{_CAP}|{_CONNECTOR})){{0,9}}?\s+(?:Act|Ordinance|Order|Rules|Regulations|Code))"
+    r"(?:\s*,?\s*((?:18|19|20)\d{2})\b)?"
 )
 
 _ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
@@ -96,6 +125,14 @@ def _clean_sub(value: str) -> str:
     return re.sub(r"\s+", "", value)
 
 
+def _clean_num(value: str) -> str:
+    """A section number in canonical form: '489F' / '489-f' -> '489-F', and
+    sub-clauses as _clean_sub: '302 (b)' -> '302(b)'."""
+    value = _clean_sub(value)
+    m = re.match(r"(\d{1,4})-?([A-Za-z])(?![A-Za-z])(.*)$", value)
+    return f"{m.group(1)}-{m.group(2).upper()}{m.group(3)}" if m else value
+
+
 def parse_statutes(text: str) -> list[str]:
     """Every statutory reference in `text`, normalised, in order, de-duplicated.
 
@@ -114,10 +151,26 @@ def parse_statutes(text: str) -> list[str]:
     for m in _ARTICLE_RE.finditer(text):
         add(f"Article {_clean_sub(m.group(1))}")
 
+    # Lists first, so "Sections 302/34 PPC" keeps its reading order.
+    for m in _SECTION_LIST_RE.finditer(text):
+        code = _code(m.group(2))
+        if code:
+            for item in _LIST_ITEM_RE.findall(m.group(1)):
+                add(f"Section {_clean_num(item)} {code}")
+
     for m in _SECTION_RE.finditer(text):
         code = _code(m.group(2))
         if code:
-            add(f"Section {_clean_sub(m.group(1))} {code}")
+            add(f"Section {_clean_num(m.group(1))} {code}")
+
+    for m in _SECTION_OF_ACT_RE.finditer(text):
+        words = m.group(2).split()
+        while words and words[0].lower() in _LEADING_NOISE:
+            words.pop(0)
+        name = " ".join(words)
+        if len(words) < 2 or _code(name) or _code(f"{name} {m.group(3) or ''}".strip()):
+            continue   # one of the codes above: already added in its short form
+        add(" ".join(x for x in ("Section", _clean_num(m.group(1)), name, m.group(3)) if x))
 
     for m in _ORDER_RULE_RE.finditer(text):
         code = _code(m.group(3)) or "CPC"  # Order/Rule references are CPC by convention
@@ -149,6 +202,27 @@ if __name__ == "__main__":
         ("Service Tribunals Act 1973", ["Service Tribunals Act 1973"]),
         ("section 9 alone names no code", []),
         ("bail granted despite murder charges", []),
+        # Lettered sections, common in Pakistani codes.
+        ("under section 489-F PPC", ["Section 489-F PPC"]),
+        ("section 489F of the PPC", ["Section 489-F PPC"]),
+        ("a petition under section 22-A Cr.P.C.", ["Section 22-A CrPC"]),
+        ("section 337-A(i) PPC", ["Section 337-A(i) PPC"]),
+        # Sections of other named Acts.
+        ("section 144(4) of the Elections Act, 2017", ["Section 144(4) Elections Act 2017"]),
+        ("section 122 of the Income Tax Ordinance, 2001", ["Section 122 Income Tax Ordinance 2001"]),
+        ("section 32 of the Customs Act", ["Section 32 Customs Act"]),
+        ("section 7 of the Anti-Terrorism Act, 1997", ["Section 7 ATA"]),
+        ("section 7 ATA", ["Section 7 ATA"]),
+        ("convicted u/s 302 PPC", ["Section 302 PPC"]),
+        ("section 302 of the Pakistan Penal Code", ["Section 302 PPC"]),   # a code: short form only
+        # Lists sharing one code.
+        ("a case registered under Sections 448/380 PPC", ["Section 448 PPC", "Section 380 PPC"]),
+        ("u/s 302/34 P.P.C.", ["Section 302 PPC", "Section 34 PPC"]),
+        ("sections 302(b), 324 and 34 PPC", ["Section 302(b) PPC", "Section 324 PPC", "Section 34 PPC"]),
+        ("sections 489-F/420 PPC", ["Section 489-F PPC", "Section 420 PPC"]),
+        # Not sections.
+        ("section 302 at a later stage", []),
+        ("section 5 of the said Act", []),
     ]
     failures = 0
     for text, expected in cases:

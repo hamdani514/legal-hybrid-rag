@@ -11,14 +11,20 @@ import { EMPTY_FILTERS, activeFilterCount, matchesFilters } from '../lib/filters
 import { FreePlanNote, LockedButton, UpgradeDialog } from './LockedFeature';
 import { refreshPlan, upgradeDetail, usePlan } from '../lib/plan';
 import { filterChips } from '../lib/filterSummary';
+import TypedText, { LoadingDots, Reveal } from './TypedText';
+import { REVEAL_MS, freshAt, markFresh, typeDuration, useReached } from '../../lib/typing';
 import {
   ANSWER_STATUS,
   answerStatusOf,
+  caseSections,
+  caseSectionsLabel,
+  caseSectionsText,
   caseSummaryLines,
   fitSection,
   isEmptyAnswer,
   judgmentShareText,
   meaningfulSections,
+  offPointReason,
   prettyCaseName,
   prettyOutcome,
   prettySections,
@@ -90,12 +96,113 @@ const errorDetail = async (res) => {
   }
 };
 
+const judgmentUrl = (cite) => cite.download_url || `/api/admin/judgments/${cite.judgment_id}/download`;
+// The same file, served to be shown rather than saved (the server allows only
+// this site to frame it).
+const viewUrl = (cite) => withToken(`${judgmentUrl(cite)}?inline=1`);
+
+// Phones and tablets: a PDF inside a frame is unreliable there (iOS shows only
+// the first page, Android's browser none), so the browser's own viewer opens.
+const opensInNewTab = () => {
+  try {
+    return window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+};
+
+/** The legal sections a case is about, as small labels. */
+const SectionChips = ({ card, className = 'mt-2' }) => {
+  const list = caseSections(card);
+  if (!list.length) return null;
+  return (
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+      <span className="font-ui text-[10px] font-bold uppercase tracking-wider text-ash-500">
+        {caseSectionsLabel(card)}
+      </span>
+      {list.map((s) => (
+        <span
+          key={s}
+          className="rounded-md border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-ui text-[11px] font-semibold text-brand-800"
+        >
+          {s}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * "View judgment": the PDF in a pop-up, so a reader can check it before
+ * downloading. The same file as the download, so the same plan feature.
+ */
+const JudgmentViewer = ({ cite, can, onLocked, onClose }) => {
+  const [loaded, setLoaded] = useState(false);
+  const src = viewUrl(cite);
+  const name = prettyCaseName(cite.filename, (cite.judgment_id || '').slice(0, 8));
+  const sections = caseSectionsText(cite.card);
+  return (
+    <Modal
+      title={name}
+      subtitle={sections ? `${caseSectionsLabel(cite.card)}: ${sections}` : 'Check the judgment here before you download it.'}
+      onClose={onClose}
+      wide
+    >
+      <div className="relative h-[68vh] overflow-hidden rounded-xl border border-ash-200 bg-ash-50">
+        {!loaded && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 font-prose text-[13px] text-ash-500">
+            <span className="material-symbols-outlined animate-spin text-[18px] text-brand-500">progress_activity</span>
+            Opening the judgment…
+          </div>
+        )}
+        <iframe title={`Judgment: ${name}`} src={src} onLoad={() => setLoaded(true)} className="relative h-full w-full" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <DownloadButton cite={cite} can={can} onLocked={onLocked} />
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-ash-300 bg-white px-3 py-1.5 text-xs font-semibold text-ash-700 transition-colors hover:border-brand-300 hover:text-brand-700"
+        >
+          <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+          Open in a new tab
+        </a>
+        <span className="font-prose text-[11px] text-ash-500 sm:ml-auto">
+          If it does not appear, open it in a new tab or download it.
+        </span>
+      </div>
+    </Modal>
+  );
+};
+
+const ViewButton = ({ cite, can, onLocked }) => {
+  const [open, setOpen] = useState(false);
+  if (can && !can('download')) {
+    return <LockedButton feature="download" icon="visibility" label="View judgment" size="sm" onLocked={onLocked} />;
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => (opensInNewTab() ? window.open(viewUrl(cite), '_blank', 'noopener,noreferrer') : setOpen(true))}
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-ash-300 bg-white px-3 py-1.5 text-xs font-semibold text-ash-800 shadow-xs transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-700"
+        title={`View ${cite.filename || 'the judgment'} before downloading`}
+      >
+        <span className="material-symbols-outlined text-[15px]">visibility</span>
+        <span>View judgment</span>
+      </button>
+      {open && <JudgmentViewer cite={cite} can={can} onLocked={onLocked} onClose={() => setOpen(false)} />}
+    </>
+  );
+};
+
 const DownloadButton = ({ cite, block = false, can, onLocked }) =>
   can && !can('download') ? (
     <LockedButton feature="download" icon="download" label="Download PDF" size="sm" onLocked={onLocked} />
   ) : (
   <a
-    href={withToken(cite.download_url || `/api/admin/judgments/${cite.judgment_id}/download`)}
+    href={withToken(judgmentUrl(cite))}
     target="_blank"
     rel="noopener noreferrer"
     download={cite.filename || 'judgment.pdf'}
@@ -149,14 +256,18 @@ const CiteRow = ({ cite, can, onLocked }) => (
           </span>
           <RelevanceBadge score={cite.similarity_score} confidence={cite.confidence} />
         </div>
+        {/* The parts of the judgment the search matched (facts, holding...),
+            not legal sections: those are the chips below. */}
         {cite.sections_retrieved?.length > 0 && (
           <p className="mt-0.5 truncate text-xs text-ash-500">
-            Sections: {prettySections(cite.sections_retrieved)}
+            Matched in: {prettySections(cite.sections_retrieved)}
           </p>
         )}
+        <SectionChips card={cite.card} className="mt-1.5" />
       </div>
     </div>
-    <div className="flex-shrink-0 self-end sm:self-center">
+    <div className="flex flex-shrink-0 flex-wrap gap-2 self-end sm:self-center">
+      <ViewButton cite={cite} can={can} onLocked={onLocked} />
       <DownloadButton cite={cite} can={can} onLocked={onLocked} />
     </div>
   </div>
@@ -227,8 +338,10 @@ const FIT_STYLE = {
 };
 
 /** The model's check of the judgment against the user's own description. */
-const FitCallout = ({ fit }) => {
+const FitCallout = ({ fit, at = null }) => {
   const style = FIT_STYLE[fit.verdict] || FIT_STYLE.partial;
+  const shown = useReached(at);
+  if (!shown) return null;
   return (
     <div className={`mt-5 rounded-xl border px-4 py-3 ${style.cls}`}>
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -237,20 +350,97 @@ const FitCallout = ({ fit }) => {
           {style.label}
         </h4>
       </div>
-      <p className="whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900">{fit.body}</p>
+      <TypedText
+        at={at === null ? null : at + REVEAL_MS}
+        className="whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900"
+        text={fit.body}
+      />
     </div>
   );
 };
 
+// ── The typing timeline of a new answer (lib/typing.js) ─────────────────────
+// A new answer is written top to bottom: each line starts when the one above
+// has finished, and nothing below it is on screen before. These schedules say
+// when each line of a case starts; they are worked out from the same text the
+// lines type, so a case's end is the next case's start.
+
+const cardParties = (card) =>
+  card?.appellant && card?.respondent ? `${card.appellant} v. ${card.respondent}` : '';
+const cardSummaryText = (card) => card?.headnote || card?.holding || '';
+const matchedText = (cite) =>
+  cite.sections_retrieved?.length > 0 ? `Matched in: ${prettySections(cite.sections_retrieved)}` : '';
+const whyText = (cite) => (cite.reason ? `Why: ${cite.reason}` : '');
+
+/** CardSummary's lines, from `start`: title row, parties, sections, summary. */
+const cardSchedule = (card, start) => {
+  let t = start;
+  const s = { title: t };
+  t += REVEAL_MS;
+  s.parties = t;
+  t += typeDuration(cardParties(card));
+  s.chips = t;
+  t += caseSections(card).length ? REVEAL_MS : 0;
+  s.summary = t;
+  t += typeDuration(cardSummaryText(card));
+  s.end = t;
+  return s;
+};
+
+/** An analysis's lines, from `start`: the off-point note, sections, each heading and its text, the fit check. */
+const analysisSchedule = (sections, fit, offPoint, start) => {
+  let t = start;
+  const s = { offPoint: t };
+  t += offPoint !== null ? REVEAL_MS + typeDuration(offPoint) : 0;
+  s.chips = t;
+  t += REVEAL_MS;
+  s.sections = sections.map((section) => {
+    const at = t;
+    t += REVEAL_MS + typeDuration(section.body);
+    return at;
+  });
+  s.fit = t;
+  t += fit ? REVEAL_MS + typeDuration(fit.body) : 0;
+  s.end = t;
+  return s;
+};
+
+/** One case, from `start`: heading, "Matched in", "Why", Summary button, its body, its buttons. */
+const caseSchedule = (cite, start) => {
+  let t = start;
+  const s = { header: t };
+  t += REVEAL_MS;
+  s.matched = t;
+  t += typeDuration(matchedText(cite));
+  s.why = t;
+  t += typeDuration(whyText(cite));
+  s.summaryButton = t;
+  t += caseSummaryLines(cite.card) ? REVEAL_MS : 0;
+  // The body: the analysis that came with the reply, else the case summary.
+  const answer = answerStatusOf(cite) === ANSWER_STATUS.READY ? cite.llm_answer : null;
+  if (answer && !isEmptyAnswer(answer)) {
+    s.analysis = analysisSchedule(meaningfulSections(answer), fitSection(answer), offPointReason(answer), t);
+    t = s.analysis.end;
+  } else if (cite.card) {
+    s.card = cardSchedule(cite.card, t);
+    t = s.card.end;
+  }
+  s.buttons = t;
+  t += REVEAL_MS;
+  s.end = t;
+  return s;
+};
+
 /** What the case is, from its case card, for a result not analysed yet. */
-const CardSummary = ({ card }) => {
+const CardSummary = ({ card, schedule = null }) => {
   if (!card) return null;
   const outcome = prettyOutcome(card.outcome);
-  const parties =
-    card.appellant && card.respondent ? `${card.appellant} v. ${card.respondent}` : '';
-  const summary = card.headnote || card.holding || '';
+  const parties = cardParties(card);
+  const summary = cardSummaryText(card);
+  // Plain text, not a box: it reads as part of the answer being written.
   return (
-    <div className="mt-4 rounded-xl border border-ash-200 bg-ash-50/70 px-4 py-3">
+    <div className="mt-3">
+      <Reveal at={schedule?.title ?? null}>
       <div className="flex flex-wrap items-center gap-2">
         {card.case_display && (
           <span className="font-display text-[13px] font-semibold text-ash-900">
@@ -271,10 +461,16 @@ const CardSummary = ({ card }) => {
           <span className="text-[11px] text-ash-500">Decided {card.decision_date}</span>
         )}
       </div>
-      {parties && <p className="mt-1 font-prose text-xs text-ash-600">{parties}</p>}
-      {summary && (
-        <p className="mt-2 font-prose text-[13px] leading-relaxed text-ash-700">{summary}</p>
-      )}
+      </Reveal>
+      <TypedText at={schedule?.parties ?? null} className="mt-1 font-prose text-xs text-ash-600" text={parties} />
+      <Reveal at={schedule?.chips ?? null}>
+        <SectionChips card={card} />
+      </Reveal>
+      <TypedText
+        at={schedule?.summary ?? null}
+        className="mt-2 font-prose text-[13.5px] leading-relaxed text-ash-800"
+        text={summary}
+      />
     </div>
   );
 };
@@ -303,6 +499,8 @@ const useAnalysis = (cite, query, onLocked) => {
     loading: false,
     notice: '',
     retries: 0,
+    // When an analysis the reader asked for arrived: it is written out from then.
+    typedAt: null,
   }));
 
   const analyse = useCallback(
@@ -349,6 +547,7 @@ const useAnalysis = (cite, query, onLocked) => {
           answer: data.answer || null,
           loading: false,
           notice: '',
+          typedAt: performance.now(),
         }));
       } catch (error) {
         console.error('Analysis request failed:', error);
@@ -381,68 +580,117 @@ const useAnalysis = (cite, query, onLocked) => {
  * and how it ended. Built from the case card, so it opens instantly and spends
  * no Gemini quota — it summarises facts already retrieved, not new analysis.
  */
-const ThreeLineSummary = ({ lines }) => (
-  <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
-    <ul className="flex flex-col gap-2">
-      {lines.map((line) => (
-        <li key={line.label} className="flex gap-2.5">
-          <span className="w-[86px] shrink-0 pt-[1px] font-ui text-[10px] font-bold uppercase tracking-wider text-brand-600">
-            {line.label}
-          </span>
-          <span className="flex-1 font-prose text-[13px] leading-relaxed text-ash-800">
-            {line.text}
-          </span>
-        </li>
+const ThreeLineSummary = ({ lines, openedAt = null }) => {
+  // Opened by the reader: written line by line from that moment.
+  const starts = [];
+  let t = openedAt;
+  for (const line of lines) {
+    starts.push(t);
+    if (t !== null) t += REVEAL_MS + typeDuration(line.text);
+  }
+  return (
+    <ul className="mt-3 flex flex-col gap-2 border-l-2 border-brand-200 pl-3">
+      {lines.map((line, i) => (
+        <Reveal key={line.label} at={starts[i]}>
+          <li className="flex gap-2.5">
+            <span className="w-[86px] shrink-0 pt-[1px] font-ui text-[10px] font-bold uppercase tracking-wider text-brand-600">
+              {line.label}
+            </span>
+            <TypedText
+              as="span"
+              at={starts[i] === null ? null : starts[i] + REVEAL_MS}
+              className="flex-1 font-prose text-[13px] leading-relaxed text-ash-800"
+              text={line.text}
+            />
+          </li>
+        </Reveal>
       ))}
     </ul>
-  </div>
-);
+  );
+};
 
-const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
-  const { status, answer, loading, notice, waiting, analyse } = useAnalysis(cite, query, onLocked);
+const JudgmentBlock = ({ cite, index, total, query, can, onLocked, schedule = null }) => {
+  const { status, answer, loading, notice, waiting, analyse, typedAt } = useAnalysis(cite, query, onLocked);
   const [showSummary, setShowSummary] = useState(false);
+  const [summaryOpenedAt, setSummaryOpenedAt] = useState(null);
   const summaryLines = caseSummaryLines(cite.card);
   const ready = status === ANSWER_STATUS.READY && answer;
   const sections = ready ? meaningfulSections(answer) : [];
   const nothingToSay = ready && isEmptyAnswer(answer);
+  const offPoint = ready && !nothingToSay ? offPointReason(answer) : null;
   const fit = ready && !nothingToSay ? fitSection(answer) : null;
+  // The analysis is written out heading by heading: from when the reader's
+  // request returned, or on the answer's timeline when it came with a new
+  // reply (schedule.analysis); at once otherwise.
+  const timeline = ready && !nothingToSay
+    ? (typedAt !== null ? analysisSchedule(sections, fit, offPoint, typedAt) : (schedule?.analysis ?? null))
+    : null;
+  const when = (key) => (schedule ? schedule[key] : null);
+  // A case of a new answer is not on screen before its turn (lib/typing.js).
+  const onScreen = useReached(when('header'));
 
   const renderAnalysis = () => {
     if (loading) {
       return (
-        <p className="mt-4 flex items-center gap-2 font-prose text-[13px] italic text-ash-600">
+        <p className="mt-4 flex items-center gap-2 font-prose text-[14px] font-medium text-ash-700">
           <span className="material-symbols-outlined animate-spin text-[18px] text-brand-500">
             progress_activity
           </span>
-          Analysing this case against your description…
+          <LoadingDots label="Analyzing" />
         </p>
       );
     }
 
     if (ready) {
       if (nothingToSay) {
+        // No analysis came back (an answer saved before off-point analyses
+        // existed): still say what the case is.
         return (
-          <p className="mt-4 rounded-xl border border-ash-200 bg-ash-50 px-4 py-3 font-prose text-[13px] text-ash-600">
-            This judgment was retrieved as related, but it does not address the
-            question directly. Read it in full before relying on it.
-          </p>
+          <>
+            <CardSummary card={cite.card} />
+            <p className="mt-3 rounded-xl border border-ash-200 bg-ash-50 px-4 py-3 font-prose text-[13px] text-ash-600">
+              This judgment was retrieved as related, but it does not address the
+              question directly. Read it in full before relying on it.
+            </p>
+          </>
         );
       }
       return (
         <>
-          {sections.map((section, sIdx) => (
-            <div key={sIdx} className="mt-4">
-              {section.heading && (
-                <h4 className="mb-1.5 font-display text-[11px] font-semibold uppercase tracking-wider text-brand-500">
-                  {section.heading}
-                </h4>
-              )}
-              <p className="whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900">
-                {section.body}
+          {/* The judgment is analysed on its own terms, but it does not answer
+              the question: say so first, so its outcome is not read as one. */}
+          {offPoint !== null && (
+            <Reveal at={timeline?.offPoint ?? null}>
+            <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
+              <span className="material-symbols-outlined text-[18px] text-ash-600">info</span>
+              <p className="flex-1 font-prose text-[13px] leading-relaxed text-ash-700">
+                <strong className="font-semibold text-ash-900">This judgment does not directly address your question.</strong>{' '}
+                {offPoint || 'It is analysed below on its own terms.'} Its decision is not an answer to your question.
               </p>
             </div>
+            </Reveal>
+          )}
+          {/* Which sections the case is about, above the analysis. */}
+          <Reveal at={timeline?.chips ?? null}>
+            <SectionChips card={cite.card} className="mt-4" />
+          </Reveal>
+          {sections.map((section, sIdx) => (
+            <Reveal key={sIdx} at={timeline ? timeline.sections[sIdx] : null}>
+              <div className="mt-4">
+                {section.heading && (
+                  <h4 className="mb-1.5 font-display text-[11px] font-semibold uppercase tracking-wider text-brand-500">
+                    {section.heading}
+                  </h4>
+                )}
+                <TypedText
+                  at={timeline ? timeline.sections[sIdx] + REVEAL_MS : null}
+                  className="whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900"
+                  text={section.body}
+                />
+              </div>
+            </Reveal>
           ))}
-          {fit && <FitCallout fit={fit} />}
+          {fit && <FitCallout fit={fit} at={timeline?.fit ?? null} />}
         </>
       );
     }
@@ -493,7 +741,7 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
     return (
       <>
         {cite.card ? (
-          <CardSummary card={cite.card} />
+          <CardSummary card={cite.card} schedule={schedule?.card ?? null} />
         ) : (
           <p className="mt-4 font-prose text-[13px] text-ash-600">
             {can('analyse')
@@ -502,6 +750,7 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
           </p>
         )}
         {query && (
+          <Reveal at={when('buttons')}>
           <div className="mt-4">
             {can('analyse') ? (
               <AnalyseButton onClick={() => analyse()} label="Analyse this case" />
@@ -509,11 +758,13 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
               <LockedButton feature="analyse" icon="auto_awesome" label="Analyse this case" onLocked={onLocked} />
             )}
           </div>
+          </Reveal>
         )}
       </>
     );
   };
 
+  if (!onScreen) return null;
   return (
     <div className={index > 0 ? 'mt-8 border-t border-ash-200 pt-7' : ''}>
       <div className="flex flex-wrap items-center gap-2.5">
@@ -528,18 +779,13 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
         <RelevanceBadge score={cite.similarity_score} confidence={cite.confidence} />
       </div>
 
-      {cite.sections_retrieved?.length > 0 && (
-        <p className="mt-1.5 text-xs text-ash-500">
-          Matched in: {prettySections(cite.sections_retrieved)}
-        </p>
-      )}
+      <TypedText at={when('matched')} className="mt-1.5 text-xs text-ash-500" text={matchedText(cite)} />
 
       {/* The LLM judge's one-line reason, when the v2 judge ran. */}
-      {cite.reason && (
-        <p className="mt-1.5 font-prose text-xs italic text-ash-500">Why: {cite.reason}</p>
-      )}
+      <TypedText at={when('why')} className="mt-1.5 font-prose text-xs italic text-ash-500" text={whyText(cite)} />
 
       {/* Works whether one case came back or many. */}
+      <Reveal at={when('summaryButton')}>
       {summaryLines && !can('summarize') && (
         <div className="mt-3">
           <LockedButton feature="summarize" icon="summarize" label="Summary" size="sm" onLocked={onLocked} />
@@ -549,7 +795,10 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
         <div className="mt-3">
           <button
             type="button"
-            onClick={() => setShowSummary((v) => !v)}
+            onClick={() => {
+              setShowSummary((v) => !v);
+              setSummaryOpenedAt(performance.now());
+            }}
             aria-expanded={showSummary}
             className="inline-flex items-center gap-1.5 rounded-full border border-ash-300 bg-white px-3.5 py-1.5 font-ui text-[12px] font-semibold text-ash-700 transition-all hover:border-brand-300 hover:text-brand-700"
           >
@@ -558,13 +807,16 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
             </span>
             {showSummary ? 'Hide summary' : 'Summary'}
           </button>
-          {showSummary && <ThreeLineSummary lines={summaryLines} />}
+          {showSummary && <ThreeLineSummary lines={summaryLines} openedAt={summaryOpenedAt} />}
         </div>
       )}
+      </Reveal>
 
       {renderAnalysis()}
 
+      <Reveal at={when('buttons')}>
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <ViewButton cite={cite} can={can} onLocked={onLocked} />
         <DownloadButton cite={cite} can={can} onLocked={onLocked} />
         {/* Copies what is on screen: an on-demand analysis lives in this
             component's state, so the text is built here rather than from the
@@ -580,6 +832,7 @@ const JudgmentBlock = ({ cite, index, total, query, can, onLocked }) => {
           <LockedButton feature="copy" icon="content_copy" label="Copy" size="sm" onLocked={onLocked} />
         )}
       </div>
+      </Reveal>
     </div>
   );
 };
@@ -627,6 +880,7 @@ const useMorePages = (message, onLocked) => {
       const data = await res.json();
       const seen = new Set(citations.map((c) => c.judgment_id));
       const fresh = (data.judgments || []).filter((j) => !seen.has(j.judgment_id));
+      fresh.forEach(markFresh);   // a page loaded now types itself in, like the first
       setExtra((prev) => [...prev, ...fresh]);
       if (fresh.length) toast.success(`${fresh.length} more relevant ${fresh.length === 1 ? 'case' : 'cases'} loaded.`);
       setHasMore(Boolean(data.has_more) && fresh.length > 0);
@@ -834,6 +1088,7 @@ const ResultsPanel = ({ message }) => {
   const onLocked = useCallback((feature) => setLockedFeature(feature), []);
   const more = useMorePages(message, onLocked);
 
+
   const citations = more.citations;
   const many = citations.length > 1;
   // Compare reads the leading judgments only: the endpoint takes at most ten.
@@ -872,6 +1127,32 @@ const ResultsPanel = ({ message }) => {
     : many
       ? citations.filter((c) => matchesFilters(c, filters))
       : citations;
+
+  // A reply produced in this visit is written out top to bottom (lib/typing.js):
+  // its notice, its text, then each case in turn, then the tools below. A page
+  // of "more" cases is written out the same way from when it arrived. A
+  // reopened conversation has no times: everything shows at once.
+  const replyAt = freshAt(message);
+  let cursor = replyAt;
+  const noticeAt = cursor;
+  if (cursor !== null) cursor += typeDuration(message.notice);
+  const textAt = cursor;
+  if (cursor !== null) cursor += typeDuration(message.text);
+  const schedules = new Map();
+  const pageEnds = new Map();
+  for (const cite of visible) {
+    const pageAt = freshAt(cite);           // a case from a "more" page
+    if (pageAt !== null) {
+      const sched = caseSchedule(cite, pageEnds.get(pageAt) ?? pageAt);
+      pageEnds.set(pageAt, sched.end);
+      schedules.set(cite.judgment_id, sched);
+    } else if (cursor !== null) {
+      const sched = caseSchedule(cite, cursor);
+      cursor = sched.end;
+      schedules.set(cite.judgment_id, sched);
+    }
+  }
+  const toolsAt = cursor === null && pageEnds.size === 0 ? null : Math.max(cursor ?? 0, ...pageEnds.values());
 
   const applyFilters = (next) => {
     setFilters(next);
@@ -924,10 +1205,11 @@ const ResultsPanel = ({ message }) => {
           <span className="material-symbols-outlined mt-0.5 flex-shrink-0 text-[20px] text-ash-400">
             {message.limitReached ? 'hourglass_disabled' : 'search_off'}
           </span>
-          <p className="font-prose text-sm leading-relaxed text-ash-700">
-            {message.text ||
-              'No relevant case is available in our data centre for this query.'}
-          </p>
+          <TypedText
+            at={freshAt(message)}
+            className="font-prose text-sm leading-relaxed text-ash-700"
+            text={message.text || 'No relevant case is available in our data centre for this query.'}
+          />
         </div>
         {/* Nothing was retrieved, so there is nothing worth copying. */}
         {message.limitReached && (
@@ -955,14 +1237,16 @@ const ResultsPanel = ({ message }) => {
           <span className="material-symbols-outlined mt-0.5 flex-shrink-0 text-[18px] text-brand-500">
             info
           </span>
-          <p className="font-prose text-[13px] leading-relaxed text-ash-700">{message.notice}</p>
+          <TypedText at={noticeAt} className="font-prose text-[13px] leading-relaxed text-ash-700" text={message.notice} />
         </div>
       )}
 
       {message.text && (
-        <p className="mb-5 whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900">
-          {message.text}
-        </p>
+        <TypedText
+          at={textAt}
+          className="mb-5 whitespace-pre-line font-prose text-sm leading-relaxed text-ash-900"
+          text={message.text}
+        />
       )}
 
       {/* A filter is in force: say so above the list, since the control that
@@ -1042,9 +1326,14 @@ const ResultsPanel = ({ message }) => {
           query={message.query}
           can={can}
           onLocked={onLocked}
+          // A new reply is written out case after case (lib/typing.js).
+          schedule={schedules.get(cite.judgment_id) ?? null}
         />
       ))}
 
+      {/* The tools come last: after the answer has been written out. */}
+      <Reveal at={toolsAt}>
+      <>
       {serverFiltered
         ? visible.length > 0 && (
             <MoreBar
@@ -1165,6 +1454,8 @@ const ResultsPanel = ({ message }) => {
           Retrieved in {(message.latencyMs / 1000).toFixed(1)}s
         </p>
       )}
+      </>
+      </Reveal>
 
       {showFilter && (
         <FilterDialog

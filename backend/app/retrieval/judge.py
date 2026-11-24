@@ -67,6 +67,18 @@ situation the query describes. Sharing a word, a court, a province or a general
 area of law is NOT enough. If the query is not about anything these judgments
 decide, mark every candidate false — that is a correct and useful answer.
 
+The query may be a person's own account in everyday words, with spelling
+mistakes; read it for the dispute it describes. A candidate is relevant only if
+a Pakistani lawyer would cite it for THAT dispute: the same kind of dispute and
+the same legal question (for example both about bail in a narcotics case, or
+both about a tenant's eviction for default). Another matter from the same broad
+area (any service matter for a service dispute, any criminal case for an
+arrest) is not relevant.
+
+These are judgments of the Supreme Court of Pakistan. If the query describes
+events or a dispute governed by another country's law (England, Canada, India,
+the United States ...), mark every candidate false.
+
 Return ONE JSON object and nothing else:
 {"ranking": ["C3", "C1", ...],          every label, most relevant first
  "relevant": {"C1": true, "C2": false, ...},

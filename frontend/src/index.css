@@ -97,6 +97,52 @@ h1, h2, h3, .brand-font {
   animation: retrievalProgress 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* The typing effect (lib/typing.js): a caret after the text being written. */
+.typing-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.7;
+  animation: caretBlink 0.9s steps(1) infinite;
+}
+
+@keyframes caretBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* "Fetching..." / "Analyzing...": the three dots rise in turn. */
+.loading-dots span {
+  display: inline-block;
+  animation: dotRise 1.2s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dotRise {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
 .chat-input-form,
 .chat-input-form textarea {
   outline: none !important;

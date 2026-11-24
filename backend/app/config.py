@@ -154,7 +154,12 @@ class Settings(BaseSettings):
     USE_BM25: bool = True     # the largest single gain in fusion (before-rerank hit@1 .773 -> .864)
     USE_CARDS: bool = True     # no p@1 gain alone, but its two retrievers are half the votes the agreement gate counts
     USE_FUSION: bool = True     # judgment-level RRF beat union ordering in every configuration
-    USE_LLM_JUDGE: bool = False        # J:  listwise LLM judge over the top 10 (Agent E)
+    USE_LLM_JUDGE: bool = False        # J:  listwise LLM judge over the top 10 (Agent E), every query
+    # The judge for case descriptions only (25+ words), which the cross-encoder
+    # cannot read; short queries keep their exact results. pipeline_v2.
+    JUDGE_DESCRIPTIONS: bool = True
+    # A second look by the judge when a search would otherwise show nothing.
+    JUDGE_RESCUE: bool = True
 
     # Where the lexical index and the card vectors live. New stores, so building
     # them never disturbs the live chunk collection.
@@ -205,7 +210,15 @@ class Settings(BaseSettings):
     FUSION_K: int = 60
     FUSION_WEIGHTS: dict = {}          # retriever -> weight; empty = 1.0 each, untuned
     DENSE_CHUNKS_COLLECTION: str = ""  # empty = the live collection
-    JUDGE_TIMEOUT: float = 6.0
+    # The judge decides what a description (or an otherwise empty search) shows,
+    # so a timeout means "no result"; it usually answers in 2-4 s.
+    JUDGE_TIMEOUT: float = 12.0
+    # The second look's legal restatement of the query (pipeline_v2._understand).
+    # Off: tried 2026-11-24 on short plain stories, the LLM's restatement varied
+    # run to run (a murder case, then narcotics sentence cases, then nothing for
+    # the same query) and added up to ~20 s. Kept for later work, not used.
+    RESCUE_REWRITE: bool = False
+    RESCUE_ANALYZER_TIMEOUT: float = 10.0
     JUDGE_TOP_N: int = 10
     # ONNX int8 is 1.2-1.8x faster and agrees with torch at Spearman 0.9965
     # pooled, but dips to 0.94 on individual queries and changed the top

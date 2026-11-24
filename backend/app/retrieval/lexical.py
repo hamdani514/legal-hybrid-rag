@@ -251,6 +251,71 @@ def key_terms(analysis: QueryAnalysis, max_share: float, path: Path | None = Non
     return [t for t in terms if 0 < cache[t] <= max_share * total]
 
 
+# What a case is ABOUT is its case card's summary, not every word of its text:
+# a NAB reference mentions "bail" once in its history; a bail order mentions
+# NAB once in passing. These columns say what the case is (not statutes or
+# bench, which list everything cited or sitting).
+CARD_ABOUT_COLUMNS = "{case_display appellant respondent subject headnote issues holding keywords}"
+
+# Abbreviations a summary often spells out, and the reverse: a card that says
+# "National Accountability Bureau" is about NAB.
+TERM_EQUIVALENTS: dict[str, list[str]] = {
+    "nab": ['"national accountability"', '"accountability court"', '"accountability ordinance"'],
+    "fia": ['"federal investigation agency"'],
+    "ata": ['"anti terrorism"'],
+    "atc": ['"anti terrorism court"'],
+    "cnsa": ['"narcotic substances"'],
+    "anf": ['"anti narcotics force"'],
+    "fir": ['"first information report"'],
+    "fbr": ['"federal board of revenue"'],
+    "ecp": ['"election commission"'],
+    "secp": ['"securities and exchange commission"'],
+    "nirc": ['"industrial relations commission"'],
+    "pemra": ['"electronic media regulatory"'],
+    "ppc": ['"penal code"'],
+    "crpc": ['"criminal procedure"'],
+    "cpc": ['"civil procedure"'],
+    "qso": ['"qanun e shahadat"', "shahadat"],
+}
+
+
+def judgments_about_terms(terms: list[str], judgment_ids: list[str],
+                          path: Path | None = None) -> tuple[dict[str, set[str]], set[str]]:
+    """({judgment_id: the terms its case card's summary contains}, the
+    judgments that have a written summary at all). A judgment without one
+    (no card, or a metadata-only card) cannot be judged this way; the caller
+    falls back to judgments_with_terms for it."""
+    found: dict[str, set[str]] = {jid: set() for jid in judgment_ids}
+    summarised: set[str] = set()
+    if not terms or not judgment_ids:
+        return found, summarised
+    path = Path(path or db_path())
+    if not path.exists():
+        return found, summarised
+    marks = ",".join("?" * len(judgment_ids))
+    conn = connect(path)
+    try:
+        try:
+            summarised = {row[0] for row in conn.execute(
+                f"SELECT judgment_id FROM cards_fts WHERE judgment_id IN ({marks}) AND headnote != ''",
+                tuple(judgment_ids))}
+        except sqlite3.Error:
+            return found, set()
+        for term in terms:
+            for variant in [term] + TERM_EQUIVALENTS.get(term.strip('"').lower(), []):
+                try:
+                    rows = conn.execute(
+                        f"SELECT DISTINCT judgment_id FROM cards_fts WHERE cards_fts MATCH ? "
+                        f"AND judgment_id IN ({marks})", (f"{CARD_ABOUT_COLUMNS} : {variant}", *judgment_ids)).fetchall()
+                except sqlite3.Error:
+                    continue
+                for row in rows:
+                    found.setdefault(row[0], set()).add(term)
+    finally:
+        conn.close()
+    return found, summarised
+
+
 def judgments_with_terms(terms: list[str], judgment_ids: list[str],
                          path: Path | None = None) -> dict[str, set[str]]:
     """{judgment_id: the key terms its text contains}, for the given judgments."""

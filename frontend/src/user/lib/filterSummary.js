@@ -20,6 +20,7 @@ export const filterChips = (f) => {
   else if (f.to) chips.push(`Before ${shortDate(f.to)}`);
   if (f.query?.trim()) chips.push(`Case or party: ${f.query.trim()}`);
   if (f.judge?.trim()) chips.push(`Judge: ${f.judge.trim()}`);
+  if (f.section?.trim()) chips.push(`Section: ${f.section.trim()}`);
   return chips;
 };
 
