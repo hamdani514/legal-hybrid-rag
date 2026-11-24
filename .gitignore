@@ -106,3 +106,11 @@ backend/secrets/
 # server data, never committed.
 backend/logs/
 backend/backups/
+
+# Measurement output of evaluation and regression runs (re-created by the
+# scripts). The committed baselines (baseline_v1.json, narrative_baseline_v0.json)
+# stay tracked: ignore rules do not apply to files already in git.
+backend/eval/results/*.json
+backend/eval/results/*.log
+backend/eval/regression/*.json
+backend/eval/regression/*.log
